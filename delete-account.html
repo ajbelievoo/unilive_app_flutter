@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Delete Your Belive / Unilive Account</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f7f7f7;
+      color: #1a1a1a;
+      line-height: 1.6;
+    }
+    .container {
+      max-width: 640px;
+      margin: 48px auto;
+      background: #fff;
+      padding: 32px;
+      border-radius: 12px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+    }
+    h1 { color: #E84393; margin-top: 0; }
+    a { color: #E84393; }
+    .note {
+      background: #fff3f7;
+      border-left: 4px solid #E84393;
+      padding: 12px 16px;
+      margin: 16px 0;
+      border-radius: 0 8px 8px 0;
+    }
+    label { display: block; margin: 16px 0 6px; font-weight: 600; }
+    input, textarea {
+      width: 100%;
+      padding: 12px;
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+    button {
+      background: #E84393;
+      color: #fff;
+      border: none;
+      padding: 14px 28px;
+      font-size: 1rem;
+      border-radius: 8px;
+      cursor: pointer;
+      margin-top: 20px;
+    }
+    button:hover { background: #c72c76; }
+    .footer { margin-top: 32px; font-size: 0.9rem; color: #666; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Request account deletion</h1>
+    <p>
+      You can also request account and data deletion directly inside the Belive / Unilive app:<br />
+      <strong>Settings &gt; Account &gt; Delete Account</strong>
+    </p>
+
+    <div class="note">
+      If you have uninstalled the app, use this form to request deletion of your account and all associated data.
+    </div>
+
+    <form id="deleteForm" onsubmit="return submitRequest();">
+      <label for="email">Registered email or phone number</label>
+      <input type="text" id="email" name="email" required placeholder="you@example.com or +91..." />
+
+      <label for="userId">User ID (optional, found in Profile > Settings)</label>
+      <input type="text" id="userId" name="userId" placeholder="12345678" />
+
+      <label for="reason">Reason for deletion (optional)</label>
+      <textarea id="reason" name="reason" rows="3"></textarea>
+
+      <p style="font-size:0.95rem; color:#555;">
+        By submitting, you confirm that you want to permanently delete your account, including your profile, wallet balance, posts, messages, live history, and all associated personal data. We process deletion requests within 30 days.
+      </p>
+
+      <button type="submit">Request deletion</button>
+    </form>
+
+    <div class="footer">
+      Questions? Email <a href="mailto:support@unilive.me">support@unilive.me</a><br />
+      <a href="https://unilive.me/privacy.html">Privacy Policy</a>
+    </div>
+  </div>
+
+  <script>
+    function submitRequest() {
+      const email = document.getElementById('email').value.trim();
+      const userId = document.getElementById('userId').value.trim();
+      const reason = document.getElementById('reason').value.trim();
+
+      const subject = encodeURIComponent('Belive / Unilive account deletion request');
+      const body = encodeURIComponent(
+        'Hello,' + '\n\n' +
+        'I would like to permanently delete my Belive / Unilive account and all associated data.' + '\n\n' +
+        'Registered email / phone: ' + email + '\n' +
+        'User ID: ' + (userId || 'not provided') + '\n' +
+        'Reason: ' + (reason || 'not provided') + '\n\n' +
+        'Thank you.'
+      );
+
+      window.location.href = 'mailto:support@unilive.me?subject=' + subject + '&body=' + body;
+      return false; // keep user on the page after mailto opens
+    }
+  </script>
+</body>
+</html>

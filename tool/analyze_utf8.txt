@@ -1,0 +1,579 @@
+﻿Analyzing belive...                                             
+
+  error - The library directive must appear before all other directives - lib\models\family_models.dart:6:1 - library_directive_not_first
+  error - The method 'getAgencies' isn't defined for the type 'ApiService' - lib\providers\agency_provider.dart:33:36 - undefined_method
+  error - The method 'getMyAgency' isn't defined for the type 'ApiService' - lib\providers\agency_provider.dart:49:36 - undefined_method
+  error - The method 'getAgencyHosts' isn't defined for the type 'ApiService' - lib\providers\agency_provider.dart:61:36 - undefined_method
+  error - The method 'getAgencyRevenue' isn't defined for the type 'ApiService' - lib\providers\agency_provider.dart:74:35 - undefined_method
+  error - The method 'getAgencyWithdrawals' isn't defined for the type 'ApiService' - lib\providers\agency_provider.dart:83:36 - undefined_method
+  error - The method 'createAgency' isn't defined for the type 'ApiService' - lib\providers\agency_provider.dart:100:36 - undefined_method
+  error - The method 'joinAgency' isn't defined for the type 'ApiService' - lib\providers\agency_provider.dart:121:36 - undefined_method
+  error - The method 'leaveAgency' isn't defined for the type 'ApiService' - lib\providers\agency_provider.dart:134:36 - undefined_method
+  error - The method 'requestAgencyWithdrawal' isn't defined for the type 'ApiService' - lib\providers\agency_provider.dart:153:36 - undefined_method
+  error - The method 'createUser' isn't defined for the type 'ApiService' - lib\providers\auth_provider.dart:175:36 - undefined_method
+  error - The method 'checkTempBlock' isn't defined for the type 'ApiService' - lib\providers\auth_provider.dart:195:41 - undefined_method
+  error - The method 'getUser' isn't defined for the type 'ApiService' - lib\providers\auth_provider.dart:232:36 - undefined_method
+  error - The method 'getCallHistory' isn't defined for the type 'ApiService' - lib\providers\call_provider.dart:101:36 - undefined_method
+  error - The method 'callRequest' isn't defined for the type 'ApiService' - lib\providers\call_provider.dart:119:36 - undefined_method
+  error - The method 'callDisconnect' isn't defined for the type 'ApiService' - lib\providers\call_provider.dart:185:26 - undefined_method
+  error - The method 'randomCall' isn't defined for the type 'ApiService' - lib\providers\call_provider.dart:220:36 - undefined_method
+  error - The method 'getCallRateConfig' isn't defined for the type 'ApiService' - lib\providers\call_rate_provider.dart:31:36 - undefined_method
+  error - The method 'getHostCallRate' isn't defined for the type 'ApiService' - lib\providers\call_rate_provider.dart:48:36 - undefined_method
+  error - The method 'setCallRate' isn't defined for the type 'ApiService' - lib\providers\call_rate_provider.dart:64:36 - undefined_method
+  error - The method 'resetCallRate' isn't defined for the type 'ApiService' - lib\providers\call_rate_provider.dart:88:36 - undefined_method
+  error - The method 'chatList' isn't defined for the type 'ApiService' - lib\providers\chat_provider.dart:73:36 - undefined_method
+  error - The method 'chatList' isn't defined for the type 'ApiService' - lib\providers\chat_provider.dart:97:36 - undefined_method
+  error - The method 'chatList' isn't defined for the type 'ApiService' - lib\providers\chat_provider.dart:111:36 - undefined_method
+  error - The method 'createChatTopic' isn't defined for the type 'ApiService' - lib\providers\chat_provider.dart:136:41 - undefined_method
+  error - The method 'getOldChat' isn't defined for the type 'ApiService' - lib\providers\chat_provider.dart:161:36 - undefined_method
+  error - A value of type 'double' can't be assigned to a variable of type 'int' - lib\providers\chat_provider.dart:173:17 - invalid_assignment
+  error - The method 'deleteChat' isn't defined for the type 'ApiService' - lib\providers\chat_provider.dart:247:24 - undefined_method
+  error - The method 'clearChat' isn't defined for the type 'ApiService' - lib\providers\chat_provider.dart:258:24 - undefined_method
+  error - The method 'starMessage' isn't defined for the type 'ApiService' - lib\providers\chat_provider.dart:268:24 - undefined_method
+  error - The method 'getMyCP' isn't defined for the type 'ApiService' - lib\providers\cp_provider.dart:130:36 - undefined_method
+  error - The method 'getCP' isn't defined for the type 'ApiService' - lib\providers\cp_provider.dart:142:36 - undefined_method
+  error - The method 'getCPRequests' isn't defined for the type 'ApiService' - lib\providers\cp_provider.dart:154:41 - undefined_method
+  error - The method 'getCPRequests' isn't defined for the type 'ApiService' - lib\providers\cp_provider.dart:155:41 - undefined_method
+  error - The method 'getCPTasks' isn't defined for the type 'ApiService' - lib\providers\cp_provider.dart:170:36 - undefined_method
+  error - The method 'getCPRanking' isn't defined for the type 'ApiService' - lib\providers\cp_provider.dart:184:36 - undefined_method
+  error - The method 'getCPLevels' isn't defined for the type 'ApiService' - lib\providers\cp_provider.dart:198:36 - undefined_method
+  error - The method 'getCPMilestones' isn't defined for the type 'ApiService' - lib\providers\cp_provider.dart:211:36 - undefined_method
+  error - The method 'getCPHistory' isn't defined for the type 'ApiService' - lib\providers\cp_provider.dart:225:36 - undefined_method
+  error - The method 'getCPDiscover' isn't defined for the type 'ApiService' - lib\providers\cp_provider.dart:239:36 - undefined_method
+  error - The method 'getCPPrivileges' isn't defined for the type 'ApiService' - lib\providers\cp_provider.dart:251:36 - undefined_method
+  error - The method 'getCPRings' isn't defined for the type 'ApiService' - lib\providers\cp_provider.dart:263:36 - undefined_method
+  error - The method 'equipCPRing' isn't defined for the type 'ApiService' - lib\providers\cp_provider.dart:279:36 - undefined_method
+  error - The method 'sendCPRequest' isn't defined for the type 'ApiService' - lib\providers\cp_provider.dart:313:36 - undefined_method
+  error - The method 'acceptCPRequest' isn't defined for the type 'ApiService' - lib\providers\cp_provider.dart:342:36 - undefined_method
+  error - The method 'rejectCPRequest' isn't defined for the type 'ApiService' - lib\providers\cp_provider.dart:363:36 - undefined_method
+  error - The method 'cancelCPRequest' isn't defined for the type 'ApiService' - lib\providers\cp_provider.dart:383:36 - undefined_method
+  error - The method 'breakUpCP' isn't defined for the type 'ApiService' - lib\providers\cp_provider.dart:404:36 - undefined_method
+  error - The method 'claimCPTask' isn't defined for the type 'ApiService' - lib\providers\cp_provider.dart:429:36 - undefined_method
+  error - The method 'updateCP' isn't defined for the type 'ApiService' - lib\providers\cp_provider.dart:471:36 - undefined_method
+  error - The method 'getPosts' isn't defined for the type 'ApiService' - lib\providers\feed_provider.dart:44:36 - undefined_method
+  error - The method 'getPosts' isn't defined for the type 'ApiService' - lib\providers\feed_provider.dart:68:36 - undefined_method
+  error - A value of type 'double' can't be assigned to a variable of type 'int' - lib\providers\feed_provider.dart:75:21 - invalid_assignment
+  error - The method 'getReels' isn't defined for the type 'ApiService' - lib\providers\feed_provider.dart:98:36 - undefined_method
+  error - The method 'getReels' isn't defined for the type 'ApiService' - lib\providers\feed_provider.dart:122:36 - undefined_method
+  error - A value of type 'double' can't be assigned to a variable of type 'int' - lib\providers\feed_provider.dart:128:21 - invalid_assignment
+  error - The method 'getMyFriends' isn't defined for the type 'ApiService' - lib\providers\friend_provider.dart:126:36 - undefined_method
+  error - The method 'getFriendRequests' isn't defined for the type 'ApiService' - lib\providers\friend_provider.dart:138:41 - undefined_method
+  error - The method 'getFriendRequests' isn't defined for the type 'ApiService' - lib\providers\friend_provider.dart:139:41 - undefined_method
+  error - The method 'getFriendLevels' isn't defined for the type 'ApiService' - lib\providers\friend_provider.dart:154:36 - undefined_method
+  error - The method 'getFriendRanking' isn't defined for the type 'ApiService' - lib\providers\friend_provider.dart:169:36 - undefined_method
+  error - The method 'getFriendHistory' isn't defined for the type 'ApiService' - lib\providers\friend_provider.dart:185:36 - undefined_method
+  error - The method 'getFriendDiscover' isn't defined for the type 'ApiService' - lib\providers\friend_provider.dart:199:36 - undefined_method
+  error - The method 'sendFriendRequest' isn't defined for the type 'ApiService' - lib\providers\friend_provider.dart:215:36 - undefined_method
+  error - The method 'acceptFriendRequest' isn't defined for the type 'ApiService' - lib\providers\friend_provider.dart:243:36 - undefined_method
+  error - The method 'rejectFriendRequest' isn't defined for the type 'ApiService' - lib\providers\friend_provider.dart:264:36 - undefined_method
+  error - The method 'cancelFriendRequest' isn't defined for the type 'ApiService' - lib\providers\friend_provider.dart:284:36 - undefined_method
+  error - The method 'removeFriend' isn't defined for the type 'ApiService' - lib\providers\friend_provider.dart:304:36 - undefined_method
+  error - The method 'getFriendPrivileges' isn't defined for the type 'ApiService' - lib\providers\friend_provider.dart:321:36 - undefined_method
+  error - The method 'getFriendRings' isn't defined for the type 'ApiService' - lib\providers\friend_provider.dart:333:36 - undefined_method
+  error - The method 'equipFriendRing' isn't defined for the type 'ApiService' - lib\providers\friend_provider.dart:349:36 - undefined_method
+  error - The method 'getGiftCategories' isn't defined for the type 'ApiService' - lib\providers\gift_provider.dart:36:36 - undefined_method
+  error - The method 'getGifts' isn't defined for the type 'ApiService' - lib\providers\gift_provider.dart:56:36 - undefined_method
+  error - The method 'getStickers' isn't defined for the type 'ApiService' - lib\providers\gift_provider.dart:71:36 - undefined_method
+  error - The method 'getKycSettings' isn't defined for the type 'ApiService' - lib\providers\kyc_provider.dart:94:20 - undefined_method
+  error - The method 'getKycStatus' isn't defined for the type 'ApiService' - lib\providers\kyc_provider.dart:95:20 - undefined_method
+  error - The method 'getKycAiConfig' isn't defined for the type 'ApiService' - lib\providers\kyc_provider.dart:96:20 - undefined_method
+  error - The method 'getKycStatus' isn't defined for the type 'ApiService' - lib\providers\kyc_provider.dart:113:34 - undefined_method
+  error - The method 'getKycHistory' isn't defined for the type 'ApiService' - lib\providers\kyc_provider.dart:123:36 - undefined_method
+  error - The method 'getKycWithdrawalCheck' isn't defined for the type 'ApiService' - lib\providers\kyc_provider.dart:145:31 - undefined_method
+  error - The name 'KycDocumentUpload' isn't a type, so it can't be used as a type argument - lib\providers\kyc_provider.dart:174:10 - non_type_as_type_argument
+  error - The method 'submitKyc' isn't defined for the type 'ApiService' - lib\providers\kyc_provider.dart:205:36 - undefined_method
+  error - The method 'getLeaderboard' isn't defined for the type 'ApiService' - lib\providers\leaderboard_provider.dart:31:36 - undefined_method
+  error - The method 'getLiveUsers' isn't defined for the type 'ApiService' - lib\providers\live_provider.dart:85:36 - undefined_method
+  error - The method 'getNotifications' isn't defined for the type 'ApiService' - lib\providers\notification_provider.dart:85:36 - undefined_method
+  error - The method 'markNotificationRead' isn't defined for the type 'ApiService' - lib\providers\notification_provider.dart:289:24 - undefined_method
+  error - The method 'markAllNotificationsRead' isn't defined for the type 'ApiService' - lib\providers\notification_provider.dart:310:24 - undefined_method
+  error - The method 'updatePkScore' isn't defined for the type 'ApiService' - lib\providers\pk_provider.dart:236:24 - undefined_method
+  error - The method 'endPkCall' isn't defined for the type 'ApiService' - lib\providers\pk_provider.dart:245:24 - undefined_method
+  error - The method 'getUser' isn't defined for the type 'ApiService' - lib\providers\profile_provider.dart:45:36 - undefined_method
+  error - The method 'getGuestProfileByUsername' isn't defined for the type 'ApiService' - lib\providers\profile_provider.dart:74:40 - undefined_method
+  error - The method 'getLevelSummary' isn't defined for the type 'ApiService' - lib\providers\profile_provider.dart:85:40 - undefined_method
+  error - The method 'getFansRanking' isn't defined for the type 'ApiService' - lib\providers\profile_provider.dart:94:36 - undefined_method
+  error - The method 'followerList' isn't defined for the type 'ApiService' - lib\providers\profile_provider.dart:106:36 - undefined_method
+  error - The method 'followingList' isn't defined for the type 'ApiService' - lib\providers\profile_provider.dart:118:36 - undefined_method
+  error - The method 'getBlockedUsers' isn't defined for the type 'ApiService' - lib\providers\profile_provider.dart:130:36 - undefined_method
+  error - The method 'followUnfollow' isn't defined for the type 'ApiService' - lib\providers\profile_provider.dart:145:36 - undefined_method
+  error - The method 'blockUnblock' isn't defined for the type 'ApiService' - lib\providers\profile_provider.dart:161:36 - undefined_method
+  error - The method 'getStoreItems' isn't defined for the type 'ApiService' - lib\providers\store_provider.dart:63:36 - undefined_method
+  error - The method 'getStoreCategories' isn't defined for the type 'ApiService' - lib\providers\store_provider.dart:77:36 - undefined_method
+  error - The method 'getMyStoreItems' isn't defined for the type 'ApiService' - lib\providers\store_provider.dart:100:36 - undefined_method
+  error - The method 'purchaseStoreItem' isn't defined for the type 'ApiService' - lib\providers\store_provider.dart:135:36 - undefined_method
+  error - The method 'selectStoreItem' isn't defined for the type 'ApiService' - lib\providers\store_provider.dart:155:36 - undefined_method
+  error - The method 'deselectStoreItem' isn't defined for the type 'ApiService' - lib\providers\store_provider.dart:181:36 - undefined_method
+  error - The method 'getVipTiers' isn't defined for the type 'ApiService' - lib\providers\vip_provider.dart:66:36 - undefined_method
+  error - The method 'getVipStatus' isn't defined for the type 'ApiService' - lib\providers\vip_provider.dart:81:36 - undefined_method
+  error - The method 'getVipRules' isn't defined for the type 'ApiService' - lib\providers\vip_provider.dart:95:38 - undefined_method
+  error - The method 'getVipDetails' isn't defined for the type 'ApiService' - lib\providers\vip_provider.dart:124:38 - undefined_method
+  error - The method 'getVipPointsHistory' isn't defined for the type 'ApiService' - lib\providers\vip_provider.dart:135:36 - undefined_method
+  error - The method 'getVipPurchaseRecords' isn't defined for the type 'ApiService' - lib\providers\vip_provider.dart:151:36 - undefined_method
+  error - The method 'purchaseVip' isn't defined for the type 'ApiService' - lib\providers\vip_provider.dart:170:36 - undefined_method
+  error - The method 'buyVipTier' isn't defined for the type 'ApiService' - lib\providers\vip_provider.dart:191:36 - undefined_method
+  error - The method 'updateVipSetting' isn't defined for the type 'ApiService' - lib\providers\vip_provider.dart:208:36 - undefined_method
+  error - The method 'getTransactionHistory' isn't defined for the type 'ApiService' - lib\providers\wallet_provider.dart:54:36 - undefined_method
+  error - The method 'getRedeemHistory' isn't defined for the type 'ApiService' - lib\providers\wallet_provider.dart:70:36 - undefined_method
+  error - The method 'submitRedeem' isn't defined for the type 'ApiService' - lib\providers\wallet_provider.dart:89:36 - undefined_method
+  error - The method 'convertRcoinToDiamond' isn't defined for the type 'ApiService' - lib\providers\wallet_provider.dart:111:36 - undefined_method
+   info - The import of '../models/pk_call_models.dart' is unnecessary because all of the used elements are also provided by the import of '../models/pk_call_models.dart' - lib\routes\app_routes.dart:6:8 - unnecessary_import
+  error - The method 'getAgencies' isn't defined for the type 'ApiService' - lib\screens\agency\agency_list_screen.dart:39:36 - undefined_method
+  error - The method 'joinAgency' isn't defined for the type 'ApiService' - lib\screens\agency\agency_list_screen.dart:57:36 - undefined_method
+  error - The method 'getMyAgency' isn't defined for the type 'ApiService' - lib\screens\agency\agency_screen.dart:59:36 - undefined_method
+  error - The method 'addAgencyHost' isn't defined for the type 'ApiService' - lib\screens\agency\agency_screen.dart:294:46 - undefined_method
+  error - The method 'getCommissionRates' isn't defined for the type 'ApiService' - lib\screens\agency\agency_screen.dart:348:36 - undefined_method
+  error - The method 'getAgencyHostRequests' isn't defined for the type 'ApiService' - lib\screens\agency\agency_screen.dart:455:36 - undefined_method
+  error - The method 'updateHostRequestStatus' isn't defined for the type 'ApiService' - lib\screens\agency\agency_screen.dart:469:36 - undefined_method
+  error - The method 'addAgencyHost' isn't defined for the type 'ApiService' - lib\screens\agency\agency_screen.dart:472:26 - undefined_method
+  error - The method 'updateHostRequestStatus' isn't defined for the type 'ApiService' - lib\screens\agency\agency_screen.dart:486:24 - undefined_method
+  error - The method 'getAgencyHosts' isn't defined for the type 'ApiService' - lib\screens\agency\agency_screen.dart:637:36 - undefined_method
+  error - The method 'removeAgencyHost' isn't defined for the type 'ApiService' - lib\screens\agency\agency_screen.dart:697:50 - undefined_method
+  error - The method 'getAgencyRevenue' isn't defined for the type 'ApiService' - lib\screens\agency\agency_screen.dart:734:36 - undefined_method
+  error - The method 'getAgencyWithdrawals' isn't defined for the type 'ApiService' - lib\screens\agency\agency_screen.dart:850:36 - undefined_method
+  error - The method 'createAgency' isn't defined for the type 'ApiService' - lib\screens\agency\agency_screen.dart:937:36 - undefined_method
+  error - The method 'requestAgencyWithdrawal' isn't defined for the type 'ApiService' - lib\screens\agency\agency_screen.dart:1050:36 - undefined_method
+  error - The method 'bindAccount' isn't defined for the type 'ApiService' - lib\screens\auth\account_binding_screen.dart:59:36 - undefined_method
+  error - The method 'bindAccount' isn't defined for the type 'ApiService' - lib\screens\auth\account_binding_screen.dart:113:36 - undefined_method
+  error - The method 'bindAccount' isn't defined for the type 'ApiService' - lib\screens\auth\bind_phone_screen.dart:157:36 - undefined_method
+  error - The method 'getIp' isn't defined for the type 'ApiService' - lib\screens\auth\login_screen.dart:137:37 - undefined_method
+  error - The method 'addReferralCode' isn't defined for the type 'ApiService' - lib\screens\auth\login_screen.dart:183:28 - undefined_method
+  error - The method 'getIp' isn't defined for the type 'ApiService' - lib\screens\auth\mobile_login_screen.dart:246:37 - undefined_method
+  error - The method 'callDisconnect' isn't defined for the type 'ApiService' - lib\screens\call\audio_call_screen.dart:95:26 - undefined_method
+  error - The method 'getCallHistory' isn't defined for the type 'ApiService' - lib\screens\call\call_history_screen.dart:47:36 - undefined_method
+  error - The method 'callRequest' isn't defined for the type 'ApiService' - lib\screens\call\call_request_screen.dart:100:36 - undefined_method
+warning - Unused import: '../../widgets/user_avatar.dart' - lib\screens\call\call_screen.dart:27:8 - unused_import
+  error - The method 'callDisconnect' isn't defined for the type 'ApiService' - lib\screens\call\call_screen.dart:239:24 - undefined_method
+  error - The method 'getBdProfile' isn't defined for the type 'ApiService' - lib\screens\centers\bd_center_screen.dart:72:41 - undefined_method
+  error - The method 'getHostProfile' isn't defined for the type 'ApiService' - lib\screens\centers\bd_center_screen.dart:76:42 - undefined_method
+  error - The method 'getBdProfile' isn't defined for the type 'ApiService' - lib\screens\centers\bd_center_screen.dart:81:41 - undefined_method
+  error - The method 'getBdAgencyData' isn't defined for the type 'ApiService' - lib\screens\centers\bd_center_screen.dart:86:20 - undefined_method
+  error - The method 'getBdEarning' isn't defined for the type 'ApiService' - lib\screens\centers\bd_center_screen.dart:87:20 - undefined_method
+  error - The method 'getBdSettlement' isn't defined for the type 'ApiService' - lib\screens\centers\bd_center_screen.dart:88:20 - undefined_method
+  error - The method 'getBdHostRequests' isn't defined for the type 'ApiService' - lib\screens\centers\bd_center_screen.dart:89:20 - undefined_method
+  error - The method 'getHostProfile' isn't defined for the type 'ApiService' - lib\screens\centers\host_center_screen.dart:73:20 - undefined_method
+  error - The method 'getHostSettlement' isn't defined for the type 'ApiService' - lib\screens\centers\host_center_screen.dart:74:20 - undefined_method
+  error - The method 'getHostTasks' isn't defined for the type 'ApiService' - lib\screens\centers\host_center_screen.dart:75:20 - undefined_method
+  error - The method 'getHostLiveHistory' isn't defined for the type 'ApiService' - lib\screens\centers\host_center_screen.dart:76:20 - undefined_method
+  error - The method 'getHostLiveHistoryToday' isn't defined for the type 'ApiService' - lib\screens\centers\host_center_screen.dart:77:20 - undefined_method
+  error - The method 'claimTaskReward' isn't defined for the type 'ApiService' - lib\screens\centers\host_center_screen.dart:688:36 - undefined_method
+  error - The method 'deleteAllChat' isn't defined for the type 'ApiService' - lib\screens\chat\chat_list_screen.dart:223:24 - undefined_method
+  error - The method 'muteChat' isn't defined for the type 'ApiService' - lib\screens\chat\chat_list_screen.dart:574:24 - undefined_method
+  error - The method 'deleteChat' isn't defined for the type 'ApiService' - lib\screens\chat\chat_list_screen.dart:607:24 - undefined_method
+  error - The method 'deleteChat' isn't defined for the type 'ApiService' - lib\screens\chat\chat_list_screen.dart:643:26 - undefined_method
+  error - The method 'createChatTopic' isn't defined for the type 'ApiService' - lib\screens\chat\chat_screen.dart:253:24 - undefined_method
+  error - The method 'getOldChat' isn't defined for the type 'ApiService' - lib\screens\chat\chat_screen.dart:314:34 - undefined_method
+  error - The method 'createChatTopic' isn't defined for the type 'ApiService' - lib\screens\chat\chat_screen.dart:320:43 - undefined_method
+  error - The method 'getOldChat' isn't defined for the type 'ApiService' - lib\screens\chat\chat_screen.dart:327:34 - undefined_method
+  error - The method 'getOldChat' isn't defined for the type 'ApiService' - lib\screens\chat\chat_screen.dart:379:36 - undefined_method
+  error - The method 'createChatTopic' isn't defined for the type 'ApiService' - lib\screens\chat\chat_screen.dart:657:43 - undefined_method
+  error - The method 'uploadChatImage' isn't defined for the type 'ApiService' - lib\screens\chat\chat_screen.dart:798:36 - undefined_method
+  error - The method 'uploadChatImage' isn't defined for the type 'ApiService' - lib\screens\chat\chat_screen.dart:888:36 - undefined_method
+  error - The method 'uploadChatImage' isn't defined for the type 'ApiService' - lib\screens\chat\chat_screen.dart:1027:36 - undefined_method
+  error - The method 'uploadChatImage' isn't defined for the type 'ApiService' - lib\screens\chat\chat_screen.dart:1125:36 - undefined_method
+  error - The method 'starMessage' isn't defined for the type 'ApiService' - lib\screens\chat\chat_screen.dart:1237:36 - undefined_method
+  error - The method 'deleteChat' isn't defined for the type 'ApiService' - lib\screens\chat\chat_screen.dart:1252:36 - undefined_method
+  error - The method 'muteChat' isn't defined for the type 'ApiService' - lib\screens\chat\chat_screen.dart:1491:36 - undefined_method
+  error - The method 'clearChat' isn't defined for the type 'ApiService' - lib\screens\chat\chat_screen.dart:1518:36 - undefined_method
+  error - The method 'reportUser' isn't defined for the type 'ApiService' - lib\screens\chat\chat_screen.dart:1575:24 - undefined_method
+  error - The method 'blockOrUnblockUser' isn't defined for the type 'ApiService' - lib\screens\chat\chat_screen.dart:1603:36 - undefined_method
+warning - Unused import: 'dart:io' - lib\screens\chat\family_chat_screen.dart:3:8 - unused_import
+warning - Unused import: 'package:cached_network_image/cached_network_image.dart' - lib\screens\chat\family_chat_screen.dart:5:8 - unused_import
+warning - Unused import: 'package:fluttertoast/fluttertoast.dart' - lib\screens\chat\family_chat_screen.dart:7:8 - unused_import
+   info - Use 'const' with the constructor to improve performance - lib\screens\chat\family_chat_screen.dart:248:13 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\chat\family_chat_screen.dart:256:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\chat\family_chat_screen.dart:258:28 - prefer_const_constructors
+  error - The method 'followerList' isn't defined for the type 'ApiService' - lib\screens\chat\message_hub_screen.dart:55:38 - undefined_method
+  error - The method 'getReelComments' isn't defined for the type 'ApiService' - lib\screens\comments\comments_screen.dart:89:40 - undefined_method
+  error - The method 'getComments' isn't defined for the type 'ApiService' - lib\screens\comments\comments_screen.dart:94:40 - undefined_method
+  error - The method 'getReelLikes' isn't defined for the type 'ApiService' - lib\screens\comments\comments_screen.dart:102:40 - undefined_method
+  error - The method 'getLikes' isn't defined for the type 'ApiService' - lib\screens\comments\comments_screen.dart:107:40 - undefined_method
+  error - The method 'getReelComments' isn't defined for the type 'ApiService' - lib\screens\comments\comments_screen.dart:130:40 - undefined_method
+  error - The method 'getComments' isn't defined for the type 'ApiService' - lib\screens\comments\comments_screen.dart:133:40 - undefined_method
+  error - The method 'getReelLikes' isn't defined for the type 'ApiService' - lib\screens\comments\comments_screen.dart:139:40 - undefined_method
+  error - The method 'getLikes' isn't defined for the type 'ApiService' - lib\screens\comments\comments_screen.dart:142:40 - undefined_method
+  error - The method 'addComment' isn't defined for the type 'ApiService' - lib\screens\comments\comments_screen.dart:180:36 - undefined_method
+  error - The method 'getComplaints' isn't defined for the type 'ApiService' - lib\screens\complaints\complaint_detail_screen.dart:35:36 - undefined_method
+  error - The method 'getComplaints' isn't defined for the type 'ApiService' - lib\screens\complaints\complaint_list_screen.dart:57:36 - undefined_method
+  error - The method 'createComplaint' isn't defined for the type 'ApiService' - lib\screens\complaints\complaints_screen.dart:57:36 - undefined_method
+  error - The method 'getFriendship' isn't defined for the type 'ApiService' - lib\screens\cp\friend_detail_screen.dart:40:36 - undefined_method
+  error - The named parameter 'welcomeMessage' isn't defined - lib\screens\family\create_family_screen.dart:78:9 - undefined_named_parameter
+  error - The named parameter 'welcomeMessage' isn't defined - lib\screens\family\family_create_honor_screen.dart:71:9 - undefined_named_parameter
+   info - The import of 'package:flutter/services.dart' is unnecessary because all of the used elements are also provided by the import of 'package:flutter/material.dart' - lib\screens\family\family_detail_screen.dart:7:8 - unnecessary_import
+warning - Unused import: 'package:share_plus/share_plus.dart' - lib\screens\family\family_detail_screen.dart:12:8 - unused_import
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\family\family_detail_screen.dart:188:148 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\family\family_detail_screen.dart:226:60 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\family\family_detail_screen.dart:261:52 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\family\family_detail_screen.dart:262:55 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\family\family_detail_screen.dart:298:53 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\family\family_detail_screen.dart:298:145 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\family\family_detail_screen.dart:305:60 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\family\family_detail_screen.dart:314:150 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\screens\family\family_detail_screen.dart:332:20 - prefer_const_constructors
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\family\family_detail_screen.dart:350:46 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\family\family_detail_screen.dart:360:67 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\family\family_detail_screen.dart:360:109 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\family\family_detail_screen.dart:390:58 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\family\family_detail_screen.dart:399:53 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\screens\family\family_detail_screen.dart:404:20 - prefer_const_constructors
+   info - Use 'const' literals as arguments to constructors of '@immutable' classes - lib\screens\family\family_detail_screen.dart:405:25 - prefer_const_literals_to_create_immutables
+  error - The method 'UserAvatar' isn't defined for the type '_FamilyDetailScreenState' - lib\screens\family\family_detail_screen.dart:419:40 - undefined_method
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\family\family_detail_screen.dart:431:53 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\family\family_detail_screen.dart:451:57 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\family\family_detail_screen.dart:451:159 - deprecated_member_use
+   info - Don't use 'BuildContext's across async gaps - lib\screens\family\family_detail_screen.dart:481:24 - use_build_context_synchronously
+  error - The name 'FamilyProvider' isn't a type, so it can't be used as a type argument - lib\screens\family\family_detail_screen.dart:494:42 - non_type_as_type_argument
+   info - Don't use 'BuildContext's across async gaps - lib\screens\family\family_detail_screen.dart:525:45 - use_build_context_synchronously
+   info - Use 'const' with the constructor to improve performance - lib\screens\family\family_detail_screen.dart:538:59 - prefer_const_constructors
+   info - Don't use 'BuildContext's across async gaps - lib\screens\family\family_detail_screen.dart:554:45 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\screens\family\family_detail_screen.dart:565:37 - use_build_context_synchronously
+   info - Don't use 'BuildContext's across async gaps - lib\screens\family\family_detail_screen.dart:573:37 - use_build_context_synchronously
+  error - The method 'UserAvatar' isn't defined for the type '_FamilyDetailScreenState' - lib\screens\family\family_detail_screen.dart:585:20 - undefined_method
+   info - Don't use 'BuildContext's across async gaps - lib\screens\family\family_detail_screen.dart:589:45 - use_build_context_synchronously
+warning - Unused import: 'package:cached_network_image/cached_network_image.dart' - lib\screens\family\family_members_screen.dart:1:8 - unused_import
+   info - Don't use 'BuildContext's across async gaps - lib\screens\family\family_members_screen.dart:153:7 - use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\family\family_members_screen.dart:189:62 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\family\family_members_screen.dart:212:46 - deprecated_member_use
+  error - The named parameter 'userId' isn't defined - lib\screens\family\family_screen.dart:67:9 - undefined_named_parameter
+  error - The method 'searchFamilies' isn't defined for the type 'ApiService' - lib\screens\family\family_screen.dart:121:36 - undefined_method
+  error - The getter 'coverImage' isn't defined for the type 'FamilyItem' - lib\screens\family\family_screen.dart:572:19 - undefined_getter
+  error - The getter 'coverImage' isn't defined for the type 'FamilyItem' - lib\screens\family\family_screen.dart:572:43 - undefined_getter
+  error - The getter 'coverImage' isn't defined for the type 'FamilyItem' - lib\screens\family\family_screen.dart:576:31 - undefined_getter
+warning - Unused import: 'package:cached_network_image/cached_network_image.dart' - lib\screens\family\family_treasury_screen.dart:1:8 - unused_import
+warning - Unused import: '../../constants/const.dart' - lib\screens\family\family_treasury_screen.dart:6:8 - unused_import
+  error - The getter 'contribution' isn't defined for the type 'FamilyMember' - lib\screens\family\family_treasury_screen.dart:46:43 - undefined_getter
+  error - The getter 'contribution' isn't defined for the type 'FamilyMember' - lib\screens\family\family_treasury_screen.dart:46:68 - undefined_getter
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\family\family_treasury_screen.dart:158:44 - deprecated_member_use
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\family\family_treasury_screen.dart:185:50 - deprecated_member_use
+  error - The getter 'contribution' isn't defined for the type 'FamilyMember' - lib\screens\family\family_treasury_screen.dart:221:38 - undefined_getter
+   info - Don't use 'BuildContext's across async gaps - lib\screens\family\family_treasury_screen.dart:247:23 - use_build_context_synchronously
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\family\family_treasury_screen.dart:297:82 - deprecated_member_use
+  error - The method 'getComments' isn't defined for the type 'ApiService' - lib\screens\feed\comment_like_list_screen.dart:70:38 - undefined_method
+  error - The method 'getLikeList' isn't defined for the type 'ApiService' - lib\screens\feed\comment_like_list_screen.dart:78:38 - undefined_method
+  error - The method 'addComment' isn't defined for the type 'ApiService' - lib\screens\feed\comment_like_list_screen.dart:105:36 - undefined_method
+  error - The method 'deleteComment' isn't defined for the type 'ApiService' - lib\screens\feed\comment_like_list_screen.dart:129:36 - undefined_method
+  error - The method 'createPost' isn't defined for the type 'ApiService' - lib\screens\feed\create_post_screen.dart:64:36 - undefined_method
+  error - The method 'createReel' isn't defined for the type 'ApiService' - lib\screens\feed\create_reel_screen.dart:164:36 - undefined_method
+  error - The method 'getUserPosts' isn't defined for the type 'ApiService' - lib\screens\feed\feed_grid_screen.dart:51:36 - undefined_method
+  error - The method 'deletePost' isn't defined for the type 'ApiService' - lib\screens\feed\feed_grid_screen.dart:69:36 - undefined_method
+  error - The method 'searchHashtag' isn't defined for the type 'ApiService' - lib\screens\feed\hashtag_search_screen.dart:39:36 - undefined_method
+  error - The method 'getPosts' isn't defined for the type 'ApiService' - lib\screens\feed\posts_feed_screen.dart:102:36 - undefined_method
+  error - The method 'getPosts' isn't defined for the type 'ApiService' - lib\screens\feed\posts_feed_screen.dart:125:36 - undefined_method
+  error - A value of type 'double' can't be assigned to a variable of type 'int' - lib\screens\feed\posts_feed_screen.dart:132:17 - invalid_assignment
+  error - The method 'toggleLikePost' isn't defined for the type 'ApiService' - lib\screens\feed\posts_feed_screen.dart:507:36 - undefined_method
+  error - The method 'getPosts' isn't defined for the type 'ApiService' - lib\screens\feed\posts_feed_screen.dart:545:36 - undefined_method
+  error - The method 'reportThisUser' isn't defined for the type 'ApiService' - lib\screens\feed\posts_feed_screen.dart:616:24 - undefined_method
+  error - The method 'blockOrUnblockUser' isn't defined for the type 'ApiService' - lib\screens\feed\posts_feed_screen.dart:632:24 - undefined_method
+  error - The method 'getReels' isn't defined for the type 'ApiService' - lib\screens\feed\reels_screen.dart:54:36 - undefined_method
+  error - The method 'getReels' isn't defined for the type 'ApiService' - lib\screens\feed\reels_screen.dart:72:36 - undefined_method
+  error - The method 'toggleLikeReel' isn't defined for the type 'ApiService' - lib\screens\feed\reels_screen.dart:92:24 - undefined_method
+  error - The method 'deleteReel' isn't defined for the type 'ApiService' - lib\screens\feed\reels_screen.dart:125:24 - undefined_method
+  error - The method 'getSongs' isn't defined for the type 'ApiService' - lib\screens\feed\song_picker_screen.dart:35:36 - undefined_method
+  error - The method 'createHostRequest' isn't defined for the type 'ApiService' - lib\screens\host_request\host_request_screen.dart:106:36 - undefined_method
+  error - The method 'getHostRequests' isn't defined for the type 'ApiService' - lib\screens\host_request\host_request_status_screen.dart:49:37 - undefined_method
+  error - The method 'getHostRequestPhoto' isn't defined for the type 'ApiService' - lib\screens\kyc\kyc_screen.dart:97:41 - undefined_method
+  error - The name 'KycDocumentUpload' isn't a type, so it can't be used as a type argument - lib\screens\kyc\kyc_screen.dart:366:29 - non_type_as_type_argument
+  error - The method 'KycDocumentUpload' isn't defined for the type '_KycScreenState' - lib\screens\kyc\kyc_screen.dart:370:28 - undefined_method
+  error - The method 'getLeaderboard' isn't defined for the type 'ApiService' - lib\screens\leaderboard\leaderboard_screen.dart:64:39 - undefined_method
+  error - The method 'getLeaderboard' isn't defined for the type 'ApiService' - lib\screens\leaderboard\leaderboard_screen_rich.dart:86:39 - undefined_method
+  error - The method 'getSongs' isn't defined for the type 'ApiService' - lib\screens\live\add_music_screen.dart:39:36 - undefined_method
+warning - Unused import: '../../widgets/bond_progress_bar.dart' - lib\screens\live\audio_room_screen.dart:75:8 - unused_import
+warning - The value of the field '_currentMusicName' isn't used - lib\screens\live\audio_room_screen.dart:451:11 - unused_field
+warning - The value of the field '_isMusicPlaying' isn't used - lib\screens\live\audio_room_screen.dart:452:8 - unused_field
+warning - The value of the field '_familyWarTimer' isn't used - lib\screens\live\audio_room_screen.dart:519:10 - unused_field
+  error - The method 'joinAudioRoom' isn't defined for the type 'ApiService' - lib\screens\live\audio_room_screen.dart:791:28 - undefined_method
+  error - The method 'refreshAudioToken' isn't defined for the type 'ApiService' - lib\screens\live\audio_room_screen.dart:1061:36 - undefined_method
+  error - The method 'leaveLiveStream' isn't defined for the type 'ApiService' - lib\screens\live\audio_room_screen.dart:3566:18 - undefined_method
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\screens\live\audio_room_screen.dart:4434:69 - deprecated_member_use
+  error - Invalid constant value - lib\screens\live\audio_room_screen.dart:4443:100 - invalid_constant
+  error - The getter 'black' isn't defined for the type 'FontWeight' - lib\screens\live\audio_room_screen.dart:4443:111 - undefined_getter
+  error - The method '_commentAvatarPlaceholder' isn't defined for the type '_AudioRoomScreenState' - lib\screens\live\audio_room_screen.dart:4969:39 - undefined_method
+  error - The method '_commentAvatarPlaceholder' isn't defined for the type '_AudioRoomScreenState' - lib\screens\live\audio_room_screen.dart:4970:44 - undefined_method
+warning - The declaration '_buildCommentAvatarPlaceholder' isn't referenced - lib\screens\live\audio_room_screen.dart:5090:10 - unused_element
+  error - The method 'uploadChatImage' isn't defined for the type 'ApiService' - lib\screens\live\audio_room_screen.dart:5405:39 - undefined_method
+  error - The method 'deleteChat' isn't defined for the type 'ApiService' - lib\screens\live\audio_room_screen.dart:5421:28 - undefined_method
+warning - The value of the local variable 'seatNumber' isn't used - lib\screens\live\audio_room_screen.dart:5469:11 - unused_local_variable
+warning - A value for optional parameter 'userId' isn't ever given - lib\screens\live\audio_room_screen.dart:5699:10 - unused_element_parameter
+warning - A value for optional parameter 'giftImage' isn't ever given - lib\screens\live\audio_room_screen.dart:5700:10 - unused_element_parameter
+warning - A value for optional parameter 'giftCount' isn't ever given - lib\screens\live\audio_room_screen.dart:5701:10 - unused_element_parameter
+warning - A value for optional parameter 'giftCoins' isn't ever given - lib\screens\live\audio_room_screen.dart:5702:10 - unused_element_parameter
+  error - The method 'getKycLiveCheck' isn't defined for the type 'ApiService' - lib\screens\live\go_live_screen.dart:201:42 - undefined_method
+  error - The method 'makeLiveStream' isn't defined for the type 'ApiService' - lib\screens\live\go_live_screen.dart:220:36 - undefined_method
+  error - The method 'updatePasscode' isn't defined for the type 'ApiService' - lib\screens\live\go_live_screen.dart:232:30 - undefined_method
+  error - The method 'getLiveUsers' isn't defined for the type 'ApiService' - lib\screens\live\live_list_screen.dart:346:36 - undefined_method
+  error - The method 'getAudioRooms' isn't defined for the type 'ApiService' - lib\screens\live\live_list_screen.dart:355:45 - undefined_method
+  error - The method 'getBanners' isn't defined for the type 'ApiService' - lib\screens\live\live_list_screen.dart:395:20 - undefined_method
+  error - The method 'getBroadcastBanners' isn't defined for the type 'ApiService' - lib\screens\live\live_list_screen.dart:399:20 - undefined_method
+  error - The method 'getLuckyBanners' isn't defined for the type 'ApiService' - lib\screens\live\live_list_screen.dart:403:20 - undefined_method
+  error - The method 'getRandomPkMatch' isn't defined for the type 'ApiService' - lib\screens\live\live_list_screen.dart:810:36 - undefined_method
+  error - The method 'retrieveRoomParticipantDetails' isn't defined for the type 'ApiService' - lib\screens\live\live_list_screen.dart:1176:22 - undefined_method
+  error - The method 'getVideoCallHosts' isn't defined for the type 'ApiService' - lib\screens\live\live_list_screen.dart:1506:38 - undefined_method
+  error - The method 'getHostCallRate' isn't defined for the type 'ApiService' - lib\screens\live\live_preview_screen.dart:81:37 - undefined_method
+  error - The method 'checkSubscription' isn't defined for the type 'ApiService' - lib\screens\live\live_preview_screen.dart:241:36 - undefined_method
+  error - The method 'followUnfollow' isn't defined for the type 'ApiService' - lib\screens\live\live_preview_screen.dart:265:24 - undefined_method
+  error - The method 'makeLiveStream' isn't defined for the type 'ApiService' - lib\screens\live\live_room_screen.dart:170:36 - undefined_method
+  error - The method 'updatePasscode' isn't defined for the type 'ApiService' - lib\screens\live\live_room_screen.dart:183:30 - undefined_method
+  error - The method 'endStreamForCompliance' isn't defined for the type 'ApiService' - lib\screens\live\live_room_screen.dart:548:24 - undefined_method
+  error - The method 'getLiveTime' isn't defined for the type 'ApiService' - lib\screens\live\live_room_screen.dart:958:18 - undefined_method
+  error - The method 'uploadChatImage' isn't defined for the type 'ApiService' - lib\screens\live\live_room_screen.dart:1879:39 - undefined_method
+  error - The method 'deleteChat' isn't defined for the type 'ApiService' - lib\screens\live\live_room_screen.dart:1895:28 - undefined_method
+  error - The method 'getRandomPkMatch' isn't defined for the type 'ApiService' - lib\screens\live\live_room_screen.dart:2644:54 - undefined_method
+  error - The method 'getLiveUsers' isn't defined for the type 'ApiService' - lib\screens\live\live_room_screen.dart:2664:34 - undefined_method
+  error - The method 'endLiveStream' isn't defined for the type 'ApiService' - lib\screens\live\live_room_screen.dart:2741:24 - undefined_method
+  error - The method 'followUnfollow' isn't defined for the type 'ApiService' - lib\screens\live\live_room_screen.dart:3274:24 - undefined_method
+  error - The method 'banViewerFromLive' isn't defined for the type 'ApiService' - lib\screens\live\live_room_screen.dart:3359:38 - undefined_method
+  error - The method 'getLiveSummary' isn't defined for the type 'ApiService' - lib\screens\live\live_summary_screen.dart:44:36 - undefined_method
+  error - The method 'getHostApi' isn't defined for the type 'ApiService' - lib\screens\live\live_summary_screen.dart:48:42 - undefined_method
+  error - The method 'getLiveRecording' isn't defined for the type 'ApiService' - lib\screens\live\live_summary_screen.dart:61:41 - undefined_method
+  error - The method 'endPkCall' isn't defined for the type 'ApiService' - lib\screens\live\pk_battle_screen.dart:797:24 - undefined_method
+  error - The method 'createPkCall' isn't defined for the type 'ApiService' - lib\screens\live\pk_battle_screen.dart:813:24 - undefined_method
+  error - The method 'getWalletHistory' isn't defined for the type 'ApiService' - lib\screens\lucky_bag_record_screen.dart:37:36 - undefined_method
+  error - The method 'getAds' isn't defined for the type 'ApiService' - lib\screens\main\main_screen.dart:53:36 - undefined_method
+  error - The method 'getHostLevels' isn't defined for the type 'ApiService' - lib\screens\misc\missing_screens.dart:40:36 - undefined_method
+  error - The method 'getLevels' isn't defined for the type 'ApiService' - lib\screens\misc\missing_screens.dart:155:36 - undefined_method
+  error - The method 'chatList' isn't defined for the type 'ApiService' - lib\screens\misc\missing_screens.dart:458:36 - undefined_method
+  error - The method 'searchLocations' isn't defined for the type 'ApiService' - lib\screens\misc\missing_screens.dart:652:40 - undefined_method
+  error - The method 'getGuestProfileByUsername' isn't defined for the type 'ApiService' - lib\screens\misc\missing_screens.dart:761:36 - undefined_method
+  error - The method 'updateUser' isn't defined for the type 'ApiService' - lib\screens\misc\missing_screens.dart:782:36 - undefined_method
+  error - The method 'getReels' isn't defined for the type 'ApiService' - lib\screens\misc\missing_screens.dart:868:36 - undefined_method
+  error - The method 'sendChatGift' isn't defined for the type 'ApiService' - lib\screens\misc\missing_screens.dart:1075:24 - undefined_method
+  error - The method 'getActivities' isn't defined for the type 'ApiService' - lib\screens\notifications\activity_center_screen.dart:48:36 - undefined_method
+  error - The method 'updateProfileBackground' isn't defined for the type 'ApiService' - lib\screens\profile\edit_profile_screen.dart:180:36 - undefined_method
+  error - The method 'updateUser' isn't defined for the type 'ApiService' - lib\screens\profile\edit_profile_screen.dart:222:36 - undefined_method
+  error - The method 'getComplaints' isn't defined for the type 'ApiService' - lib\screens\profile\feedback_screen.dart:50:36 - undefined_method
+  error - The method 'createComplaint' isn't defined for the type 'ApiService' - lib\screens\profile\feedback_screen.dart:68:36 - undefined_method
+  error - The method 'getHostSubscriptionTiers' isn't defined for the type 'ApiService' - lib\screens\profile\host_subscription_screen.dart:36:36 - undefined_method
+  error - The method 'deleteSubscriptionTier' isn't defined for the type 'ApiService' - lib\screens\profile\host_subscription_screen.dart:66:36 - undefined_method
+  error - The method 'updateSubscriptionTier' isn't defined for the type 'ApiService' - lib\screens\profile\host_subscription_screen.dart:339:38 - undefined_method
+  error - The method 'createSubscriptionTier' isn't defined for the type 'ApiService' - lib\screens\profile\host_subscription_screen.dart:354:38 - undefined_method
+  error - The method 'getLevelPrivileges' isn't defined for the type 'ApiService' - lib\screens\profile\level_privileges_screen.dart:59:20 - undefined_method
+  error - The method 'getUserLevelProgress' isn't defined for the type 'ApiService' - lib\screens\profile\level_privileges_screen.dart:60:20 - undefined_method
+  error - The method 'getHostLevelRewards' isn't defined for the type 'ApiService' - lib\screens\profile\level_rewards_screen.dart:62:38 - undefined_method
+  error - The method 'getLevelRewards' isn't defined for the type 'ApiService' - lib\screens\profile\level_rewards_screen.dart:65:38 - undefined_method
+  error - The method 'getLevels' isn't defined for the type 'ApiService' - lib\screens\profile\levels_screen.dart:116:20 - undefined_method
+  error - The method 'getHostLevels' isn't defined for the type 'ApiService' - lib\screens\profile\levels_screen.dart:117:20 - undefined_method
+  error - The method 'getUser' isn't defined for the type 'ApiService' - lib\screens\profile\levels_screen.dart:120:32 - undefined_method
+  error - The method 'getVipTiers' isn't defined for the type 'ApiService' - lib\screens\profile\profile_background_screen.dart:79:36 - undefined_method
+  error - The method 'updateProfileBackground' isn't defined for the type 'ApiService' - lib\screens\profile\profile_background_screen.dart:99:24 - undefined_method
+  error - The method 'updateUser' isn't defined for the type 'ApiService' - lib\screens\profile\profile_background_screen.dart:135:36 - undefined_method
+  error - The method 'getMyAgency' isn't defined for the type 'ApiService' - lib\screens\profile\profile_screen.dart:60:36 - undefined_method
+  error - The method 'getUserPosts' isn't defined for the type 'ApiService' - lib\screens\profile\profile_screen.dart:901:36 - undefined_method
+  error - The method 'getReceivedGifts' isn't defined for the type 'ApiService' - lib\screens\profile\profile_screen.dart:1110:36 - undefined_method
+  error - The method 'getSentGifts' isn't defined for the type 'ApiService' - lib\screens\profile\profile_screen.dart:1127:36 - undefined_method
+  error - The method 'checkSubscription' isn't defined for the type 'ApiService' - lib\screens\profile\user_subscription_screen.dart:57:41 - undefined_method
+  error - The method 'getHostSubscriptionTiers' isn't defined for the type 'ApiService' - lib\screens\profile\user_subscription_screen.dart:64:41 - undefined_method
+  error - The method 'subscribeToHost' isn't defined for the type 'ApiService' - lib\screens\profile\user_subscription_screen.dart:88:36 - undefined_method
+  error - The method 'searchUsers' isn't defined for the type 'ApiService' - lib\screens\search\search_screen.dart:140:36 - undefined_method
+  error - The method 'searchUsers' isn't defined for the type 'ApiService' - lib\screens\search\search_screen.dart:159:36 - undefined_method
+  error - The method 'updateUser' isn't defined for the type 'ApiService' - lib\screens\settings\settings_screen.dart:65:24 - undefined_method
+  error - The method 'getSplashPoster' isn't defined for the type 'ApiService' - lib\screens\splash\splash_poster_screen.dart:44:36 - undefined_method
+  error - The method 'getSettings' isn't defined for the type 'ApiService' - lib\screens\splash\splash_screen.dart:51:20 - undefined_method
+  error - The method 'getIp' isn't defined for the type 'ApiService' - lib\screens\splash\splash_screen.dart:64:20 - undefined_method
+  error - The method 'createTesting' isn't defined for the type 'ApiService' - lib\screens\splash\splash_screen.dart:69:20 - undefined_method
+  error - The method 'deselectStoreItem' isn't defined for the type 'ApiService' - lib\screens\store\my_store_screen.dart:99:38 - undefined_method
+  error - The method 'selectStoreItem' isn't defined for the type 'ApiService' - lib\screens\store\my_store_screen.dart:107:38 - undefined_method
+  error - The method 'getStoreItems' isn't defined for the type 'ApiService' - lib\screens\store\store_screen.dart:190:36 - undefined_method
+  error - The method 'purchaseStoreItem' isn't defined for the type 'ApiService' - lib\screens\store\store_screen.dart:218:36 - undefined_method
+  error - The method 'selectStoreItem' isn't defined for the type 'ApiService' - lib\screens\store\store_screen.dart:250:36 - undefined_method
+  error - The method 'deselectStoreItem' isn't defined for the type 'ApiService' - lib\screens\store\store_screen.dart:273:36 - undefined_method
+  error - The method 'getMyStoreItems' isn't defined for the type 'ApiService' - lib\screens\store\store_screen.dart:297:36 - undefined_method
+  error - The method 'getLuckyIds' isn't defined for the type 'ApiService' - lib\screens\store\store_screen.dart:804:36 - undefined_method
+  error - The method 'purchaseLuckyId' isn't defined for the type 'ApiService' - lib\screens\store\store_screen.dart:823:36 - undefined_method
+  error - The method 'getSvgaList' isn't defined for the type 'ApiService' - lib\screens\store\svga_store_screen.dart:63:36 - undefined_method
+  error - The method 'purchaseSvga' isn't defined for the type 'ApiService' - lib\screens\store\svga_store_screen.dart:80:36 - undefined_method
+  error - The method 'deselectSvga' isn't defined for the type 'ApiService' - lib\screens\store\svga_store_screen.dart:102:30 - undefined_method
+  error - The method 'selectSvga' isn't defined for the type 'ApiService' - lib\screens\store\svga_store_screen.dart:104:30 - undefined_method
+  error - The method 'getBlockedUsers' isn't defined for the type 'ApiService' - lib\screens\user\blocked_users_screen.dart:46:36 - undefined_method
+  error - The method 'blockUnblock' isn't defined for the type 'ApiService' - lib\screens\user\blocked_users_screen.dart:73:24 - undefined_method
+  error - The method 'reportUser' isn't defined for the type 'ApiService' - lib\screens\user\blocked_users_screen.dart:192:36 - undefined_method
+  error - The method 'blockUnblock' isn't defined for the type 'ApiService' - lib\screens\user\blocked_users_screen.dart:281:32 - undefined_method
+  error - The method 'followingList' isn't defined for the type 'ApiService' - lib\screens\user\followers_list_screen.dart:67:30 - undefined_method
+  error - The method 'friendsList' isn't defined for the type 'ApiService' - lib\screens\user\followers_list_screen.dart:69:34 - undefined_method
+  error - The method 'followerList' isn't defined for the type 'ApiService' - lib\screens\user\followers_list_screen.dart:70:34 - undefined_method
+  error - The method 'followingList' isn't defined for the type 'ApiService' - lib\screens\user\followers_list_screen.dart:88:30 - undefined_method
+  error - The method 'friendsList' isn't defined for the type 'ApiService' - lib\screens\user\followers_list_screen.dart:90:34 - undefined_method
+  error - The method 'followerList' isn't defined for the type 'ApiService' - lib\screens\user\followers_list_screen.dart:91:34 - undefined_method
+  error - The method 'getGuestProfileByUsername' isn't defined for the type 'ApiService' - lib\screens\user\guest_profile_screen.dart:69:32 - undefined_method
+  error - The method 'checkFollowStatus' isn't defined for the type 'ApiService' - lib\screens\user\guest_profile_screen.dart:80:22 - undefined_method
+  error - The method 'visitProfile' isn't defined for the type 'ApiService' - lib\screens\user\guest_profile_screen.dart:88:22 - undefined_method
+  error - The method 'visitorsList' isn't defined for the type 'ApiService' - lib\screens\user\guest_profile_screen.dart:93:22 - undefined_method
+  error - The method 'followUnfollow' isn't defined for the type 'ApiService' - lib\screens\user\guest_profile_screen.dart:152:36 - undefined_method
+  error - The method 'likeUnlikeUser' isn't defined for the type 'ApiService' - lib\screens\user\guest_profile_screen.dart:202:36 - undefined_method
+  error - The method 'getMyCP' isn't defined for the type 'ApiService' - lib\screens\user\guest_profile_screen.dart:816:28 - undefined_method
+  error - The getter 'status' isn't defined for the type 'Object' - lib\screens\user\guest_profile_screen.dart:819:29 - undefined_getter
+  error - The getter 'data' isn't defined for the type 'Object' - lib\screens\user\guest_profile_screen.dart:819:51 - undefined_getter
+  error - The getter 'data' isn't defined for the type 'Object' - lib\screens\user\guest_profile_screen.dart:820:37 - undefined_getter
+  error - The method 'friendsList' isn't defined for the type 'ApiService' - lib\screens\user\guest_profile_screen.dart:966:34 - undefined_method
+  error - The getter 'users' isn't defined for the type 'Object' - lib\screens\user\guest_profile_screen.dart:974:44 - undefined_getter
+  error - The method 'blockOrUnblockUser' isn't defined for the type 'ApiService' - lib\screens\user\guest_profile_screen.dart:1259:36 - undefined_method
+  error - The method 'createComplaint' isn't defined for the type 'ApiService' - lib\screens\user\guest_profile_screen.dart:1319:36 - undefined_method
+  error - The method 'getHostRating' isn't defined for the type 'ApiService' - lib\screens\user\guest_profile_screen.dart:1346:36 - undefined_method
+  error - The method 'submitHostRating' isn't defined for the type 'ApiService' - lib\screens\user\guest_profile_screen.dart:1402:36 - undefined_method
+  error - The method 'getReceivedGifts' isn't defined for the type 'ApiService' - lib\screens\user\guest_profile_screen.dart:1462:36 - undefined_method
+  error - The method 'getSentGifts' isn't defined for the type 'ApiService' - lib\screens\user\guest_profile_screen.dart:1479:36 - undefined_method
+  error - The method 'getUserPosts' isn't defined for the type 'ApiService' - lib\screens\user\guest_profile_screen.dart:1959:36 - undefined_method
+  error - The method 'visitorsList' isn't defined for the type 'ApiService' - lib\screens\user\visitors_screen.dart:59:36 - undefined_method
+  error - The method 'visitorsList' isn't defined for the type 'ApiService' - lib\screens\user\visitors_screen.dart:76:36 - undefined_method
+  error - A value of type 'double' can't be assigned to a variable of type 'int' - lib\screens\user\visitors_screen.dart:78:16 - invalid_assignment
+  error - The method 'getUser' isn't defined for the type 'ApiService' - lib\screens\vip\my_vip_store_screen.dart:81:36 - undefined_method
+  error - The method 'getVipTiers' isn't defined for the type 'ApiService' - lib\screens\vip\my_vip_store_screen.dart:189:36 - undefined_method
+  error - The method 'getVipDiceSkins' isn't defined for the type 'ApiService' - lib\screens\vip\my_vip_store_screen.dart:740:20 - undefined_method
+  error - The method 'getVipThemes' isn't defined for the type 'ApiService' - lib\screens\vip\my_vip_store_screen.dart:744:20 - undefined_method
+  error - The method 'checkSpecialIdAvailability' isn't defined for the type 'ApiService' - lib\screens\vip\special_id_screen.dart:48:36 - undefined_method
+  error - The method 'purchaseSpecialId' isn't defined for the type 'ApiService' - lib\screens\vip\special_id_screen.dart:76:36 - undefined_method
+  error - The method 'getVipRules' isn't defined for the type 'ApiService' - lib\screens\vip\svip_rules_screen.dart:45:36 - undefined_method
+  error - The method 'blockOrUnblockUser' isn't defined for the type 'ApiService' - lib\screens\vip\unban_account_screen.dart:29:36 - undefined_method
+  error - The method 'getVipPointsHistory' isn't defined for the type 'ApiService' - lib\screens\vip\vip_history_screen.dart:49:36 - undefined_method
+  error - The method 'getVipPurchaseRecords' isn't defined for the type 'ApiService' - lib\screens\vip\vip_history_screen.dart:61:36 - undefined_method
+   info - Don't use 'BuildContext's across async gaps - lib\screens\vip\vip_screen.dart:163:29 - use_build_context_synchronously
+   info - Use 'const' with the constructor to improve performance - lib\screens\vip\vip_screen.dart:567:25 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\screens\vip\vip_screen.dart:774:19 - prefer_const_constructors
+  error - The method 'getVipPlans' isn't defined for the type 'ApiService' - lib\screens\vip\vip_settings_screen.dart:81:20 - undefined_method
+  error - The method 'getVipTiers' isn't defined for the type 'ApiService' - lib\screens\vip\vip_settings_screen.dart:82:20 - undefined_method
+  error - The method 'purchaseVip' isn't defined for the type 'ApiService' - lib\screens\vip\vip_settings_screen.dart:178:36 - undefined_method
+  error - The method 'buyVipTier' isn't defined for the type 'ApiService' - lib\screens\vip\vip_settings_screen.dart:209:36 - undefined_method
+  error - The method 'updateVipSetting' isn't defined for the type 'ApiService' - lib\screens\vip\vip_settings_screen.dart:235:24 - undefined_method
+  error - The method 'getVisitorRecords' isn't defined for the type 'ApiService' - lib\screens\vip\vip_settings_screen.dart:286:36 - undefined_method
+  error - The method 'getRedeemHistory' isn't defined for the type 'ApiService' - lib\screens\wallet\cashout_screen.dart:69:36 - undefined_method
+  error - The method 'submitRedeem' isn't defined for the type 'ApiService' - lib\screens\wallet\cashout_screen.dart:103:36 - undefined_method
+  error - The method 'getTransactionSummary' isn't defined for the type 'ApiService' - lib\screens\wallet\cashout_screen.dart:308:35 - undefined_method
+  error - The method 'getCoinSellers' isn't defined for the type 'ApiService' - lib\screens\wallet\coin_seller_screen.dart:44:36 - undefined_method
+  error - The method 'getCoinSellerUser' isn't defined for the type 'ApiService' - lib\screens\wallet\coin_seller_screen.dart:176:36 - undefined_method
+  error - The method 'searchUsers' isn't defined for the type 'ApiService' - lib\screens\wallet\coin_seller_screen.dart:197:36 - undefined_method
+  error - The method 'coinByCoinSeller' isn't defined for the type 'ApiService' - lib\screens\wallet\coin_seller_screen.dart:235:36 - undefined_method
+  error - The method 'getCoinSellerHistory' isn't defined for the type 'ApiService' - lib\screens\wallet\coin_seller_screen.dart:363:36 - undefined_method
+  error - The method 'addDiamondFromAds' isn't defined for the type 'ApiService' - lib\screens\wallet\free_coins_screen.dart:151:36 - undefined_method
+  error - The method 'redeemReferralCode' isn't defined for the type 'ApiService' - lib\screens\wallet\free_coins_screen.dart:195:36 - undefined_method
+  error - The method 'purchaseCoin' isn't defined for the type 'ApiService' - lib\screens\wallet\recharge_screen.dart:122:40 - undefined_method
+  error - The method 'getStripeCustomer' isn't defined for the type 'ApiService' - lib\screens\wallet\recharge_screen.dart:154:42 - undefined_method
+  error - The method 'purchaseWithStripe' isn't defined for the type 'ApiService' - lib\screens\wallet\recharge_screen.dart:166:36 - undefined_method
+  error - The method 'getRedeemsByCoinSeller' isn't defined for the type 'ApiService' - lib\screens\wallet\redeem_requests_screen.dart:56:36 - undefined_method
+  error - The method 'acceptRedeemRequest' isn't defined for the type 'ApiService' - lib\screens\wallet\redeem_requests_screen.dart:141:26 - undefined_method
+  error - The method 'declineRedeemRequest' isn't defined for the type 'ApiService' - lib\screens\wallet\redeem_requests_screen.dart:154:24 - undefined_method
+  error - The method 'deleteRedeemRequest' isn't defined for the type 'ApiService' - lib\screens\wallet\redeem_requests_screen.dart:179:24 - undefined_method
+  error - The method 'updateRedeemStatus' isn't defined for the type 'ApiService' - lib\screens\wallet\redeem_requests_screen.dart:195:24 - undefined_method
+  error - The method 'getTransactionSummary' isn't defined for the type 'ApiService' - lib\screens\wallet\transaction_history_screen.dart:109:34 - undefined_method
+  error - The method 'getCoinPlans' isn't defined for the type 'ApiService' - lib\screens\wallet\wallet_screen.dart:45:36 - undefined_method
+  error - The method 'convertRcoinToDiamond' isn't defined for the type 'ApiService' - lib\screens\wallet\wallet_screen.dart:182:44 - undefined_method
+  error - The method 'purchaseWithGooglePlay' isn't defined for the type 'ApiService' - lib\screens\wallet\wallet_screen.dart:359:32 - undefined_method
+  error - The method 'purchaseWithStripe' isn't defined for the type 'ApiService' - lib\screens\wallet\wallet_screen.dart:366:32 - undefined_method
+warning - Unused import: '../constants/api_key.dart' - lib\services\api_service.dart:7:8 - unused_import
+  error - Target of URI doesn't exist: '../models/activity_root.dart' - lib\services\api_service.dart:9:8 - uri_does_not_exist
+warning - Unused import: '../models/ai_feature_model.dart' - lib\services\api_service.dart:10:8 - unused_import
+warning - Unused import: '../models/call_history_root.dart' - lib\services\api_service.dart:12:8 - unused_import
+  error - Target of URI doesn't exist: '../models/call_rate_models.dart' - lib\services\api_service.dart:13:8 - uri_does_not_exist
+warning - Unused import: '../models/chat_root.dart' - lib\services\api_service.dart:14:8 - unused_import
+  error - Target of URI doesn't exist: '../models/coin_seller_models.dart' - lib\services\api_service.dart:15:8 - uri_does_not_exist
+warning - Unused import: '../models/cp_models.dart' - lib\services\api_service.dart:17:8 - unused_import
+warning - Unused import: '../models/friend_models.dart' - lib\services\api_service.dart:19:8 - unused_import
+  error - Target of URI doesn't exist: '../models/guest_live_model.dart' - lib\services\api_service.dart:20:8 - uri_does_not_exist
+warning - Unused import: '../models/kyc_models.dart' - lib\services\api_service.dart:22:8 - unused_import
+  error - Target of URI doesn't exist: '../models/level_models.dart' - lib\services\api_service.dart:23:8 - uri_does_not_exist
+  error - Target of URI doesn't exist: '../models/post_comment_root.dart' - lib\services\api_service.dart:26:8 - uri_does_not_exist
+  error - Target of URI doesn't exist: '../models/rating_root.dart' - lib\services\api_service.dart:27:8 - uri_does_not_exist
+  error - Target of URI doesn't exist: '../models/store_root.dart' - lib\services\api_service.dart:28:8 - uri_does_not_exist
+warning - Unused import: '../models/subscription_models.dart' - lib\services\api_service.dart:29:8 - unused_import
+warning - Unused import: '../utils/log.dart' - lib\services\api_service.dart:32:8 - unused_import
+  error - The method 'getAudioRooms' isn't defined for the type 'ApiService' - lib\services\audio_room_discovery_service.dart:126:36 - undefined_method
+  error - The method 'getAudioRooms' isn't defined for the type 'ApiService' - lib\services\audio_room_discovery_service.dart:144:36 - undefined_method
+  error - The method 'getAudioRooms' isn't defined for the type 'ApiService' - lib\services\audio_room_discovery_service.dart:160:36 - undefined_method
+  error - The method 'getLiveStream' isn't defined for the type 'ApiService' - lib\services\deep_link_service.dart:102:36 - undefined_method
+  error - The method 'getRandomPkMatch' isn't defined for the type 'ApiService' - lib\services\dynamic_ai_features_service.dart:170:36 - undefined_method
+  error - The method 'getCoinPlans' isn't defined for the type 'ApiService' - lib\services\dynamic_ai_features_service.dart:194:25 - undefined_method
+  error - The method 'getDynamicCoinPlans' isn't defined for the type 'ApiService' - lib\services\dynamic_ai_features_service.dart:197:31 - undefined_method
+  error - The method 'getCoinPlans' isn't defined for the type 'ApiService' - lib\services\dynamic_ai_features_service.dart:200:25 - undefined_method
+  error - The method 'updateFcmToken' isn't defined for the type 'ApiService' - lib\services\fcm_service.dart:115:24 - undefined_method
+  error - The method 'getLiveStream' isn't defined for the type 'ApiService' - lib\services\fcm_service.dart:232:36 - undefined_method
+  error - The method 'getHostApi' isn't defined for the type 'ApiService' - lib\services\host_features_service.dart:166:36 - undefined_method
+  error - The method 'purchaseWithGooglePlay' isn't defined for the type 'ApiService' - lib\services\iap_service.dart:138:36 - undefined_method
+  error - The method 'getLiveStream' isn't defined for the type 'ApiService' - lib\utils\notification_router.dart:137:36 - undefined_method
+  error - The method 'deleteAudioRoom' isn't defined for the type 'ApiService' - lib\widgets\audio_room_settings_sheet.dart:235:24 - undefined_method
+  error - The method 'userHostLiveEnd' isn't defined for the type 'ApiService' - lib\widgets\audio_room_settings_sheet.dart:236:24 - undefined_method
+  error - The method 'getBlockedUsers' isn't defined for the type 'ApiService' - lib\widgets\audio_room_settings_sheet.dart:251:36 - undefined_method
+  error - The method 'blockUnblock' isn't defined for the type 'ApiService' - lib\widgets\audio_room_settings_sheet.dart:295:44 - undefined_method
+warning - Unused import: 'dart:math' - lib\widgets\bond_link_painter.dart:1:8 - unused_import
+warning - Unused import: '../theme/app_theme.dart' - lib\widgets\bond_progress_bar.dart:3:8 - unused_import
+  error - The method 'submitHostRating' isn't defined for the type 'ApiService' - lib\widgets\call_rating_dialog.dart:88:24 - undefined_method
+  error - The method 'getSongs' isn't defined for the type 'ApiService' - lib\widgets\content_picker_sheets.dart:55:36 - undefined_method
+  error - The method 'getStickers' isn't defined for the type 'ApiService' - lib\widgets\content_picker_sheets.dart:243:36 - undefined_method
+  error - The method 'searchLocations' isn't defined for the type 'ApiService' - lib\widgets\content_picker_sheets.dart:397:39 - undefined_method
+  error - The method 'getReactions' isn't defined for the type 'ApiService' - lib\widgets\emoji_picker_sheet.dart:66:20 - undefined_method
+  error - The method 'getAllGiftsWithCategories' isn't defined for the type 'ApiService' - lib\widgets\emoji_picker_sheet.dart:70:20 - undefined_method
+  error - The method 'getGiftCategories' isn't defined for the type 'ApiService' - lib\widgets\emoji_picker_sheet.dart:101:43 - undefined_method
+  error - The method 'getGifts' isn't defined for the type 'ApiService' - lib\widgets\emoji_picker_sheet.dart:122:36 - undefined_method
+warning - Unused import: '../theme/app_theme.dart' - lib\widgets\family_battle_overlay.dart:3:8 - unused_import
+   info - 'withOpacity' is deprecated and shouldn't be used. Use .withValues() to avoid precision loss - lib\widgets\family_battle_overlay.dart:34:29 - deprecated_member_use
+   info - Use 'const' with the constructor to improve performance - lib\widgets\family_battle_overlay.dart:117:9 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\family_battle_overlay.dart:118:18 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\family_battle_overlay.dart:119:20 - prefer_const_constructors
+   info - Use 'const' with the constructor to improve performance - lib\widgets\family_battle_overlay.dart:119:38 - prefer_const_constructors
+  error - The name 'SeatItem' isn't a type, so it can't be used as a type argument - lib\widgets\gift_bottom_sheet.dart:36:14 - non_type_as_type_argument
+  error - The name 'SeatItem' isn't a type, so it can't be used as a type argument - lib\widgets\gift_bottom_sheet.dart:55:10 - non_type_as_type_argument
+  error - Undefined name '_streakTimer' - lib\widgets\gift_bottom_sheet.dart:122:5 - undefined_identifier
+  error - The method 'getGiftCategories' isn't defined for the type 'ApiService' - lib\widgets\gift_bottom_sheet.dart:135:39 - undefined_method
+  error - The method 'getGifts' isn't defined for the type 'ApiService' - lib\widgets\gift_bottom_sheet.dart:158:42 - undefined_method
+  error - The method 'getUser' isn't defined for the type 'ApiService' - lib\widgets\gift_bottom_sheet.dart:173:42 - undefined_method
+  error - The method 'getGifts' isn't defined for the type 'ApiService' - lib\widgets\gift_bottom_sheet.dart:207:36 - undefined_method
+  error - The property 'isOccupied' can't be unconditionally accessed because the receiver can be 'null' - lib\widgets\gift_bottom_sheet.dart:283:39 - unchecked_use_of_nullable_value
+  error - The property 'userId' can't be unconditionally accessed because the receiver can be 'null' - lib\widgets\gift_bottom_sheet.dart:283:64 - unchecked_use_of_nullable_value
+  error - The method 'sendGift' isn't defined for the type 'ApiService' - lib\widgets\gift_bottom_sheet.dart:332:30 - undefined_method
+  error - The property 'userId' can't be unconditionally accessed because the receiver can be 'null' - lib\widgets\gift_bottom_sheet.dart:346:63 - unchecked_use_of_nullable_value
+  error - The property 'isOccupied' can't be unconditionally accessed because the receiver can be 'null' - lib\widgets\gift_bottom_sheet.dart:406:39 - unchecked_use_of_nullable_value
+  error - The property 'userId' can't be unconditionally accessed because the receiver can be 'null' - lib\widgets\gift_bottom_sheet.dart:406:64 - unchecked_use_of_nullable_value
+  error - Undefined name '_streakCount' - lib\widgets\gift_bottom_sheet.dart:419:5 - undefined_identifier
+  error - The property 'userId' can't be unconditionally accessed because the receiver can be 'null' - lib\widgets\gift_bottom_sheet.dart:439:59 - unchecked_use_of_nullable_value
+  error - Undefined name '_isStreaking' - lib\widgets\gift_bottom_sheet.dart:494:5 - undefined_identifier
+  error - Undefined name '_streakCount' - lib\widgets\gift_bottom_sheet.dart:495:5 - undefined_identifier
+  error - Undefined name '_streakTimer' - lib\widgets\gift_bottom_sheet.dart:497:5 - undefined_identifier
+  error - Undefined name '_streakInterval' - lib\widgets\gift_bottom_sheet.dart:497:35 - undefined_identifier
+  error - Undefined name '_streakTimer' - lib\widgets\gift_bottom_sheet.dart:508:5 - undefined_identifier
+  error - Undefined name '_streakTimer' - lib\widgets\gift_bottom_sheet.dart:509:5 - undefined_identifier
+  error - Undefined name '_isStreaking' - lib\widgets\gift_bottom_sheet.dart:510:9 - undefined_identifier
+  error - Undefined name '_streakCount' - lib\widgets\gift_bottom_sheet.dart:510:25 - undefined_identifier
+  error - Undefined name '_streakCount' - lib\widgets\gift_bottom_sheet.dart:511:45 - undefined_identifier
+  error - Undefined name '_isStreaking' - lib\widgets\gift_bottom_sheet.dart:513:5 - undefined_identifier
+  error - Undefined name '_streakCount' - lib\widgets\gift_bottom_sheet.dart:514:5 - undefined_identifier
+  error - The property 'isOccupied' can't be unconditionally accessed because the receiver can be 'null' - lib\widgets\gift_bottom_sheet.dart:578:55 - unchecked_use_of_nullable_value
+  error - The property 'name' can't be unconditionally accessed because the receiver can be 'null' - lib\widgets\gift_bottom_sheet.dart:596:19 - unchecked_use_of_nullable_value
+  error - The property 'image' can't be unconditionally accessed because the receiver can be 'null' - lib\widgets\gift_bottom_sheet.dart:597:19 - unchecked_use_of_nullable_value
+  error - The property 'userId' can't be unconditionally accessed because the receiver can be 'null' - lib\widgets\gift_bottom_sheet.dart:598:73 - unchecked_use_of_nullable_value
+  error - The property 'userId' can't be unconditionally accessed because the receiver can be 'null' - lib\widgets\gift_bottom_sheet.dart:601:54 - unchecked_use_of_nullable_value
+  error - The property 'userId' can't be unconditionally accessed because the receiver can be 'null' - lib\widgets\gift_bottom_sheet.dart:602:50 - unchecked_use_of_nullable_value
+  error - The property 'userId' can't be unconditionally accessed because the receiver can be 'null' - lib\widgets\gift_bottom_sheet.dart:604:47 - unchecked_use_of_nullable_value
+  error - Undefined name '_isStreaking' - lib\widgets\gift_bottom_sheet.dart:957:15 - undefined_identifier
+  error - Undefined name '_streakCount' - lib\widgets\gift_bottom_sheet.dart:957:31 - undefined_identifier
+  error - Undefined name '_streakCount' - lib\widgets\gift_bottom_sheet.dart:967:20 - undefined_identifier
+  error - Undefined name '_isStreaking' - lib\widgets\gift_bottom_sheet.dart:981:29 - undefined_identifier
+  error - Undefined name '_isStreaking' - lib\widgets\gift_bottom_sheet.dart:988:34 - undefined_identifier
+  error - Undefined name '_isStreaking' - lib\widgets\gift_bottom_sheet.dart:991:39 - undefined_identifier
+  error - Undefined name '_isStreaking' - lib\widgets\gift_bottom_sheet.dart:1001:23 - undefined_identifier
+  error - Undefined name '_streakCount' - lib\widgets\gift_bottom_sheet.dart:1012:36 - undefined_identifier
+  error - The method 'getReceivedGifts' isn't defined for the type 'ApiService' - lib\widgets\gift_received_sheet.dart:65:37 - undefined_method
+warning - Unused import: 'dart:math' - lib\widgets\intimacy_fly_overlay.dart:1:8 - unused_import
+  error - The method 'createLuckyBag' isn't defined for the type 'ApiService' - lib\widgets\live_lucky_bag_sheet.dart:85:36 - undefined_method
+  error - The method 'reportUser' isn't defined for the type 'ApiService' - lib\widgets\live_moderation_sheet.dart:367:36 - undefined_method
+  error - The method 'blockUnblock' isn't defined for the type 'ApiService' - lib\widgets\live_moderation_sheet.dart:575:36 - undefined_method
+  error - The method 'chatList' isn't defined for the type 'ApiService' - lib\widgets\live_moderation_sheet.dart:905:36 - undefined_method
+  error - The method 'getLeaderboard' isn't defined for the type 'ApiService' - lib\widgets\live_ranking_sheet.dart:75:39 - undefined_method
+  error - The method 'createLuckyBag' isn't defined for the type 'ApiService' - lib\widgets\lucky_bag_sheet.dart:80:36 - undefined_method
+  error - The method 'claimLuckyBag' isn't defined for the type 'ApiService' - lib\widgets\lucky_bag_sheet.dart:105:36 - undefined_method
+  error - The method 'getFansRanking' isn't defined for the type 'ApiService' - lib\widgets\pk_battle_sheets.dart:373:36 - undefined_method
+  error - A value of type 'double' can't be assigned to a variable of type 'int' - lib\widgets\pk_battle_sheets.dart:378:18 - invalid_assignment
+  error - The method 'getAudioRooms' isn't defined for the type 'ApiService' - lib\widgets\pk_battle_sheets.dart:951:31 - undefined_method
+  error - The method 'followUnfollow' isn't defined for the type 'ApiService' - lib\widgets\profile_room_card_sheet.dart:117:36 - undefined_method
+  error - The method 'blockUnblock' isn't defined for the type 'ApiService' - lib\widgets\profile_room_card_sheet.dart:138:24 - undefined_method
+warning - Unused import: '../theme/app_theme.dart' - lib\widgets\relationship_badge.dart:3:8 - unused_import
+  error - The method 'changePassword' isn't defined for the type 'ApiService' - lib\widgets\settings_extras.dart:66:48 - undefined_method
+  error - The method 'checkSubscription' isn't defined for the type 'ApiService' - lib\widgets\subscription_sheet.dart:75:41 - undefined_method
+  error - The method 'getHostSubscriptionTiers' isn't defined for the type 'ApiService' - lib\widgets\subscription_sheet.dart:82:41 - undefined_method
+  error - The method 'subscribeToHost' isn't defined for the type 'ApiService' - lib\widgets\subscription_sheet.dart:106:36 - undefined_method
+  error - The method 'getTheme' isn't defined for the type 'ApiService' - lib\widgets\theme_picker_sheet.dart:39:37 - undefined_method
+  error - The method 'followUnfollow' isn't defined for the type 'ApiService' - lib\widgets\user_profile_sheet.dart:99:24 - undefined_method
+
+flutter : 569 issues found. (ran in 103.2s)
+At line:1 char:1
++ flutter analyze 2>&1 | Out-File tool/analyze_now.txt
++ ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (569 issues found. (ran in 103.2s):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

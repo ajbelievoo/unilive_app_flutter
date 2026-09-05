@@ -1,0 +1,3 @@
+/// Local API key fallback.
+/// Copy this file to `api_key.dart` and replace the value with the real key.
+const String kApiKey = 'YOUR_API_KEY_HERE';

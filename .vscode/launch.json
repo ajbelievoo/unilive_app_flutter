@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "belive debug",
+      "request": "launch",
+      "type": "dart",
+      "flutterMode": "debug",
+      "toolArgs": [
+        "--dart-define",
+        "API_KEY=u]$BE?dZd23lR,>",
+        "--dart-define",
+        "BASE_URL=https://admin.unilive.me/",
+        "--dart-define",
+        "AGORA_APP_ID=",
+        "--dart-define",
+        "CDN_URL=https://cdn.unilive.me/"
+      ]
+    }
+  ]
+}

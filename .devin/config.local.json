@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Exec(C:\\flutter\\bin\\flutter.bat analyze)",
+      "Exec(file)",
+      "Exec((Get-Item)",
+      "Exec($_.Context.PostContext)",
+      "Exec(($_.Line))",
+      "Exec($i)",
+      "Exec(where)",
+      "Exec(C:\\flutter\\bin\\cache\\dart-sdk\\bin\\dart.exe run)",
+      "Exec(deleted)",
+      "Exec(Out-Null)",
+      "Exec(if)",
+      "Exec(done)",
+      "Exec(C:\\flutter\\bin\\flutter.bat pub)",
+      "Exec(created)",
+      "Exec(screens/auth/account_binding_screen.dart)",
+      "Exec(-1)",
+      "Exec(New-Object)",
+      "Exec(Test-NetConnection)"
+    ]
+  }
+}
