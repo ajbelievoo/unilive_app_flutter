@@ -60,3 +60,7 @@ assets/icon/Statements_aj.pdf
 
 # Android / Java heap dumps (do not commit)
 *.hprof
+
+# Devin / local IDE metadata
+.artifacts/
+.devin/
