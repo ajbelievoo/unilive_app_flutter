@@ -9,16 +9,13 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
-import '../../models/cp_models.dart';
 import '../../models/friend_models.dart';
 import '../../providers/friend_provider.dart';
 import '../../routes/app_routes.dart';
 import '../../services/api_service.dart';
 import '../../services/session_manager.dart';
 import '../../theme/app_theme.dart';
-import '../../utils/format_utils.dart';
 import 'package:belive/widgets/preloader.dart';
-import 'package:belive/widgets/premium_ui.dart';
 
 class FriendDetailScreen extends StatefulWidget {
   const FriendDetailScreen({super.key, required this.friendshipId});
@@ -219,7 +216,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                   icon: Icons.card_giftcard,
                   title: 'Anniversaries',
                   subtitle: 'Claim time-based rewards',
-                  onTap: _showAnniversariesSheet,
+                  onTap: _showAnniversaries,
                 ),
                 const SizedBox(height: 24),
                 // Remove button
@@ -418,43 +415,10 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
     );
   }
 
-  Future<void> _showAnniversariesSheet() async {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: AppTheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      builder: (ctx) => SafeArea(
-        child: Container(
-          height: MediaQuery.of(ctx).size.height * 0.6,
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  const Expanded(
-                    child: Text(
-                      'Friend Anniversaries',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.pop(ctx),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 8),
-              Expanded(
-                child: _FriendAnniversariesList(friendshipId: widget.friendshipId),
-              ),
-            ],
-          ),
-        ),
-      ),
+  Future<void> _showAnniversaries() async {
+    await context.pushNamed(
+      AppRoutes.friendAnniversaries,
+      extra: {'friendshipId': widget.friendshipId},
     );
   }
 
@@ -500,167 +464,5 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
         ),
       ),
     );
-  }
-}
-
-// ===========================================================================
-// Friend anniversary list + claim (bottom sheet)
-// ===========================================================================
-class _FriendAnniversariesList extends StatefulWidget {
-  const _FriendAnniversariesList({required this.friendshipId});
-  final String friendshipId;
-
-  @override
-  State<_FriendAnniversariesList> createState() => _FriendAnniversariesListState();
-}
-
-class _FriendAnniversariesListState extends State<_FriendAnniversariesList> {
-  @override
-  Widget build(BuildContext context) {
-    final anniversaries = context.watch<FriendProvider>().anniversaries;
-
-    if (anniversaries.isEmpty) {
-      return const Center(
-        child: EmptyState(
-          icon: Icons.card_giftcard_outlined,
-          title: 'No Anniversaries Yet',
-          subtitle: 'Celebrate 7, 30, 100 and 365 days together for rewards!',
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: anniversaries.length,
-      itemBuilder: (_, i) {
-        final a = anniversaries[i];
-        return _FriendAnniversaryTile(
-          anniversary: a,
-          friendshipId: widget.friendshipId,
-        );
-      },
-    );
-  }
-}
-
-class _FriendAnniversaryTile extends StatefulWidget {
-  const _FriendAnniversaryTile({
-    required this.anniversary,
-    required this.friendshipId,
-  });
-  final CPMilestone anniversary;
-  final String friendshipId;
-
-  @override
-  State<_FriendAnniversaryTile> createState() => _FriendAnniversaryTileState();
-}
-
-class _FriendAnniversaryTileState extends State<_FriendAnniversaryTile> {
-  bool _claiming = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final a = widget.anniversary;
-    final canClaim = a.isUnlocked && !a.isClaimed;
-    final rewardText = <String>[];
-    if (a.rewardCoin != null && a.rewardCoin! > 0) {
-      rewardText.add('${formatCount(a.rewardCoin!)} Diamonds');
-    }
-    if (a.rewardIntimacy != null && a.rewardIntimacy! > 0) {
-      rewardText.add('${formatCount(a.rewardIntimacy!)} Intimacy');
-    }
-
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(18),
-        border: a.isUnlocked
-            ? Border.all(color: AppTheme.primary.withValues(alpha: 0.3), width: 1.2)
-            : Border.all(color: AppTheme.primary.withValues(alpha: 0.1), width: 1),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  a.title ?? 'Anniversary',
-                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                ),
-              ),
-              if (a.isClaimed)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppTheme.green.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text('Claimed', style: TextStyle(fontSize: 10, color: AppTheme.green, fontWeight: FontWeight.w600)),
-                )
-              else if (a.isUnlocked)
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                  decoration: BoxDecoration(
-                    color: AppTheme.yellow.withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: const Text('Ready', style: TextStyle(fontSize: 10, color: AppTheme.yellow, fontWeight: FontWeight.w600)),
-                ),
-            ],
-          ),
-          if (a.description != null) ...[
-            const SizedBox(height: 4),
-            Text(a.description!, style: const TextStyle(fontSize: 12, color: AppTheme.textTertiary)),
-          ],
-          if (rewardText.isNotEmpty) ...[
-            const SizedBox(height: 6),
-            Text(
-              rewardText.join(' + '),
-              style: const TextStyle(fontSize: 12, color: AppTheme.primary, fontWeight: FontWeight.w600),
-            ),
-          ],
-          if (canClaim) ...[
-            const SizedBox(height: 10),
-            SizedBox(
-              width: double.infinity,
-              child: _claiming
-                  ? const Center(child: Preloader(strokeWidth: 2))
-                  : ElevatedButton(
-                      onPressed: _claim,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppTheme.primary,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      ),
-                      child: const Text('Claim Reward', style: TextStyle(fontWeight: FontWeight.bold)),
-                    ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Future<void> _claim() async {
-    setState(() => _claiming = true);
-    final session = context.read<SessionManager>();
-    final friend = context.read<FriendProvider>();
-    final a = widget.anniversary;
-    if (a.id != null && a.id!.isNotEmpty) {
-      final ok = await friend.claimAnniversary(
-        friendshipId: widget.friendshipId,
-        anniversaryId: a.id!,
-        userId: session.userId,
-      );
-      if (mounted) {
-        Fluttertoast.showToast(
-          msg: ok ? 'Reward claimed!' : 'Failed to claim anniversary reward',
-        );
-      }
-    }
-    if (mounted) setState(() => _claiming = false);
   }
 }

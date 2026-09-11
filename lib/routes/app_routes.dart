@@ -123,6 +123,7 @@ import '../screens/cp/cp_ring_gallery_screen.dart';
 import '../screens/cp/cp_privileges_screen.dart';
 import '../screens/cp/cp_star_event_screen.dart';
 import '../screens/cp/friend_detail_screen.dart';
+import '../screens/cp/anniversaries_screen.dart';
 import '../screens/agency/agency_screen.dart';
 import '../screens/agency/agency_list_screen.dart';
 import '../screens/centers/host_center_screen.dart';
@@ -297,6 +298,7 @@ class AppRoutes {
   static const String cpRanking = 'cpRanking';
   static const String cpLevel = 'cpLevel';
   static const String cpMilestones = 'cpMilestones';
+  static const String cpAnniversaries = 'cpAnniversaries';
   static const String cpHistory = 'cpHistory';
   static const String cpRules = 'cpRules';
   static const String cpRingGallery = 'cpRingGallery';
@@ -308,6 +310,7 @@ class AppRoutes {
   static const String friendRules = 'friendRules';
   static const String friendPrivileges = 'friendPrivileges';
   static const String friendDetail = 'friendDetail';
+  static const String friendAnniversaries = 'friendAnniversaries';
   static const String kyc = 'kyc';
   static const String kycStatus = 'kycStatus';
   static const String leaderboard = 'leaderboard';
@@ -692,6 +695,13 @@ class AppRoutes {
         final extra = state.extra as Map<String, dynamic>? ?? {};
         return CPMilestonesScreen(cpId: extra['cpId'] as String? ?? '');
       }),
+      _named(cpAnniversaries, (state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        return AnniversariesScreen(
+          cpId: extra['cpId'] as String? ?? '',
+          isFriend: false,
+        );
+      }),
       _named(cpHistory, (_) => const CPHistoryScreen()),
       _named(cpRules, (state) {
         final extra = state.extra as Map<String, dynamic>? ?? {};
@@ -717,6 +727,13 @@ class AppRoutes {
         final extra = state.extra as Map<String, dynamic>? ?? {};
         return FriendDetailScreen(
           friendshipId: extra['friendshipId'] as String? ?? '',
+        );
+      }),
+      _named(friendAnniversaries, (state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        return AnniversariesScreen(
+          friendshipId: extra['friendshipId'] as String? ?? '',
+          isFriend: true,
         );
       }),
       _named(hostRequest, (_) => const HostRequestScreen()),
