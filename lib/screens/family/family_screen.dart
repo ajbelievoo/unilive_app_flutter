@@ -347,7 +347,7 @@ class _FamilyScreenState extends State<FamilyScreen>
             ),
           ),
           OutlinedButton(
-            onPressed: () => _openRankDetail(top1),
+            onPressed: () => context.pushNamed(AppRoutes.familyHonor),
             style: OutlinedButton.styleFrom(
               foregroundColor: Colors.amber,
               side: const BorderSide(color: Colors.amber),
