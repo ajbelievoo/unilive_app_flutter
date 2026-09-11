@@ -297,7 +297,13 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
         onAction: _load,
       )
           : _family == null
-          ? const EmptyState(icon: Icons.people, title: 'Family not found')
+          ? EmptyState(
+        icon: Icons.people,
+        title: 'Family not found',
+        subtitle: 'Create a new family or join one to get started',
+        actionLabel: 'Explore Families',
+        onAction: () => context.pushNamed(AppRoutes.family),
+      )
           : RefreshIndicator(
         onRefresh: _load,
         child: SingleChildScrollView(
