@@ -1457,11 +1457,15 @@ class _CPRequestsContent extends StatelessWidget {
           return _RequestRow(
             user: user,
             onAccept: () async {
-              final ok = await cp.acceptRequest(
+              final res = await cp.acceptRequest(
                 requestId: r.id ?? '',
                 userId: session.userId,
               );
-              if (ok) Fluttertoast.showToast(msg: 'Request accepted!');
+              Fluttertoast.showToast(
+                msg: res.ok
+                    ? 'Request accepted!'
+                    : (res.message ?? 'Failed to accept request'),
+              );
             },
             onReject: () async {
               final ok = await cp.rejectRequest(
@@ -1510,11 +1514,15 @@ class _FriendRequestsContent extends StatelessWidget {
           return _RequestRow(
             user: user,
             onAccept: () async {
-              final ok = await friend.acceptRequest(
+              final res = await friend.acceptRequest(
                 requestId: r.id ?? '',
                 userId: session.userId,
               );
-              if (ok) Fluttertoast.showToast(msg: 'Request accepted!');
+              Fluttertoast.showToast(
+                msg: res.ok
+                    ? 'Request accepted!'
+                    : (res.message ?? 'Failed to accept request'),
+              );
             },
             onReject: () async {
               final ok = await friend.rejectRequest(

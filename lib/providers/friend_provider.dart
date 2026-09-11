@@ -344,7 +344,7 @@ class FriendProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> acceptRequest({
+  Future<({bool ok, String? message})> acceptRequest({
     required String requestId,
     required String userId,
   }) async {
@@ -358,10 +358,10 @@ class FriendProvider extends ChangeNotifier {
         _incomingRequests.removeWhere((r) => r.id == requestId);
         notifyListeners();
       }
-      return res.status;
+      return (ok: res.status, message: res.message);
     } catch (e, s) {
       Log.e(_tag, 'acceptRequest failed', e, s);
-      return false;
+      return (ok: false, message: 'Network error');
     }
   }
 

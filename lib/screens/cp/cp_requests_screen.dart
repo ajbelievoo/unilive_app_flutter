@@ -237,8 +237,14 @@ class _IncomingTileState extends State<_IncomingTile> {
             GestureDetector(
               onTap: () async {
                 setState(() => _busy = true);
-                final ok = await cp.acceptRequest(requestId: r.id ?? '', userId: session.userId);
-                if (ok && context.mounted) Fluttertoast.showToast(msg: 'You are now a couple!');
+                final res = await cp.acceptRequest(requestId: r.id ?? '', userId: session.userId);
+                if (context.mounted) {
+                  Fluttertoast.showToast(
+                    msg: res.ok
+                        ? 'You are now a couple!'
+                        : (res.message ?? 'Failed to accept request'),
+                  );
+                }
                 if (mounted) setState(() => _busy = false);
               },
               child: Container(

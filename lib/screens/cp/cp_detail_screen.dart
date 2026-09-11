@@ -1,6 +1,6 @@
 /// CP Detail screen — full couple profile (Bigo-style premium redesign).
 ///
-/// Tabs: Bond | Tasks | Milestones.
+/// Tabs: Bond | Tasks | Milestones | Anniversaries.
 /// Either partner can edit the couple title/bio/cover and break up.
 library cp_detail;
 import 'dart:io';
@@ -38,7 +38,7 @@ class CPDetailScreen extends StatefulWidget {
 
 class _CPDetailScreenState extends State<CPDetailScreen> with SingleTickerProviderStateMixin {
   static const String _tag = 'CPDetail';
-  late final TabController _tabCtrl = TabController(length: 3, vsync: this);
+  late final TabController _tabCtrl = TabController(length: 4, vsync: this);
   CPItem? _cp;
   bool _loading = true;
 
@@ -64,6 +64,7 @@ class _CPDetailScreenState extends State<CPDetailScreen> with SingleTickerProvid
       await Future.wait([
         cpProv.loadTasks(widget.cpId, userId: session.userId),
         cpProv.loadMilestones(widget.cpId),
+        cpProv.loadAnniversaries(widget.cpId),
       ]);
     } catch (e, s) {
       Log.e(_tag, 'load failed', e, s);
@@ -115,7 +116,7 @@ class _CPDetailScreenState extends State<CPDetailScreen> with SingleTickerProvid
                     labelColor: Colors.white,
                     unselectedLabelColor: Colors.white60,
                     labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-                    tabs: const [Tab(text: 'Bond'), Tab(text: 'Tasks'), Tab(text: 'Milestones')],
+                    tabs: const [Tab(text: 'Bond'), Tab(text: 'Tasks'), Tab(text: 'Milestones'), Tab(text: 'Anniversaries')],
                   ),
                 ),
                 SliverFillRemaining(
@@ -125,6 +126,7 @@ class _CPDetailScreenState extends State<CPDetailScreen> with SingleTickerProvid
                       _BondTab(cp: _cp),
                       _TasksTab(cpId: widget.cpId),
                       _MilestonesTab(),
+                      _AnniversariesTab(cpId: widget.cpId),
                     ],
                   ),
                 ),
@@ -660,6 +662,236 @@ class _PartnersCard extends StatelessWidget {
         Text('Lv.${u?.level ?? 1}', style: const TextStyle(fontSize: 12, color: AppTheme.cpDarkTextSecondary)),
       ],
     );
+  }
+}
+
+// ===========================================================================
+// Anniversaries tab — time-based claimable rewards
+// ===========================================================================
+class _AnniversariesTab extends StatelessWidget {
+  const _AnniversariesTab({required this.cpId});
+  final String cpId;
+
+  @override
+  Widget build(BuildContext context) {
+    final cpProv = context.watch<CpProvider>();
+    final anniversaries = cpProv.anniversaries;
+
+    if (anniversaries.isEmpty) {
+      return const EmptyState(
+        icon: Icons.card_giftcard_outlined,
+        title: 'No Anniversaries Yet',
+        subtitle: 'Celebrate 7, 30, 100 and 365 days together for rewards!',
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: anniversaries.length,
+      itemBuilder: (_, i) {
+        final a = anniversaries[i];
+        final isLast = i == anniversaries.length - 1;
+        return _AnniversaryTile(anniversary: a, cpId: cpId, isLast: isLast);
+      },
+    );
+  }
+}
+
+class _AnniversaryTile extends StatefulWidget {
+  const _AnniversaryTile({
+    required this.anniversary,
+    required this.cpId,
+    required this.isLast,
+  });
+  final CPMilestone anniversary;
+  final String cpId;
+  final bool isLast;
+
+  @override
+  State<_AnniversaryTile> createState() => _AnniversaryTileState();
+}
+
+class _AnniversaryTileState extends State<_AnniversaryTile> {
+  bool _busy = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final a = widget.anniversary;
+    final canClaim = a.isUnlocked && !a.isClaimed;
+    final rewardText = <String>[];
+    if (a.rewardCoin != null && a.rewardCoin! > 0) {
+      rewardText.add('${formatCount(a.rewardCoin!)} Diamonds');
+    }
+    if (a.rewardIntimacy != null && a.rewardIntimacy! > 0) {
+      rewardText.add('${formatCount(a.rewardIntimacy!)} Intimacy');
+    }
+
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 50,
+            child: Column(
+              children: [
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    gradient: a.isUnlocked ? AppTheme.pinkGradient : null,
+                    color: a.isUnlocked ? null : AppTheme.cpDarkSurfaceLight,
+                    shape: BoxShape.circle,
+                    boxShadow: a.isUnlocked
+                        ? [BoxShadow(color: AppTheme.cpAccent.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 3))]
+                        : null,
+                    border: a.isUnlocked
+                        ? Border.all(color: AppTheme.cpAccent.withValues(alpha: 0.3), width: 2)
+                        : null,
+                  ),
+                  child: Icon(
+                    a.isClaimed ? Icons.check_circle : (a.isUnlocked ? Icons.card_giftcard : Icons.lock_outline),
+                    color: a.isUnlocked ? Colors.white : AppTheme.cpDarkTextTertiary,
+                    size: 22,
+                  ),
+                ),
+                if (!widget.isLast)
+                  Expanded(
+                    child: Container(
+                      width: 2,
+                      margin: const EdgeInsets.symmetric(vertical: 4),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: [
+                            a.isUnlocked ? AppTheme.cpAccent : AppTheme.cpDarkSurfaceLight,
+                            AppTheme.cpDarkSurfaceLight,
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppTheme.cpDarkCard,
+                borderRadius: BorderRadius.circular(18),
+                border: a.isUnlocked
+                    ? Border.all(color: AppTheme.cpAccent.withValues(alpha: 0.3), width: 1.2)
+                    : Border.all(color: AppTheme.cpDarkSurfaceLight, width: 1),
+                boxShadow: a.isUnlocked ? AppTheme.cardShadow : null,
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          a.title ?? 'Anniversary',
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                        ),
+                      ),
+                      if (a.isClaimed)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppTheme.green.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.check_circle, size: 12, color: AppTheme.green),
+                              SizedBox(width: 3),
+                              Text('Claimed', style: TextStyle(fontSize: 10, color: AppTheme.green, fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        )
+                      else if (a.isUnlocked)
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          decoration: BoxDecoration(
+                            color: AppTheme.yellow.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(Icons.card_giftcard, size: 12, color: AppTheme.yellow),
+                              SizedBox(width: 3),
+                              Text('Ready', style: TextStyle(fontSize: 10, color: AppTheme.yellow, fontWeight: FontWeight.w600)),
+                            ],
+                          ),
+                        ),
+                    ],
+                  ),
+                  if (a.description != null) ...[
+                    const SizedBox(height: 4),
+                    Text(a.description!, style: const TextStyle(fontSize: 12, color: AppTheme.cpDarkTextSecondary)),
+                  ],
+                  if (rewardText.isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Row(
+                      children: [
+                        const Icon(Icons.diamond, size: 12, color: AppTheme.cpAccent),
+                        const SizedBox(width: 4),
+                        Text(
+                          rewardText.join(' + '),
+                          style: const TextStyle(fontSize: 12, color: AppTheme.cpAccent, fontWeight: FontWeight.w600),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (canClaim) ...[
+                    const SizedBox(height: 12),
+                    SizedBox(
+                      width: double.infinity,
+                      child: _busy
+                          ? const Center(child: Preloader(strokeWidth: 2))
+                          : ElevatedButton(
+                              onPressed: _claim,
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: AppTheme.cpAccent,
+                                foregroundColor: Colors.white,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              ),
+                              child: const Text('Claim Reward', style: TextStyle(fontWeight: FontWeight.bold)),
+                            ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _claim() async {
+    setState(() => _busy = true);
+    final session = context.read<SessionManager>();
+    final cp = context.read<CpProvider>();
+    final res = await cp.claimAnniversary(
+      cpId: widget.cpId,
+      anniversaryId: widget.anniversary.id ?? '',
+      userId: session.userId,
+    );
+    if (mounted) {
+      Fluttertoast.showToast(
+        msg: res
+            ? 'Reward claimed!'
+            : 'Failed to claim anniversary reward',
+      );
+      setState(() => _busy = false);
+    }
   }
 }
 

@@ -675,8 +675,12 @@ class CPMilestone {
     this.description,
     this.date,
     this.icon,
+    this.days,
+    this.rewardCoin,
+    this.rewardIntimacy,
     this.value = 0,
     this.isUnlocked = false,
+    this.isClaimed = false,
   });
 
   final String? id;
@@ -685,19 +689,32 @@ class CPMilestone {
   final String? description;
   final String? date;
   final String? icon;
+  final int? days;
+  final int? rewardCoin;
+  final int? rewardIntimacy;
   final int value;
   final bool isUnlocked;
+  final bool isClaimed;
 
-  factory CPMilestone.fromJson(Map<String, dynamic> json) => CPMilestone(
-    id: parseString(json['_id'] ?? json['id']),
-    type: parseString(json['type']),
-    title: parseString(json['title']),
-    description: parseString(json['description']),
-    date: parseString(json['date']),
-    icon: parseString(json['icon']),
-    value: parseInt(json['value'], 0),
-    isUnlocked: parseBool(json['isUnlocked']),
-  );
+  factory CPMilestone.fromJson(Map<String, dynamic> json) {
+    final reward = json['reward'] is Map<String, dynamic>
+        ? json['reward'] as Map<String, dynamic>
+        : <String, dynamic>{};
+    return CPMilestone(
+      id: parseString(json['_id'] ?? json['id']),
+      type: parseString(json['type']),
+      title: parseString(json['title']),
+      description: parseString(json['description']),
+      date: parseString(json['date']),
+      icon: parseString(json['icon']),
+      days: parseIntOrNull(json['days']),
+      rewardCoin: parseIntOrNull(reward['coin'] ?? json['rewardCoin']),
+      rewardIntimacy: parseIntOrNull(reward['intimacy'] ?? json['rewardIntimacy']),
+      value: parseInt(json['value'], 0),
+      isUnlocked: parseBool(json['isUnlocked']),
+      isClaimed: parseBool(json['isClaimed']),
+    );
+  }
 
   Map<String, dynamic> toJson() => {
     '_id': id,
@@ -706,8 +723,12 @@ class CPMilestone {
     'description': description,
     'date': date,
     'icon': icon,
+    'days': days,
+    'rewardCoin': rewardCoin,
+    'rewardIntimacy': rewardIntimacy,
     'value': value,
     'isUnlocked': isUnlocked,
+    'isClaimed': isClaimed,
   };
 }
 
