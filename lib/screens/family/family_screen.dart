@@ -8,6 +8,7 @@ import 'dart:async';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
@@ -220,21 +221,31 @@ class _FamilyScreenState extends State<FamilyScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFF0A0A18),
-      body: NestedScrollView(
-        headerSliverBuilder: (context, _) => [
-          SliverAppBar(
-            expandedHeight: 160,
-            pinned: true,
-            floating: true,
-            backgroundColor: const Color(0xFF0A0A18),
-            flexibleSpace: FlexibleSpaceBar(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: SystemUiOverlayStyle.light.copyWith(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+        systemNavigationBarColor: const Color(0xFF0A0A18),
+        systemNavigationBarIconBrightness: Brightness.light,
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFF0A0A18),
+        body: NestedScrollView(
+          headerSliverBuilder: (context, _) => [
+            SliverAppBar(
+              expandedHeight: 160,
+              pinned: true,
+              floating: true,
+              centerTitle: false,
+              iconTheme: const IconThemeData(color: Colors.white),
+              foregroundColor: Colors.white,
+              backgroundColor: const Color(0xFF0A0A18),
               title: const Text(
                 'Family',
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
               ),
-              background: Container(
+              flexibleSpace: Container(
                 decoration: const BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
@@ -271,46 +282,46 @@ class _FamilyScreenState extends State<FamilyScreen>
                   ],
                 ),
               ),
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.help_outline, color: Colors.white70),
-                tooltip: 'Family Rules',
-                onPressed: () => context.pushNamed(AppRoutes.familyRules),
-              ),
-            ],
-            bottom: TabBar(
-              controller: _tabCtrl,
-              indicator: const BoxDecoration(
-                border: Border(
-                  bottom: BorderSide(color: Colors.amber, width: 3),
+              actions: [
+                IconButton(
+                  icon: const Icon(Icons.help_outline, color: Colors.white70),
+                  tooltip: 'Family Rules',
+                  onPressed: () => context.pushNamed(AppRoutes.familyRules),
                 ),
-              ),
-              labelColor: Colors.amber,
-              unselectedLabelColor: Colors.white60,
-              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-              tabs: const [
-                Tab(text: 'Discover'),
-                Tab(text: 'Ranking'),
-                Tab(text: 'My Family'),
               ],
+              bottom: TabBar(
+                controller: _tabCtrl,
+                indicator: const BoxDecoration(
+                  border: Border(
+                    bottom: BorderSide(color: Colors.amber, width: 3),
+                  ),
+                ),
+                labelColor: Colors.amber,
+                unselectedLabelColor: Colors.white60,
+                labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                tabs: const [
+                  Tab(text: 'All'),
+                  Tab(text: 'Ranking'),
+                  Tab(text: 'My Family'),
+                ],
+              ),
             ),
-          ),
-        ],
-        body: TabBarView(
-          controller: _tabCtrl,
-          children: [
-            _allTab(),
-            _rankingTab(),
-            _myFamilyTab(),
           ],
+          body: TabBarView(
+            controller: _tabCtrl,
+            children: [
+              _allTab(),
+              _rankingTab(),
+              _myFamilyTab(),
+            ],
+          ),
         ),
-      ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => context.pushNamed(AppRoutes.familyCreate),
-        backgroundColor: Colors.amber,
-        icon: const Icon(Icons.add, color: Color(0xFF0A0A18)),
-        label: const Text('Create', style: TextStyle(color: Color(0xFF0A0A18), fontWeight: FontWeight.bold)),
+        floatingActionButton: FloatingActionButton.extended(
+          onPressed: () => context.pushNamed(AppRoutes.familyCreate),
+          backgroundColor: Colors.amber,
+          icon: const Icon(Icons.add, color: Color(0xFF0A0A18)),
+          label: const Text('Create', style: TextStyle(color: Color(0xFF0A0A18), fontWeight: FontWeight.bold)),
+        ),
       ),
     );
   }
@@ -330,15 +341,17 @@ class _FamilyScreenState extends State<FamilyScreen>
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Container(
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.06),
+                  color: const Color(0xFF1E1B32),
                   borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
                 ),
                 child: TextField(
                   controller: _searchCtrl,
                   onChanged: _onSearch,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
+                    filled: true,
+                    fillColor: Colors.transparent,
                     hintText: 'Search family...',
                     hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
                     prefixIcon: const Icon(Icons.search, color: Colors.white60),
