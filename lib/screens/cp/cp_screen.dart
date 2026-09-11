@@ -11,7 +11,6 @@ library cp_screen;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import '../../utils/media_utils.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
@@ -157,7 +156,7 @@ class _CPScreenState extends State<CPScreen> {
                       top: Radius.circular(28),
                     ),
                     child: PageView.builder(
-                      key: ValueKey('pageview_${_isFriendMode}'),
+                      key: ValueKey('pageview_$_isFriendMode'),
                       controller: _pageController,
                       itemCount: _tabNames.length,
                       onPageChanged: (i) {
@@ -294,29 +293,38 @@ class _CPScreenState extends State<CPScreen> {
         subtitle: 'Find your perfect match in the Invite tab!',
       );
     }
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      child: Column(
-        children: [
-          // Decorative heart behind avatars
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              Image.asset(
-                'assets/cp_friend/heart_tow.webp',
-                width: 120,
-                height: 70,
-                fit: BoxFit.contain,
-                errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-              ),
-              CoupleAvatarPair(
-                user1: myCP.user1,
-                user2: myCP.user2,
-                size: 56,
-                overlap: 20,
-              ),
-            ],
-          ),
+    return GestureDetector(
+      onTap: () {
+        if (myCP.id != null && myCP.id!.isNotEmpty) {
+          context.pushNamed(
+            AppRoutes.cpDetail,
+            extra: {'cpId': myCP.id!},
+          );
+        }
+      },
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        child: Column(
+          children: [
+            // Decorative heart behind avatars
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                Image.asset(
+                  'assets/cp_friend/heart_tow.webp',
+                  width: 120,
+                  height: 70,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                ),
+                CoupleAvatarPair(
+                  user1: myCP.user1,
+                  user2: myCP.user2,
+                  size: 56,
+                  overlap: 20,
+                ),
+              ],
+            ),
           const SizedBox(height: 10),
           Text(
             myCP.title ??
@@ -356,7 +364,8 @@ class _CPScreenState extends State<CPScreen> {
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 
   // -------------------------------------------------------------------------
@@ -385,8 +394,17 @@ class _CPScreenState extends State<CPScreen> {
                 separatorBuilder: (_, __) => const SizedBox(width: 8),
                 itemBuilder: (_, i) {
                   final f = friend.friends[i];
-                  return Container(
-                    decoration: BoxDecoration(
+                  return GestureDetector(
+                    onTap: () {
+                      if (f.id != null && f.id!.isNotEmpty) {
+                        context.pushNamed(
+                          AppRoutes.friendDetail,
+                          extra: {'friendshipId': f.id!},
+                        );
+                      }
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: const LinearGradient(
                         colors: [
@@ -420,11 +438,12 @@ class _CPScreenState extends State<CPScreen> {
                                 : null,
                       ),
                     ),
-                  );
-                },
-              ),
+                  ),
+                );
+              },
             ),
-            const SizedBox(height: 10),
+          ),
+          const SizedBox(height: 10),
             Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
@@ -632,7 +651,9 @@ class _PrivilegesContent extends StatelessWidget {
     final gradient =
         isFriend ? AppTheme.primaryGradient : AppTheme.pinkGradient;
     final accentColor = isFriend ? AppTheme.friendAccent : AppTheme.cpAccent;
-    final myLevel = isFriend ? 1 : context.watch<CpProvider>().myCP?.level ?? 1;
+    final myLevel = isFriend
+        ? context.watch<FriendProvider>().maxFriendLevel
+        : context.watch<CpProvider>().myCP?.level ?? 1;
 
     final cpLevels = context.watch<CpProvider>().levels;
     final friendLevels = context.watch<FriendProvider>().levels;
@@ -884,12 +905,13 @@ IconData _iconForType(String? type) {
 }
 
 Widget _buildImageFromUrl(String url, {double? width, double? height}) {
-  if (url.isEmpty)
+  if (url.isEmpty) {
     return Icon(
       Icons.image_not_supported,
       size: width,
       color: AppTheme.cpDarkTextTertiary,
     );
+  }
   if (url.toLowerCase().endsWith('.svg')) {
     return SvgPicture.network(
       url,
@@ -1587,7 +1609,7 @@ class _RequestRow extends StatelessWidget {
                 onTap: onReject,
                 child: Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
+                  decoration: const BoxDecoration(
                     color: AppTheme.cpDarkSurfaceLight,
                     shape: BoxShape.circle,
                   ),
@@ -1920,11 +1942,15 @@ class _CPInviteContentState extends State<_CPInviteContent> {
                           user: user,
                           accentColor: AppTheme.cpAccent,
                           onInvite: () async {
-                            final ok = await cp.sendRequest(
+                            final res = await cp.sendRequest(
                               fromUserId: session.userId,
                               toUserId: user?.id ?? '',
                             );
-                            if (ok) Fluttertoast.showToast(msg: 'Invite sent!');
+                            Fluttertoast.showToast(
+                              msg: res.ok
+                                  ? 'Invite sent!'
+                                  : (res.message ?? 'Failed to send invite'),
+                            );
                           },
                         );
                       },
@@ -2017,11 +2043,15 @@ class _FriendInviteContentState extends State<_FriendInviteContent> {
                           user: user,
                           accentColor: AppTheme.friendAccent,
                           onInvite: () async {
-                            final ok = await friend.sendRequest(
+                            final res = await friend.sendRequest(
                               fromUserId: session.userId,
                               toUserId: user?.id ?? '',
                             );
-                            if (ok) Fluttertoast.showToast(msg: 'Invite sent!');
+                            Fluttertoast.showToast(
+                              msg: res.ok
+                                  ? 'Invite sent!'
+                                  : (res.message ?? 'Failed to send invite'),
+                            );
                           },
                         );
                       },
@@ -2065,9 +2095,9 @@ class _DiscoverFilterBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
+      decoration: const BoxDecoration(
         color: AppTheme.cpDarkSurface,
-        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
+        borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
       ),
       child: Wrap(
         spacing: 8,
@@ -2080,12 +2110,13 @@ class _DiscoverFilterBar extends StatelessWidget {
                     : (gender == 'male' ? 'Male' : 'Female'),
             selected: gender != null,
             onTap: () {
-              if (gender == null)
+              if (gender == null) {
                 onGenderChanged('female');
-              else if (gender == 'female')
+              } else if (gender == 'female') {
                 onGenderChanged('male');
-              else
+              } else {
                 onGenderChanged(null);
+              }
               onApply();
             },
           ),

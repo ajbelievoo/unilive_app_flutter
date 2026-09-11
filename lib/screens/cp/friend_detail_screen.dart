@@ -38,9 +38,13 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
 
   Future<void> _load() async {
     try {
+      final friendProv = context.read<FriendProvider>();
       final res = await ApiService.getFriendship(widget.friendshipId);
       if (mounted && res.status && res.data.isNotEmpty) {
         setState(() => _friend = res.data.first);
+      }
+      if (friendProv.levels.isEmpty) {
+        await friendProv.loadLevels();
       }
     } catch (_) {}
     if (mounted) setState(() => _loading = false);
@@ -316,8 +320,39 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
               Text('${f.daysTogether} days', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.white)),
             ],
           ),
+          const SizedBox(height: 18),
+          _friendBondProgress(f: f),
         ],
       ),
+    );
+  }
+
+  Widget _friendBondProgress({required FriendItem f}) {
+    final levels = context.watch<FriendProvider>().levels;
+    final nextLevel = levels.where((l) => l.level == f.level + 1).firstOrNull;
+    final target = nextLevel?.requiredIntimacy ?? (f.level * 500) + 500;
+    final pct = target == 0 ? 0.0 : (f.intimacy / target).clamp(0.0, 1.0);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Progress', style: TextStyle(fontSize: 13, color: Colors.white70)),
+            Text('${f.intimacy} / $target', style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.white)),
+          ],
+        ),
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: LinearProgressIndicator(
+            value: pct,
+            minHeight: 10,
+            backgroundColor: Colors.white.withValues(alpha: 0.1),
+            valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.friendAccent),
+          ),
+        ),
+      ],
     );
   }
 

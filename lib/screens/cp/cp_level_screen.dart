@@ -55,9 +55,12 @@ class _CPLevelScreenState extends State<CPLevelScreen> {
     final hasApiLevels =
         isFriend ? friendLevels.isNotEmpty : cpLevels.isNotEmpty;
 
-    final myLevel = isFriend ? 1 : context.watch<CpProvider>().myCP?.level ?? 1;
-    final myIntimacy =
-        isFriend ? 0 : context.watch<CpProvider>().myCP?.intimacy ?? 0;
+    final myLevel = isFriend
+        ? context.watch<FriendProvider>().maxFriendLevel
+        : context.watch<CpProvider>().myCP?.level ?? 1;
+    final myIntimacy = isFriend
+        ? context.watch<FriendProvider>().maxFriendIntimacy
+        : context.watch<CpProvider>().myCP?.intimacy ?? 0;
 
     return Scaffold(
       backgroundColor: AppTheme.background,

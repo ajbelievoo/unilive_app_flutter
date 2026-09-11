@@ -511,15 +511,15 @@ class _UserProfileSheetState extends State<_UserProfileSheet> {
                 onTap: () async {
                   Navigator.pop(ctx);
                   final cp = context.read<CpProvider>();
-                  final ok = await cp.sendRequest(
+                  final res = await cp.sendRequest(
                     fromUserId: session.userId,
                     toUserId: widget.userId,
                   );
-                  if (ok) {
-                    Fluttertoast.showToast(msg: 'CP request sent!');
-                  } else {
-                    Fluttertoast.showToast(msg: 'Failed to send CP request');
-                  }
+                  Fluttertoast.showToast(
+                    msg: res.ok
+                        ? 'CP request sent!'
+                        : (res.message ?? 'Failed to send CP request'),
+                  );
                 },
               ),
               const SizedBox(height: 10),
@@ -537,15 +537,15 @@ class _UserProfileSheetState extends State<_UserProfileSheet> {
                     Fluttertoast.showToast(msg: 'Friend slots are full (9/9)');
                     return;
                   }
-                  final ok = await friend.sendRequest(
+                  final res = await friend.sendRequest(
                     fromUserId: session.userId,
                     toUserId: widget.userId,
                   );
-                  if (ok) {
-                    Fluttertoast.showToast(msg: 'Friend request sent!');
-                  } else {
-                    Fluttertoast.showToast(msg: 'Failed to send friend request');
-                  }
+                  Fluttertoast.showToast(
+                    msg: res.ok
+                        ? 'Friend request sent!'
+                        : (res.message ?? 'Failed to send friend request'),
+                  );
                 },
               ),
               const SizedBox(height: 16),

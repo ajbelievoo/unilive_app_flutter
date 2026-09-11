@@ -67,6 +67,19 @@ class FriendProvider extends ChangeNotifier {
   int get pendingCount =>
       _incomingRequests.where((r) => r.status == 'pending').length;
 
+  /// Highest friend bond level the current user has (for global UI like
+  /// privileges / level table). Defaults to 1 when the user has no friends.
+  int get maxFriendLevel {
+    if (_friends.isEmpty) return 1;
+    return _friends.map((f) => f.level).reduce((a, b) => a > b ? a : b);
+  }
+
+  /// Highest intimacy among all friends (for global progress UI).
+  int get maxFriendIntimacy {
+    if (_friends.isEmpty) return 0;
+    return _friends.map((f) => f.intimacy).reduce((a, b) => a > b ? a : b);
+  }
+
   /// Returns relationship info if the given user is one of our friends.
   Map<String, dynamic>? getRelationshipWith(String otherUserId) {
     for (final f in _friends) {
@@ -300,7 +313,7 @@ class FriendProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> sendRequest({
+  Future<({bool ok, String? message})> sendRequest({
     required String fromUserId,
     required String toUserId,
     String message = '',
@@ -321,11 +334,13 @@ class FriendProvider extends ChangeNotifier {
           ),
         );
         notifyListeners();
+        // Refresh from server to get the real request id.
+        await loadRequests(fromUserId);
       }
-      return res.status;
+      return (ok: res.status, message: res.message);
     } catch (e, s) {
       Log.e(_tag, 'sendRequest failed', e, s);
-      return false;
+      return (ok: false, message: 'Network error');
     }
   }
 

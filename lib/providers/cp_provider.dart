@@ -48,6 +48,9 @@ class CpProvider extends ChangeNotifier {
   final List<CPMilestone> _milestones = [];
   List<CPMilestone> get milestones => _milestones;
 
+  final List<CPMilestone> _anniversaries = [];
+  List<CPMilestone> get anniversaries => _anniversaries;
+
   final List<CPPrivilege> _privileges = [];
   List<CPPrivilege> get privileges => _privileges;
 
@@ -223,7 +226,7 @@ class CpProvider extends ChangeNotifier {
   Future<void> loadAnniversaries(String cpId) async {
     try {
       final res = await ApiService.getCPAnniversaries(cpId);
-      _milestones
+      _anniversaries
         ..clear()
         ..addAll(res.milestones);
     } catch (e, s) {
@@ -351,7 +354,7 @@ class CpProvider extends ChangeNotifier {
     }
   }
 
-  Future<bool> sendRequest({
+  Future<({bool ok, String? message})> sendRequest({
     required String fromUserId,
     required String toUserId,
     String message = '',
@@ -373,11 +376,13 @@ class CpProvider extends ChangeNotifier {
           ),
         );
         notifyListeners();
+        // Refresh from server to get the real request id.
+        await loadRequests(fromUserId);
       }
-      return res.status;
+      return (ok: res.status, message: res.message);
     } catch (e, s) {
       Log.e(_tag, 'sendRequest failed', e, s);
-      return false;
+      return (ok: false, message: 'Network error');
     }
   }
 
@@ -458,6 +463,7 @@ class CpProvider extends ChangeNotifier {
         _cpDetail = null;
         _tasks.clear();
         _milestones.clear();
+        _anniversaries.clear();
         notifyListeners();
       }
       return res.status;

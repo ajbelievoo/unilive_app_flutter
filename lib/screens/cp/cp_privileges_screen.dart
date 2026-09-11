@@ -68,7 +68,9 @@ class _CPPrivilegesScreenState extends State<CPPrivilegesScreen> {
     final gradient = isFriend ? _friendGradient : _cpGradient;
     final accentColor = isFriend ? AppTheme.primary : const Color(0xFFE35384);
 
-    final myLevel = isFriend ? 1 : context.watch<CpProvider>().myCP?.level ?? 1;
+    final myLevel = isFriend
+        ? context.watch<FriendProvider>().maxFriendLevel
+        : context.watch<CpProvider>().myCP?.level ?? 1;
 
     // Get dynamic levels from API
     final cpLevels = context.watch<CpProvider>().levels;

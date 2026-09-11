@@ -5,7 +5,6 @@ import 'dart:async';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import '../../utils/media_utils.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
@@ -679,7 +678,7 @@ class _CpStarEventScreenState extends State<CpStarEventScreen> {
                               ),
                             ),
                           ),
-                          const ImageIcon(const AssetImage("assets/gift/official_gift.png"), color: Color(0xFFFFCC58), size: 18),
+                          const ImageIcon(AssetImage("assets/gift/official_gift.png"), color: Color(0xFFFFCC58), size: 18),
                           const SizedBox(width: 6),
                           Text(
                             '*${(value / 12000000).ceil()}',

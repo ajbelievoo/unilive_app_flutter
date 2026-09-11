@@ -229,7 +229,7 @@ class _CPDetailScreenState extends State<CPDetailScreen> with SingleTickerProvid
             title: const Text('Cooldown Active'),
             content: Text(
               'You are in a breakup cooldown. You can break up again in '
-              '$hours h ${minutes} m.',
+              '$hours h $minutes m.',
             ),
             actions: [
               TextButton(
@@ -470,7 +470,9 @@ class _BondTab extends StatelessWidget {
     if (cp == null) {
       return const EmptyState(icon: Icons.error_outline, title: 'Couple not found');
     }
-    final nextTarget = (cp!.level * 500) + 500;
+    final levels = context.watch<CpProvider>().levels;
+    final nextLevel = levels.where((l) => l.level == cp!.level + 1).firstOrNull;
+    final nextTarget = nextLevel?.requiredIntimacy ?? (cp!.level * 500) + 500;
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
