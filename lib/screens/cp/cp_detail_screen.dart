@@ -390,64 +390,77 @@ class _CoverHeader extends StatelessWidget {
             errorBuilder: (_, __, ___) => const SizedBox.shrink(),
           ),
         ),
-        // Bottom content — avatars, names, level
+        // Bottom content — avatars, names, level (premium glass)
         Align(
           alignment: Alignment.bottomCenter,
           child: Padding(
-            padding: const EdgeInsets.only(bottom: 60, left: 20, right: 20),
+            padding: const EdgeInsets.only(bottom: 56, left: 20, right: 20),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                // Soft glow behind avatars
                 Container(
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: AppTheme.cpAccent.withValues(alpha: 0.4),
-                        blurRadius: 30,
-                        spreadRadius: 5,
+                        color: AppTheme.cpAccent.withValues(alpha: 0.5),
+                        blurRadius: 40,
+                        spreadRadius: 8,
                       ),
                     ],
                   ),
                   child: CoupleAvatarPair(
                     user1: cp?.user1,
                     user2: cp?.user2,
-                    size: 84,
-                    overlap: 30,
+                    size: 90,
+                    overlap: 32,
                   ),
                 ),
                 const SizedBox(height: 14),
-                Text(
-                  cp?.title ?? '${cp?.user1?.name ?? ''} & ${cp?.user2?.name ?? ''}',
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                    shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
+                ShaderMask(
+                  shaderCallback: (bounds) => AppTheme.pinkGradient.createShader(bounds),
+                  child: Text(
+                    cp?.title ?? '${cp?.user1?.name ?? ''} & ${cp?.user2?.name ?? ''}',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      letterSpacing: 0.5,
+                      shadows: [Shadow(color: Colors.black54, blurRadius: 8)],
+                    ),
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(20),
+                    color: Colors.white.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(24),
                     border: Border.all(color: Colors.white.withValues(alpha: 0.2), width: 1),
+                    boxShadow: [
+                      BoxShadow(color: AppTheme.cpAccent.withValues(alpha: 0.2), blurRadius: 20, offset: const Offset(0, 8)),
+                    ],
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CPLevelBadge(level: cp?.level ?? 1, size: 22),
-                      const SizedBox(width: 6),
+                      CPLevelBadge(level: cp?.level ?? 1, size: 24),
+                      const SizedBox(width: 8),
                       Text('Bond Lv.${cp?.level ?? 1}',
-                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 13)),
-                      const SizedBox(width: 12),
+                          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w700, fontSize: 13)),
+                      const SizedBox(width: 14),
                       Container(width: 1, height: 14, color: Colors.white30),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: 14),
                       const Icon(Icons.calendar_today, size: 13, color: Colors.white70),
                       const SizedBox(width: 4),
                       Text('${cp?.daysTogether ?? 0} days', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                      const SizedBox(width: 14),
+                      Container(width: 1, height: 14, color: Colors.white30),
+                      const SizedBox(width: 14),
+                      const Icon(Icons.favorite, size: 13, color: Colors.white70),
+                      const SizedBox(width: 4),
+                      Text(formatCount(cp?.intimacy ?? 0), style: const TextStyle(color: Colors.white70, fontSize: 13)),
                     ],
                   ),
                 ),

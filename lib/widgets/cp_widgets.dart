@@ -6,8 +6,6 @@ library cp_widgets;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
-import '../utils/media_utils.dart';
-
 import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import 'package:belive/widgets/preloader.dart';
@@ -508,6 +506,57 @@ class DarkEmptyState extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// GlassCard — frosted glass surface for premium CP/Friend cards
+// ---------------------------------------------------------------------------
+class GlassCard extends StatelessWidget {
+  const GlassCard({
+    super.key,
+    required this.child,
+    this.padding = const EdgeInsets.all(16),
+    this.margin,
+    this.borderRadius = 24,
+    this.borderColor,
+    this.backgroundColor,
+    this.intensity = 0.12,
+    this.shadow,
+  });
+
+  final Widget child;
+  final EdgeInsetsGeometry padding;
+  final EdgeInsetsGeometry? margin;
+  final double borderRadius;
+  final Color? borderColor;
+  final Color? backgroundColor;
+  final double intensity;
+  final List<BoxShadow>? shadow;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: margin,
+      padding: padding,
+      decoration: BoxDecoration(
+        color: backgroundColor ?? AppTheme.cpDarkCard.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: Border.all(
+          color: borderColor ?? Colors.white.withValues(alpha: 0.08),
+          width: 1,
+        ),
+        boxShadow: shadow ??
+            [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.25),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+      ),
+      child: child,
     );
   }
 }

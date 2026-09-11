@@ -282,7 +282,7 @@ class _CPScreenState extends State<CPScreen> {
   }
 
   // -------------------------------------------------------------------------
-  // CP status hero — couple avatar pair + names + level
+  // CP status hero — premium glass card with couple avatars & stats
   // -------------------------------------------------------------------------
   Widget _cpStatus(CpProvider cp) {
     final myCP = cp.myCP;
@@ -303,178 +303,226 @@ class _CPScreenState extends State<CPScreen> {
         }
       },
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        child: Column(
-          children: [
-            // Decorative heart behind avatars
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                Image.asset(
-                  'assets/cp_friend/heart_tow.webp',
-                  width: 120,
-                  height: 70,
-                  fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => const SizedBox.shrink(),
-                ),
-                CoupleAvatarPair(
-                  user1: myCP.user1,
-                  user2: myCP.user2,
-                  size: 56,
-                  overlap: 20,
-                ),
-              ],
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+        child: GlassCard(
+          padding: const EdgeInsets.all(18),
+          borderRadius: 28,
+          borderColor: Colors.white.withValues(alpha: 0.12),
+          backgroundColor: Colors.white.withValues(alpha: 0.08),
+          shadow: [
+            BoxShadow(
+              color: AppTheme.cpAccent.withValues(alpha: 0.25),
+              blurRadius: 30,
+              offset: const Offset(0, 10),
             ),
-          const SizedBox(height: 10),
-          Text(
-            myCP.title ??
-                '${myCP.user1?.name ?? ""} & ${myCP.user2?.name ?? ""}',
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+          ],
+          child: Column(
             children: [
-              CPLevelBadge(level: myCP.level, size: 22),
-              const SizedBox(width: 6),
-              Text(
-                'Lv.${myCP.level}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w600,
-                  fontSize: 13,
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  // Glow halo
+                  Container(
+                    width: 160,
+                    height: 80,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: AppTheme.cpAccent.withValues(alpha: 0.12),
+                    ),
+                  ),
+                  Image.asset(
+                    'assets/cp_friend/heart_tow.webp',
+                    width: 130,
+                    height: 80,
+                    fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+                  CoupleAvatarPair(
+                    user1: myCP.user1,
+                    user2: myCP.user2,
+                    size: 64,
+                    overlap: 24,
+                    showHeart: true,
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              ShaderMask(
+                shaderCallback: (bounds) => AppTheme.pinkGradient.createShader(bounds),
+                child: Text(
+                  myCP.title ?? '${myCP.user1?.name ?? ''} & ${myCP.user2?.name ?? ''}',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 0.3,
+                  ),
                 ),
               ),
-              const SizedBox(width: 12),
-              const Icon(
-                Icons.calendar_today_rounded,
-                size: 13,
-                color: Colors.white70,
-              ),
-              const SizedBox(width: 3),
-              Text(
-                '${myCP.daysTogether} days',
-                style: const TextStyle(color: Colors.white70, fontSize: 13),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _statChip(
+                    icon: Icons.favorite,
+                    label: 'Lv.${myCP.level}',
+                    color: AppTheme.cpAccent,
+                  ),
+                  const SizedBox(width: 10),
+                  _statChip(
+                    icon: Icons.calendar_today_rounded,
+                    label: '${myCP.daysTogether} days',
+                    color: Colors.white70,
+                  ),
+                  const SizedBox(width: 10),
+                  _statChip(
+                    icon: Icons.favorite,
+                    label: formatCount(myCP.intimacy),
+                    color: AppTheme.cpAccent,
+                  ),
+                ],
               ),
             ],
           ),
-        ],
+        ),
       ),
-    ),
-  );
+    );
   }
 
   // -------------------------------------------------------------------------
-  // Friend status hero — friends count + slots
+  // Friend status hero — premium glass card with friends strip & slots
   // -------------------------------------------------------------------------
   Widget _friendStatus(FriendProvider friend) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      child: Column(
-        children: [
-          // Friends avatars strip (show up to 5)
-          if (friend.friends.isEmpty)
-            _emptyStatus(
-              icon: Icons.people_outline,
-              title: 'No Friends Yet',
-              subtitle: 'Find new friends in the Invite tab!',
-            )
-          else ...[
-            SizedBox(
-              height: 56,
-              child: ListView.separated(
-                scrollDirection: Axis.horizontal,
-                shrinkWrap: true,
-                itemCount:
-                    friend.friends.length > 5 ? 5 : friend.friends.length,
-                separatorBuilder: (_, __) => const SizedBox(width: 8),
-                itemBuilder: (_, i) {
-                  final f = friend.friends[i];
-                  return GestureDetector(
-                    onTap: () {
-                      if (f.id != null && f.id!.isNotEmpty) {
-                        context.pushNamed(
-                          AppRoutes.friendDetail,
-                          extra: {'friendshipId': f.id!},
-                        );
-                      }
-                    },
-                    child: Container(
-                      decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: const LinearGradient(
-                        colors: [
-                          AppTheme.friendAccent,
-                          AppTheme.friendAccentLight,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 6),
+      child: GlassCard(
+        padding: const EdgeInsets.all(18),
+        borderRadius: 28,
+        borderColor: Colors.white.withValues(alpha: 0.12),
+        backgroundColor: Colors.white.withValues(alpha: 0.08),
+        shadow: [
+          BoxShadow(
+            color: AppTheme.friendAccent.withValues(alpha: 0.25),
+            blurRadius: 30,
+            offset: const Offset(0, 10),
+          ),
+        ],
+        child: Column(
+          children: [
+            if (friend.friends.isEmpty)
+              _emptyStatus(
+                icon: Icons.people_outline,
+                title: 'No Friends Yet',
+                subtitle: 'Find new friends in the Invite tab!',
+              )
+            else ...[
+              SizedBox(
+                height: 70,
+                child: ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  shrinkWrap: true,
+                  itemCount: friend.friends.length > 6 ? 6 : friend.friends.length,
+                  separatorBuilder: (_, __) => const SizedBox(width: 10),
+                  itemBuilder: (_, i) {
+                    final f = friend.friends[i];
+                    return GestureDetector(
+                      onTap: () {
+                        if (f.id != null && f.id!.isNotEmpty) {
+                          context.pushNamed(
+                            AppRoutes.friendDetail,
+                            extra: {'friendshipId': f.id!},
+                          );
+                        }
+                      },
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          _friendAvatar(f.partner?.image),
+                          const SizedBox(height: 6),
+                          Text(
+                            (f.partner?.name ?? 'Friend').split(' ').first,
+                            style: const TextStyle(color: Colors.white70, fontSize: 10),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ],
                       ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppTheme.friendAccent.withValues(alpha: 0.3),
-                          blurRadius: 8,
-                          offset: const Offset(0, 3),
-                        ),
-                      ],
-                    ),
-                    child: Container(
-                      margin: const EdgeInsets.all(2.5),
-                      child: CircleAvatar(
-                        radius: 25,
-                        backgroundColor: AppTheme.cpDarkSurfaceLight,
-                        backgroundImage:
-                            f.partner?.image?.isNotEmpty == true
-                                ? CachedNetworkImageProvider(f.partner!.image!)
-                                : null,
-                        child:
-                            f.partner?.image?.isNotEmpty != true
-                                ? const Icon(
-                                  Icons.person,
-                                  color: Colors.white54,
-                                )
-                                : null,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          const SizedBox(height: 10),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.people_alt, color: Colors.white, size: 18),
-                const SizedBox(width: 6),
-                Text(
-                  'Friends ${friend.friendCount}/${FriendProvider.maxFriends}',
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+                    );
+                  },
                 ),
-                const SizedBox(width: 12),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 3,
+              ),
+              const SizedBox(height: 14),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _statChip(
+                    icon: Icons.people_alt,
+                    label: 'Friends ${friend.friendCount}/${FriendProvider.maxFriends}',
+                    color: AppTheme.friendAccent,
                   ),
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.2),
-                    borderRadius: BorderRadius.circular(12),
+                  const SizedBox(width: 10),
+                  _statChip(
+                    icon: Icons.add_circle_outline,
+                    label: '${friend.availableSlots} slots left',
+                    color: Colors.white70,
                   ),
-                  child: Text(
-                    '${friend.availableSlots} slots left',
-                    style: const TextStyle(color: Colors.white70, fontSize: 12),
-                  ),
-                ),
-              ],
-            ),
+                ],
+              ),
+            ],
           ],
+        ),
+      ),
+    );
+  }
+
+  Widget _friendAvatar(String? image) {
+    return Container(
+      width: 56,
+      height: 56,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        gradient: const LinearGradient(
+          colors: [AppTheme.friendAccent, AppTheme.friendAccentLight],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppTheme.friendAccent.withValues(alpha: 0.4),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(2.5),
+        child: CircleAvatar(
+          backgroundColor: AppTheme.cpDarkSurfaceLight,
+          backgroundImage: image?.isNotEmpty == true ? CachedNetworkImageProvider(image!) : null,
+          child: image?.isNotEmpty != true ? const Icon(Icons.person, color: Colors.white54) : null,
+        ),
+      ),
+    );
+  }
+
+  Widget _statChip({required IconData icon, required String label, required Color color}) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1),
+        boxShadow: [
+          BoxShadow(color: color.withValues(alpha: 0.15), blurRadius: 12, offset: const Offset(0, 3)),
+        ],
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 12, color: color),
+          const SizedBox(width: 5),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+          ),
         ],
       ),
     );
@@ -489,8 +537,20 @@ class _CPScreenState extends State<CPScreen> {
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: Column(
         children: [
-          Icon(icon, color: Colors.white54, size: 36),
-          const SizedBox(height: 8),
+          Container(
+            width: 72,
+            height: 72,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: Colors.white.withValues(alpha: 0.08),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.12), width: 1),
+              boxShadow: [
+                BoxShadow(color: Colors.white.withValues(alpha: 0.1), blurRadius: 20),
+              ],
+            ),
+            child: Icon(icon, color: Colors.white54, size: 32),
+          ),
+          const SizedBox(height: 14),
           Text(
             title,
             style: const TextStyle(
@@ -502,7 +562,8 @@ class _CPScreenState extends State<CPScreen> {
           const SizedBox(height: 4),
           Text(
             subtitle,
-            style: const TextStyle(color: Colors.white54, fontSize: 12),
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white60, fontSize: 12),
           ),
         ],
       ),
@@ -510,50 +571,47 @@ class _CPScreenState extends State<CPScreen> {
   }
 
   // -------------------------------------------------------------------------
-  // Tab bar — horizontal scrollable gradient pills with icons
+  // Tab bar — premium glass capsule bar with animated active glow
   // -------------------------------------------------------------------------
   Widget _buildTabs() {
     final tabs = _tabNames;
     final icons = _tabIcons;
-    final accentColor =
-        _isFriendMode ? AppTheme.friendAccent : AppTheme.cpAccent;
-    final gradient =
-        _isFriendMode ? AppTheme.primaryGradient : AppTheme.pinkGradient;
-    return SizedBox(
-      height: 42,
+    final accentColor = _isFriendMode ? AppTheme.friendAccent : AppTheme.cpAccent;
+    final gradient = _isFriendMode ? AppTheme.friendHeaderGradient : AppTheme.cpHeaderGradient;
+    return Container(
+      height: 52,
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 12),
         itemCount: tabs.length,
         itemBuilder: (_, i) {
           final selected = _selectedTab == i;
           return GestureDetector(
             onTap: () => _onTabSelected(i),
             child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              margin: const EdgeInsets.only(right: 8),
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOutQuart,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+              margin: const EdgeInsets.only(right: 10),
               decoration: BoxDecoration(
                 gradient: selected ? gradient : null,
-                color: selected ? null : AppTheme.cpDarkSurface,
-                borderRadius: BorderRadius.circular(22),
-                border:
-                    selected
-                        ? null
-                        : Border.all(
-                          color: accentColor.withValues(alpha: 0.2),
-                          width: 1,
-                        ),
+                color: selected ? null : AppTheme.cpDarkCard.withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(26),
+                border: Border.all(
+                  color: selected ? Colors.white.withValues(alpha: 0.25) : accentColor.withValues(alpha: 0.2),
+                  width: 1,
+                ),
+                boxShadow: selected
+                    ? [
+                        BoxShadow(color: accentColor.withValues(alpha: 0.45), blurRadius: 18, offset: const Offset(0, 5)),
+                      ]
+                    : null,
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(
-                    icons[i],
-                    size: 14,
-                    color: selected ? Colors.white : accentColor,
-                  ),
-                  const SizedBox(width: 5),
+                  Icon(icons[i], size: 15, color: selected ? Colors.white : accentColor),
+                  const SizedBox(width: 6),
                   Text(
                     tabs[i],
                     style: TextStyle(
