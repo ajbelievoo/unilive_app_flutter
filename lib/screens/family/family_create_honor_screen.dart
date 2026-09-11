@@ -60,15 +60,25 @@ class _FamilyCreateHonorScreenState extends State<FamilyCreateHonorScreen> {
       return;
     }
 
+    final session = context.read<SessionManager>();
+    const cost = 6000000;
+    final user = session.getUser();
+    if ((user?.coin ?? 0) < cost) {
+      Fluttertoast.showToast(msg: 'You need at least $cost diamonds to create a family');
+      return;
+    }
+
     setState(() => _submitting = true);
     try {
-      final session = context.read<SessionManager>();
       final res = await ApiService.createFamily(
         userId: session.userId,
         name: name,
         description: _noticeCtrl.text.trim(),
         logoFile: _imagePath != null ? File(_imagePath!) : null,
-        isPublic: true,
+        coverFile: _imagePath != null ? File(_imagePath!) : null,
+        isPublic: _joinMode == 'Anyone can join',
+        minLevelToJoin: _requiredLevel,
+        requireApproval: _joinMode == 'Leader/Co-Leader Review',
         welcomeMessage: _noticeCtrl.text.trim(),
       );
       if (res.status) {
@@ -153,7 +163,7 @@ class _FamilyCreateHonorScreenState extends State<FamilyCreateHonorScreen> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      ImageIcon(const AssetImage("assets/gift/official_gift.png"), color: Color(0xFF2E7D32), size: 22),
+                      ImageIcon(AssetImage("assets/gift/official_gift.png"), color: Color(0xFF2E7D32), size: 22),
                       SizedBox(width: 4),
                       Text('1', style: TextStyle(color: Color(0xFF2E7D32), fontWeight: FontWeight.bold, fontSize: 18)),
                     ],

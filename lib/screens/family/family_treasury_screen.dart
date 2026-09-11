@@ -111,15 +111,11 @@ class _FamilyTreasuryScreenState extends State<FamilyTreasuryScreen> {
     if (amount == null || amount <= 0) return;
 
     setState(() => _loading = true);
-    final idempotencyKey =
-        'family_donation_${session.userId}_${DateTime.now().microsecondsSinceEpoch}';
     try {
-      final res = await ApiService.createTransaction(
+      final res = await ApiService.donateToTreasury(
+        familyId: widget.familyId,
         userId: session.userId,
-        type: 'family_donation',
-        coin: amount,
-        idempotencyKey: idempotencyKey,
-        description: 'Treasury donation',
+        amount: amount,
       );
 
       if (mounted) {
@@ -132,7 +128,10 @@ class _FamilyTreasuryScreenState extends State<FamilyTreasuryScreen> {
         }
       }
     } catch (e) {
-      if (mounted) setState(() => _loading = false);
+      if (mounted) {
+        Fluttertoast.showToast(msg: 'Donation failed');
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -500,6 +499,7 @@ class _FamilyTreasuryScreenState extends State<FamilyTreasuryScreen> {
   }
 
   Future<void> _confirmPurchase(Map<String, dynamic> perk) async {
+    final session = context.read<SessionManager>();
     final confirmed = await showDialog<bool>(
       context: context,
       builder:
@@ -518,8 +518,29 @@ class _FamilyTreasuryScreenState extends State<FamilyTreasuryScreen> {
             ],
           ),
     );
-    if (confirmed == true) {
-      Fluttertoast.showToast(msg: 'Perk request sent to Leader');
+    if (confirmed != true) return;
+
+    setState(() => _loading = true);
+    try {
+      final res = await ApiService.purchasePerk(
+        familyId: widget.familyId,
+        userId: session.userId,
+        perkKey: perk['id'] as String? ?? '',
+      );
+      if (mounted) {
+        if (res.status) {
+          Fluttertoast.showToast(msg: '${perk['name']} unlocked!');
+          _load();
+        } else {
+          Fluttertoast.showToast(msg: res.message ?? 'Perk purchase failed');
+          setState(() => _loading = false);
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        Fluttertoast.showToast(msg: 'Perk purchase failed');
+        setState(() => _loading = false);
+      }
     }
   }
 

@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/const.dart';
 import '../../models/chat_root.dart';
 import '../../models/family_models.dart';
+import '../../models/json_annotation_helper.dart';
 import '../../services/api_service.dart';
 import '../../services/session_manager.dart';
 import '../../services/socket_service.dart';
@@ -45,6 +46,8 @@ class _FamilyChatScreenState extends State<FamilyChatScreen> {
   final _focusNode = FocusNode();
 
   late String _myUserId;
+  late String _myUserName;
+  late String? _myUserImage;
   bool _loading = true;
   FamilyItem? _family;
   Function? _cancelChatSub;
@@ -53,11 +56,15 @@ class _FamilyChatScreenState extends State<FamilyChatScreen> {
   bool _someoneTyping = false;
   String _typingName = '';
   Timer? _typingTimer;
+  Timer? _typingDebounce;
 
   @override
   void initState() {
     super.initState();
-    _myUserId = context.read<SessionManager>().userId;
+    final session = context.read<SessionManager>();
+    _myUserId = session.userId;
+    _myUserName = session.userName;
+    _myUserImage = session.userImage;
     _initChat();
   }
 
@@ -67,6 +74,7 @@ class _FamilyChatScreenState extends State<FamilyChatScreen> {
     _cancelTypingSub?.call();
     _cancelTypingStopSub?.call();
     _typingTimer?.cancel();
+    _typingDebounce?.cancel();
     _ctrl.dispose();
     _scrollController.dispose();
     _focusNode.dispose();
@@ -93,22 +101,21 @@ class _FamilyChatScreenState extends State<FamilyChatScreen> {
 
   Future<void> _loadHistory() async {
     try {
-      final res = await ApiService.getTransactionHistoryFiltered(
-        userId: _myUserId,
-        type: 'family_${widget.familyId}',
+      // Family chat should use the group-chat history endpoint with the
+      // familyId as the group/topic identifier.
+      final res = await ApiService.groupOldChat(
+        groupId: 'family_${widget.familyId}',
       );
       if (res.status) {
         setState(() {
           _messages.clear();
-          _messages.addAll(res.history.map((h) => ChatItem(
-            senderId: h.userId,
-            message: h.title ?? h.description,
-            time: h.createdAt,
-          )).toList().reversed);
+          _messages.addAll(res.chat);
           _loading = false;
         });
         _scrollToBottom();
         _persistMessages();
+      } else {
+        setState(() => _loading = false);
       }
     } catch (e) {
       Log.e(_tag, 'loadHistory failed', e);
@@ -236,7 +243,8 @@ class _FamilyChatScreenState extends State<FamilyChatScreen> {
     SocketService.instance.emit(Const.eventFamilyChat, {
       ...msg.toJson(),
       'familyId': widget.familyId,
-      'senderName': context.read<SessionManager>().userName,
+      'senderName': _myUserName,
+      'senderImage': _myUserImage,
       'senderRole': myRole,
     });
   }
@@ -257,8 +265,8 @@ class _FamilyChatScreenState extends State<FamilyChatScreen> {
       );
 
       if (res.status && res.chat != null) {
-        final url = res.chat!['image'] as String?;
-        if (url != null) {
+        final url = parseString(res.chat!['image'] ?? res.chat!['url']);
+        if (url != null && url.isNotEmpty) {
           final now = DateTime.now();
           final timeStr = '${now.hour}:${now.minute.toString().padLeft(2, '0')}';
           final msg = ChatItem(
@@ -278,9 +286,12 @@ class _FamilyChatScreenState extends State<FamilyChatScreen> {
           SocketService.instance.emit(Const.eventFamilyChat, {
             ...msg.toJson(),
             'familyId': widget.familyId,
-            'senderName': context.read<SessionManager>().userName,
+            'senderName': _myUserName,
+            'senderImage': _myUserImage,
           });
         }
+      } else {
+        Fluttertoast.showToast(msg: res.message ?? 'Failed to send image');
       }
     } catch (e) {
       Log.e(_tag, 'sendImage failed', e);
@@ -288,21 +299,24 @@ class _FamilyChatScreenState extends State<FamilyChatScreen> {
     }
   }
 
-  /// Emit typing event when user is typing.
+  /// Emit typing event when user is typing (debounced to avoid socket spam).
   void _onTextChanged(String value) {
-    if (value.trim().isNotEmpty) {
-      SocketService.instance.emit(Const.eventTyping, {
-        'senderId': _myUserId,
-        'familyId': widget.familyId,
-        'senderName': context.read<SessionManager>().userName,
-        'isTyping': true,
-      });
-    } else {
-      SocketService.instance.emit(Const.eventTypingStop, {
-        'senderId': _myUserId,
-        'familyId': widget.familyId,
-      });
-    }
+    _typingDebounce?.cancel();
+    _typingDebounce = Timer(const Duration(milliseconds: 300), () {
+      if (value.trim().isNotEmpty) {
+        SocketService.instance.emit(Const.eventTyping, {
+          'senderId': _myUserId,
+          'familyId': widget.familyId,
+          'senderName': _myUserName,
+          'isTyping': true,
+        });
+      } else {
+        SocketService.instance.emit(Const.eventTypingStop, {
+          'senderId': _myUserId,
+          'familyId': widget.familyId,
+        });
+      }
+    });
   }
 
   @override
@@ -458,7 +472,7 @@ class _FamilyChatScreenState extends State<FamilyChatScreen> {
           ),
           if (mine) ...[
             const SizedBox(width: 8),
-            UserAvatar(size: 32, imageUrl: context.read<SessionManager>().userImage),
+            UserAvatar(size: 32, imageUrl: _myUserImage),
           ],
         ],
       ),
@@ -473,7 +487,7 @@ class _FamilyChatScreenState extends State<FamilyChatScreen> {
         decoration: BoxDecoration(
           color: Colors.red.shade700,
           borderRadius: BorderRadius.circular(12),
-          boxShadow: [BoxShadow(color: Colors.black26, blurRadius: 4, offset: const Offset(0, 2))],
+          boxShadow: const [BoxShadow(color: Colors.black26, blurRadius: 4, offset: Offset(0, 2))],
         ),
         child: Column(
           children: [
@@ -511,19 +525,30 @@ class _FamilyChatScreenState extends State<FamilyChatScreen> {
   }
 
   Future<void> _claimLuckyBag(ChatItem msg) async {
-    // In a real app, call ApiService.claimLuckyBag
+    final luckyBagId = msg.id;
+    if (luckyBagId == null || luckyBagId.isEmpty) {
+      Fluttertoast.showToast(msg: 'Invalid red packet');
+      return;
+    }
     Fluttertoast.showToast(msg: 'Opening Red Packet...');
     try {
-      final res = await ApiService.claimLuckyBag(
-        roomId: 'family_${widget.familyId}',
+      final res = await ApiService.claimFamilyLuckyBag(
+        familyId: widget.familyId,
+        luckyBagId: luckyBagId,
         userId: _myUserId,
       );
       if (res.status) {
-         Fluttertoast.showToast(msg: 'Congratulations! You received diamonds.');
+        final got = res.coins;
+        if (got != null && got > 0) {
+          Fluttertoast.showToast(msg: 'Congratulations! You received $got diamonds.');
+        } else {
+          Fluttertoast.showToast(msg: res.message ?? 'Congratulations! You received diamonds.');
+        }
       } else {
-         Fluttertoast.showToast(msg: res.message ?? 'Bag empty or already claimed');
+        Fluttertoast.showToast(msg: res.message ?? 'Bag empty or already claimed');
       }
     } catch (e) {
+      Log.e(_tag, 'claim red packet failed', e);
       Fluttertoast.showToast(msg: 'Already claimed or expired');
     }
   }
@@ -603,29 +628,60 @@ class _FamilyChatScreenState extends State<FamilyChatScreen> {
 
     if (data == null) return;
 
-    // Send via socket
-    final now = DateTime.now();
-    final timeStr = '${now.hour}:${now.minute.toString().padLeft(2, '0')}';
-    final msg = ChatItem(
-      senderId: _myUserId,
-      receiverId: 'family_${widget.familyId}',
-      message: 'Sent a Red Packet!',
-      messageType: 'luckyBag',
-      time: timeStr,
-      giftCoin: data['amount']!,
-      count: data['count']!,
-      status: 'sent',
-      topic: 'family_${widget.familyId}',
-    );
+    final amount = data['amount']!;
+    final count = data['count']!;
 
-    setState(() => _messages.add(msg));
-    _scrollToBottom();
-    _persistMessages();
+    setState(() => _loading = true);
+    try {
+      final res = await ApiService.createFamilyLuckyBag(
+        familyId: widget.familyId,
+        userId: _myUserId,
+        totalCoins: amount,
+        winnerCount: count,
+      );
+      if (!res.status) {
+        if (mounted) {
+          Fluttertoast.showToast(msg: res.message ?? 'Failed to create red packet');
+          setState(() => _loading = false);
+        }
+        return;
+      }
 
-    SocketService.instance.emit(Const.eventFamilyChat, {
-      ...msg.toJson(),
-      'familyId': widget.familyId,
-      'senderName': context.read<SessionManager>().userName,
-    });
+      final luckyBagId = parseString(res.data?['_id'] ?? res.data?['id'] ?? res.data?['luckyBagId']);
+      final now = DateTime.now();
+      final timeStr = '${now.hour}:${now.minute.toString().padLeft(2, '0')}';
+      final msg = ChatItem(
+        id: luckyBagId,
+        senderId: _myUserId,
+        receiverId: 'family_${widget.familyId}',
+        message: 'Sent a Red Packet!',
+        messageType: 'luckyBag',
+        time: timeStr,
+        giftCoin: amount,
+        count: count,
+        status: 'sent',
+        topic: 'family_${widget.familyId}',
+      );
+
+      setState(() {
+        _messages.add(msg);
+        _loading = false;
+      });
+      _scrollToBottom();
+      _persistMessages();
+
+      SocketService.instance.emit(Const.eventFamilyChat, {
+        ...msg.toJson(),
+        'familyId': widget.familyId,
+        'senderName': _myUserName,
+        'senderImage': _myUserImage,
+      });
+    } catch (e) {
+      Log.e(_tag, 'send red packet failed', e);
+      if (mounted) {
+        Fluttertoast.showToast(msg: 'Failed to send red packet');
+        setState(() => _loading = false);
+      }
+    }
   }
 }

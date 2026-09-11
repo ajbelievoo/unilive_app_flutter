@@ -37,10 +37,16 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
   List<FamilyMember> _filteredMembers = [];
   String _searchQuery = '';
   final TextEditingController _searchCtrl = TextEditingController();
+  late String _currentUserId;
+
+  bool get _isManager => (widget.userRole ?? '').toLowerCase() == 'leader' ||
+      (widget.userRole ?? '').toLowerCase() == 'co-leader';
+  bool get _isLeader => (widget.userRole ?? '').toLowerCase() == 'leader';
 
   @override
   void initState() {
     super.initState();
+    _currentUserId = context.read<SessionManager>().userId;
     _loadMembers();
   }
 
@@ -261,7 +267,7 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
             ),
           ],
         ),
-        trailing: widget.userRole?.toLowerCase() == 'leader' && !isLeader
+        trailing: _isManager && !isLeader && !isMe
             ? IconButton(
           icon: const Icon(Icons.more_vert),
           onPressed: () => _showMemberActions(m),
@@ -314,40 +320,55 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
               padding: const EdgeInsets.all(20),
               child: Text('Manage ${m.name ?? "Member"}', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17)),
             ),
-            if (m.role == 'member')
+            // Only the leader can promote/demote co-leaders.
+            if (_isLeader && m.role == 'member')
               ListTile(
                 leading: const Icon(Icons.arrow_upward, color: Colors.green),
                 title: const Text('Promote to Co-Leader'),
                 onTap: () async {
                   Navigator.pop(ctx);
                   try {
-                    await ApiService.updateMemberRole(
+                    final res = await ApiService.updateMemberRole(
                       familyId: widget.familyId,
-                      leaderId: context.read<SessionManager>().userId,
+                      leaderId: _currentUserId,
                       memberId: m.userId ?? '',
                       role: 'co-leader',
                     );
-                    Fluttertoast.showToast(msg: 'Promoted!');
-                    _loadMembers();
-                  } catch (e) { Fluttertoast.showToast(msg: 'Operation failed'); }
+                    if (res.status) {
+                      Fluttertoast.showToast(msg: 'Promoted!');
+                      _loadMembers();
+                    } else {
+                      Fluttertoast.showToast(msg: res.message ?? 'Promotion failed');
+                    }
+                  } catch (e) {
+                    Fluttertoast.showToast(msg: 'Operation failed');
+                    Log.e(_tag, 'promote failed', e);
+                  }
                 },
               ),
-            if (m.role == 'co-leader')
+            if (_isLeader && m.role == 'co-leader')
               ListTile(
                 leading: const Icon(Icons.arrow_downward, color: Colors.orange),
                 title: const Text('Demote to Member'),
                 onTap: () async {
                   Navigator.pop(ctx);
                   try {
-                    await ApiService.updateMemberRole(
+                    final res = await ApiService.updateMemberRole(
                       familyId: widget.familyId,
-                      leaderId: context.read<SessionManager>().userId,
+                      leaderId: _currentUserId,
                       memberId: m.userId ?? '',
                       role: 'member',
                     );
-                    Fluttertoast.showToast(msg: 'Demoted!');
-                    _loadMembers();
-                  } catch (e) { Fluttertoast.showToast(msg: 'Operation failed'); }
+                    if (res.status) {
+                      Fluttertoast.showToast(msg: 'Demoted!');
+                      _loadMembers();
+                    } else {
+                      Fluttertoast.showToast(msg: res.message ?? 'Demotion failed');
+                    }
+                  } catch (e) {
+                    Fluttertoast.showToast(msg: 'Operation failed');
+                    Log.e(_tag, 'demote failed', e);
+                  }
                 },
               ),
             ListTile(
@@ -355,7 +376,10 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
               title: const Text('Kick from Family', style: TextStyle(color: Colors.red)),
               onTap: () async {
                 Navigator.pop(ctx);
-                final leaderId = context.read<SessionManager>().userId;
+                if (m.userId == _currentUserId) {
+                  Fluttertoast.showToast(msg: 'You cannot kick yourself');
+                  return;
+                }
                 final confirm = await showDialog<bool>(
                   context: context,
                   builder: (d) => AlertDialog(
@@ -369,17 +393,66 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
                 );
                 if (confirm == true) {
                   try {
-                    await ApiService.kickMember(
+                    final res = await ApiService.kickMember(
                       familyId: widget.familyId,
-                      leaderId: leaderId,
+                      leaderId: _currentUserId,
                       memberId: m.userId ?? '',
                     );
-                    Fluttertoast.showToast(msg: 'Kicked');
-                    _loadMembers();
-                  } catch (e) { Fluttertoast.showToast(msg: 'Operation failed'); }
+                    if (res.status) {
+                      Fluttertoast.showToast(msg: 'Kicked');
+                      _loadMembers();
+                    } else {
+                      Fluttertoast.showToast(msg: res.message ?? 'Kick failed');
+                    }
+                  } catch (e) {
+                    Fluttertoast.showToast(msg: 'Operation failed');
+                    Log.e(_tag, 'kick failed', e);
+                  }
                 }
               },
             ),
+            if (_isLeader)
+              ListTile(
+                leading: const Icon(Icons.block, color: Colors.red),
+                title: const Text('Ban from Family', style: TextStyle(color: Colors.red)),
+                onTap: () async {
+                  Navigator.pop(ctx);
+                  if (m.userId == _currentUserId) {
+                    Fluttertoast.showToast(msg: 'You cannot ban yourself');
+                    return;
+                  }
+                  final reason = await showDialog<String>(
+                    context: context,
+                    builder: (d) => AlertDialog(
+                      title: const Text('Ban Member?'),
+                      content: const TextField(
+                        decoration: InputDecoration(hintText: 'Reason (optional)'),
+                      ),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(d), child: const Text('Cancel')),
+                        TextButton(onPressed: () => Navigator.pop(d, ''), child: const Text('Ban', style: TextStyle(color: Colors.red))),
+                      ],
+                    ),
+                  );
+                  if (reason == null) return;
+                  try {
+                    final res = await ApiService.banFamilyMember(
+                      familyId: widget.familyId,
+                      userId: m.userId ?? '',
+                      reason: reason.isNotEmpty ? reason : null,
+                    );
+                    if (res.status) {
+                      Fluttertoast.showToast(msg: 'Banned');
+                      _loadMembers();
+                    } else {
+                      Fluttertoast.showToast(msg: res.message ?? 'Ban failed');
+                    }
+                  } catch (e) {
+                    Fluttertoast.showToast(msg: 'Operation failed');
+                    Log.e(_tag, 'ban failed', e);
+                  }
+                },
+              ),
             const SizedBox(height: 10),
           ],
         ),

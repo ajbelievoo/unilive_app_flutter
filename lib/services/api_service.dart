@@ -205,11 +205,6 @@ class ApiService {
     return UserRoot.fromJson(_asMap(r.data));
   }
 
-  static Future<RestResponse> addReferralCode(Map<String, dynamic> body) async {
-    final r = await _dio.post('/user/addReferralCode', data: body);
-    return RestResponse.fromJson(_asMap(r.data));
-  }
-
   // ---- Chat ---------------------------------------------------------------
   static Future<RestResponse> deleteAllChat(String userId) async {
     final r = await _dio.delete(
@@ -1606,13 +1601,15 @@ class ApiService {
     String category = '',
     File? proofImage,
   }) async {
+    // Backend expects the same keys the native app sends:
+    // message, contact, userId, category and optional image.
     FormData buildForm() => FormData.fromMap({
       'userId': userId,
-      'contactDetails': contactDetails,
-      'issue': issue,
+      'contact': contactDetails,
+      'message': issue,
       if (category.isNotEmpty) 'category': category,
       if (proofImage != null)
-        'proofImage': MultipartFile.fromFileSync(proofImage.path),
+        'image': MultipartFile.fromFileSync(proofImage.path),
     });
 
     try {
@@ -1816,11 +1813,31 @@ class ApiService {
   }
 
   static Future<RestResponse> endLiveStream(String liveId) async {
-    final r = await _dio.post(
-      '/liveStream/end',
-      queryParameters: {'liveId': liveId},
-    );
-    return RestResponse.fromJson(_asMap(r.data));
+    try {
+      final r = await _dio.post(
+        '/liveStream/end',
+        queryParameters: {'liveId': liveId},
+      );
+      return RestResponse.fromJson(_asMap(r.data));
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404) {
+        // Endpoint not implemented. Try the host-facing end-stream endpoint.
+        try {
+          final r = await _dio.post(
+            '/api/v1/live/end-stream',
+            data: {'liveId': liveId},
+          );
+          return RestResponse.fromJson(_asMap(r.data));
+        } on DioException catch (e2) {
+          if (e2.response?.statusCode == 404) {
+            // Neither endpoint exists — don't crash, just report offline.
+            return RestResponse(status: false);
+          }
+          rethrow;
+        }
+      }
+      rethrow;
+    }
   }
 
   /// Record a host compliance violation from the Flutter guard.
@@ -2520,15 +2537,54 @@ class ApiService {
   /// Update live time — host calls this every 60 seconds so the backend
   /// can track live duration for analytics and host earnings.
   /// Ports native `RetrofitBuilder.create().updateLiveTime(userId, sid)`.
+  /// If the old endpoint is missing, fall back to `PATCH /liveUser/live`
+  /// so the server can still record the elapsed time.
   static Future<RestResponse> updateLiveTime(
     String userId,
-    String liveStreamingId,
-  ) async {
-    final r = await _dio.post(
-      '/liveUser/updateLiveTime',
-      queryParameters: {'userId': userId, 'liveStreamingId': liveStreamingId},
-    );
-    return RestResponse.fromJson(_asMap(r.data));
+    String liveStreamingId, {
+    int? seconds,
+  }) async {
+    final query = <String, dynamic>{
+      'userId': userId,
+      'liveStreamingId': liveStreamingId,
+    };
+    if (seconds != null) query['time'] = seconds;
+    try {
+      final r = await _dio.post(
+        '/liveUser/updateLiveTime',
+        queryParameters: query,
+        data: {
+          'userId': userId,
+          'liveUserId': userId,
+          'liveStreamingId': liveStreamingId,
+          if (seconds != null) ...{
+            'time': seconds,
+            'duration': seconds,
+            'watchSeconds': seconds,
+            'elapsedSeconds': seconds,
+          },
+        },
+      );
+      return RestResponse.fromJson(_asMap(r.data));
+    } catch (e) {
+      // Some backends do not expose /liveUser/updateLiveTime — fall back to
+      // updating the liveUser document so the server stores elapsed time.
+      final form = FormData.fromMap({
+        'userId': userId,
+        'liveUserId': userId,
+        'liveStreamingId': liveStreamingId,
+        'isLiveUpdate': 'true',
+        'heartbeat': 'true',
+        if (seconds != null) ...{
+          'time': seconds.toString(),
+          'duration': seconds.toString(),
+          'watchSeconds': seconds.toString(),
+          'elapsedSeconds': seconds.toString(),
+        },
+      });
+      final r2 = await _uploadDio.patch('/liveUser/live', data: form);
+      return RestResponse.fromJson(_asMap(r2.data));
+    }
   }
 
   static Future<RestResponse> userHostLiveEnd(
@@ -2562,6 +2618,21 @@ class ApiService {
   static Future<PkCallRoot> getPkCallStatus(String pkId) async {
     final r = await _dio.get('/pkCall/status', queryParameters: {'pkId': pkId});
     return PkCallRoot.fromJson(_asMap(r.data));
+  }
+
+  /// Same as [getPkCallStatus] but also returns the server `Date` header so
+  /// the caller can compute a clock-skew-corrected remaining time.
+  static Future<({PkCallData? pkCall, int serverNowMs})> getPkCallStatusTimed(
+    String pkId,
+  ) async {
+    final r = await _dio.get('/pkCall/status', queryParameters: {'pkId': pkId});
+    final root = PkCallRoot.fromJson(_asMap(r.data));
+    int serverNowMs = 0;
+    final date = r.headers.value('date') ?? r.headers.value('Date');
+    if (date != null && date.isNotEmpty) {
+      serverNowMs = HttpDate.parse(date).millisecondsSinceEpoch;
+    }
+    return (pkCall: root.pkCall, serverNowMs: serverNowMs);
   }
 
   static Future<RestResponse> endPkCall({
@@ -2681,9 +2752,10 @@ class ApiService {
       if (name != null) 'name': name,
       if (mobileNumber != null) 'mobileNumber': mobileNumber,
       if (bankDetails != null) 'bankDetails': bankDetails,
+      'liveType': '3',
     };
     if (photoFile != null) {
-      formMap['photo'] = await MultipartFile.fromFile(
+      formMap['profileImage'] = await MultipartFile.fromFile(
         photoFile.path,
         filename: photoFile.path.split(Platform.pathSeparator).last,
       );
@@ -2716,6 +2788,16 @@ class ApiService {
       data: {'requestId': requestId, 'status': status},
     );
     return RestResponse.fromJson(_asMap(r.data));
+  }
+
+  static Future<Map<String, dynamic>> getMyHostRequest({
+    required String userId,
+  }) async {
+    final r = await _dio.get(
+      '/hostRequest/myRequest',
+      queryParameters: {'userId': userId},
+    );
+    return _asMap(r.data);
   }
 
   // ---- Agency hosts / revenue / withdrawals -------------------------------
@@ -2880,10 +2962,27 @@ class ApiService {
   static Future<Map<String, dynamic>> claimTaskReward({
     required String hostId,
     required String taskId,
+    String? liveStreamingId,
+    int? videoDuration,
+    int? audioDuration,
+    int? rCoin,
+    int? coin,
   }) async {
     final r = await _dio.patch(
       '/task/claimTaskReward',
       queryParameters: {'hostId': hostId, 'taskId': taskId},
+      data: {
+        'hostId': hostId,
+        'taskId': taskId,
+        'userId': hostId,
+        'hostUserId': hostId,
+        if (liveStreamingId != null && liveStreamingId.isNotEmpty)
+          'liveStreamingId': liveStreamingId,
+        if (videoDuration != null) 'videoDuration': videoDuration,
+        if (audioDuration != null) 'audioDuration': audioDuration,
+        if (rCoin != null) 'rCoin': rCoin,
+        if (coin != null) 'coin': coin,
+      },
     );
     return _asMap(r.data);
   }
@@ -3095,20 +3194,54 @@ class ApiService {
 
   static Future<FamilyRoot> getFamily(String familyId) async {
     final r = await _dio.get('/family/$familyId');
-    return FamilyRoot.fromJson(_asMap(r.data));
+    final map = _asMap(r.data);
+
+    // Standard wrapper first.
+    final standard = FamilyRoot.fromJson(map);
+    if (standard.status && standard.data.isNotEmpty) return standard;
+
+    // Some backends return the family object directly (not wrapped in data).
+    if (map.containsKey('name') || map.containsKey('_id') || map.containsKey('id')) {
+      try {
+        final item = FamilyItem.fromJson(map);
+        return FamilyRoot(
+          status: true,
+          message: 'Success',
+          total: 1,
+          data: [item],
+        );
+      } catch (e) {
+        Log.e('ApiService', 'getFamily direct family parse failed', e);
+      }
+    }
+
+    return standard;
   }
 
   /// Get the current user's family (if they belong to one).
-  /// Uses /family/list?userId= and filters on client side since
-  /// the backend /family/userFamily endpoint is not available.
+  /// Uses the dedicated /family/userFamily endpoint first, then falls back
+  /// to /family/list with client-side filtering if that is unavailable.
   static Future<FamilyRoot> getUserFamily(String userId) async {
+    // Prefer the dedicated endpoint documented in API_ENDPOINTS.md.
+    try {
+      final r = await _dio.get(
+        '/family/userFamily',
+        queryParameters: {'userId': userId},
+      );
+      final res = FamilyRoot.fromJson(_asMap(r.data));
+      if (res.status && res.data.isNotEmpty) return res;
+    } catch (e) {
+      Log.e('ApiService', 'getUserFamily /family/userFamily failed, falling back', e);
+    }
+
+    // Fallback: filter from /family/list.
     final r = await _dio.get(
       '/family/list',
       queryParameters: {'userId': userId, 'start': 0, 'limit': 100},
     );
     final res = FamilyRoot.fromJson(_asMap(r.data));
     if (!res.status) return res;
-    // Filter: find family where user is a member
+
     final myFamilies =
         res.data.where((f) {
           return f.members.any((m) => m.userId == userId) ||
@@ -3123,12 +3256,60 @@ class ApiService {
   }
 
   /// Get family members separately.
+  /// Tolerates multiple backend shapes:
+  /// - {status, data: {familyItem}} or {status, data: [familyItem]}
+  /// - {status, data: {members: [...]}}
+  /// - {status, data: [...members]}
   static Future<FamilyRoot> getFamilyMembers(String familyId) async {
     final r = await _dio.get(
       '/family/members',
       queryParameters: {'familyId': familyId},
     );
-    return FamilyRoot.fromJson(_asMap(r.data));
+    final map = _asMap(r.data);
+
+    // Standard wrapper with FamilyItem(s).
+    final standard = FamilyRoot.fromJson(map);
+    if (standard.status && standard.data.isNotEmpty) return standard;
+
+    // Some backends return the member list directly under data or members.
+    List<dynamic>? rawMembers;
+    if (map['data'] is List) {
+      final list = map['data'] as List;
+      // Heuristic: if every element looks like a user/member, treat as members.
+      if (list.isNotEmpty &&
+          (list.first is Map) &&
+          (list.first as Map).containsKey('userId')) {
+        rawMembers = list;
+      }
+    } else if (map['data'] is Map) {
+      final data = map['data'] as Map;
+      if (data['members'] is List) {
+        rawMembers = data['members'] as List;
+      }
+    }
+    if (map['members'] is List) rawMembers = map['members'] as List;
+
+    if (rawMembers != null) {
+      final members =
+          rawMembers
+              .whereType<Map<String, dynamic>>()
+              .map(FamilyMember.fromJson)
+              .toList();
+      return FamilyRoot(
+        status: true,
+        message: parseString(map['message']) ?? 'Success',
+        total: members.length,
+        data: [
+          FamilyItem(
+            id: familyId,
+            members: members,
+            memberCount: members.length,
+          ),
+        ],
+      );
+    }
+
+    return standard;
   }
 
   /// Create a family.
@@ -3145,6 +3326,8 @@ class ApiService {
     String slogan = '',
     String country = '',
     String category = '',
+    int minLevelToJoin = 0,
+    bool requireApproval = false,
   }) async {
     final form = FormData.fromMap({
       'userId': userId,
@@ -3153,6 +3336,8 @@ class ApiService {
       'isPublic': isPublic.toString(),
       'joinCode': joinCode,
       'welcomeMessage': welcomeMessage,
+      'minLevelToJoin': minLevelToJoin,
+      'requireApproval': requireApproval.toString(),
       if (slogan.isNotEmpty) 'slogan': slogan,
       if (country.isNotEmpty) 'country': country,
       if (category.isNotEmpty) 'category': category,
@@ -3453,7 +3638,7 @@ class ApiService {
         Log.d(
           'ApiService.purchaseStoreItem',
           'parsed status=${root.status} user=${root.user?.id} '
-          'coin=${root.user?.coin} message=${root.message}',
+              'coin=${root.user?.coin} message=${root.message}',
         );
         return root;
       } catch (parseError, parseStack) {
@@ -3475,7 +3660,7 @@ class ApiService {
       Log.e(
         'ApiService.purchaseStoreItem',
         'DioException type=${error.type} code=$code '
-        'body=${error.response?.data}',
+            'body=${error.response?.data}',
       );
       if (code != 404 && code != 405) rethrow;
       _useLegacyStorePurchaseApi = true;
@@ -4024,10 +4209,9 @@ class ApiService {
   /// Alias for [getFamily] — used by family detail screen.
   /// Falls back to /family/list search if /family/{id} fails or returns empty.
   static Future<FamilyRoot> getFamilyDetail(String familyId) async {
-    // Try direct endpoint first
+    // Try direct endpoint first (getFamily handles direct object + wrapper).
     try {
-      final r = await _dio.get('/family/$familyId');
-      final res = FamilyRoot.fromJson(_asMap(r.data));
+      final res = await getFamily(familyId);
       if (res.status && res.data.isNotEmpty) return res;
     } catch (e) {
       Log.e(
@@ -4643,6 +4827,43 @@ class ApiService {
   }
 
   // ---- Family Data Quality: Achievements, Level Info (Bigo/Chamet) --------
+
+  // ---- Family Chat: red packets / lucky bags -------------------------------
+
+  /// Create a red packet / lucky bag in a family chat.
+  /// Backend: POST /family/:familyId/lucky-bag
+  /// Returns the created lucky-bag id in [RestResponse.data] under `_id`/`id`.
+  static Future<RestResponse> createFamilyLuckyBag({
+    required String familyId,
+    required String userId,
+    required int totalCoins,
+    required int winnerCount,
+  }) async {
+    final r = await _dio.post(
+      '/family/$familyId/lucky-bag',
+      data: {
+        'familyId': familyId,
+        'userId': userId,
+        'totalCoin': totalCoins,
+        'bagCount': winnerCount,
+      },
+    );
+    return RestResponse.fromJson(_asMap(r.data));
+  }
+
+  /// Claim a family chat red packet.
+  /// Backend: POST /family/:familyId/lucky-bag/:luckyBagId/claim
+  static Future<RestResponse> claimFamilyLuckyBag({
+    required String familyId,
+    required String luckyBagId,
+    required String userId,
+  }) async {
+    final r = await _dio.post(
+      '/family/$familyId/lucky-bag/$luckyBagId/claim',
+      data: {'userId': userId},
+    );
+    return RestResponse.fromJson(_asMap(r.data));
+  }
 
   /// Get family achievements from backend (replaces hardcoded placeholders).
   /// Backend: GET /family/:familyId/achievements

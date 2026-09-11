@@ -102,12 +102,12 @@ import '../screens/family/family_rules_screen.dart';
 import '../screens/family/family_level_screen.dart';
 import '../screens/family/family_members_screen.dart';
 import '../screens/family/family_achievements_screen.dart';
+import '../screens/family/family_banned_users_screen.dart';
 import '../screens/family/family_contribution_screen.dart';
 import '../screens/family/family_honor_screen.dart';
 import '../screens/family/family_reward_screen.dart';
 import '../screens/family/family_create_honor_screen.dart';
 import '../screens/family/family_screen.dart';
-import '../screens/family/create_family_screen.dart';
 import '../screens/family/family_settings_screen.dart';
 import '../screens/events/live_events_screen.dart';
 import '../screens/fanclub/fan_club_screen.dart';
@@ -149,6 +149,12 @@ import '../screens/misc/missing_screens.dart' as misc;
 /// Centralised route definitions for the Belive app.
 class AppRoutes {
   AppRoutes._();
+
+  static Map<String, dynamic>? _activeLiveRoomExtra;
+
+  static void clearActiveLiveRoom() {
+    _activeLiveRoomExtra = null;
+  }
 
   // ---- Auth / onboarding -------------------------------------------------
   static const String splash = 'splash';
@@ -267,6 +273,7 @@ class AppRoutes {
   static const String familyMembers = 'familyMembers';
   static const String familyContribution = 'familyContribution';
   static const String familyAchievements = 'familyAchievements';
+  static const String familyBannedUsers = 'familyBannedUsers';
   static const String agency = 'agency';
   static const String agencyList = 'agencyList';
   static const String agencyDetail = 'agencyDetail';
@@ -450,18 +457,30 @@ class AppRoutes {
 
       // Live
       _named(liveRoom, (state) {
-        final extra = state.extra as Map<String, dynamic>? ?? {};
+        final suppliedExtra =
+            state.extra is Map
+                ? Map<String, dynamic>.from(state.extra as Map)
+                : null;
+        final hasSuppliedLiveUser =
+            suppliedExtra?['liveUser'] is live_stream.LiveUser;
+        if (hasSuppliedLiveUser) {
+          _activeLiveRoomExtra = Map<String, dynamic>.from(suppliedExtra!);
+        }
+        final extra =
+            hasSuppliedLiveUser ? suppliedExtra : _activeLiveRoomExtra;
+        final liveUser = extra?['liveUser'];
+        if (liveUser is! live_stream.LiveUser) return const MainScreen();
         return LiveRoomScreen(
-          liveUser: extra['liveUser'] as live_stream.LiveUser,
-          isHost: extra['isHost'] as bool? ?? false,
-          quality: extra['quality'] as String? ?? 'hd',
-          smoothness: (extra['smoothness'] as num?)?.toDouble() ?? 0.0,
-          lightening: (extra['lightening'] as num?)?.toDouble() ?? 0.0,
-          redness: (extra['redness'] as num?)?.toDouble() ?? 0.0,
+          liveUser: liveUser,
+          isHost: extra?['isHost'] as bool? ?? false,
+          quality: extra?['quality'] as String? ?? 'hd',
+          smoothness: (extra?['smoothness'] as num?)?.toDouble() ?? 0.0,
+          lightening: (extra?['lightening'] as num?)?.toDouble() ?? 0.0,
+          redness: (extra?['redness'] as num?)?.toDouble() ?? 0.0,
           lighteningContrast:
-              extra['lighteningContrast'] as LighteningContrastLevel? ??
+              extra?['lighteningContrast'] as LighteningContrastLevel? ??
               LighteningContrastLevel.lighteningContrastNormal,
-          fromChat: extra['fromChat'] as bool? ?? false,
+          fromChat: extra?['fromChat'] as bool? ?? false,
         );
       }),
       _named(audioRoom, (state) {
@@ -600,7 +619,7 @@ class AppRoutes {
           familyId: extra['familyId'] as String? ?? '',
         );
       }),
-      _named(familyCreate, (_) => const CreateFamilyScreen()),
+      _named(familyCreate, (_) => const FamilyCreateHonorScreen()),
       _named(familySettings, (state) {
         final extra = state.extra as Map<String, dynamic>? ?? {};
         return FamilySettingsScreen(
@@ -628,12 +647,23 @@ class AppRoutes {
           userRole: extra['userRole'] as String?,
         );
       }),
-      _named(familyAchievements, (_) => const FamilyAchievementsScreen()),
+      _named(familyAchievements, (state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        return FamilyAchievementsScreen(
+          familyId: extra['familyId'] as String? ?? '',
+        );
+      }),
       _named(familyContribution, (state) {
         final extra = state.extra as Map<String, dynamic>? ?? {};
         return FamilyContributionScreen(
           familyId: extra['familyId'] as String? ?? '',
           familyName: extra['familyName'] as String?,
+        );
+      }),
+      _named(familyBannedUsers, (state) {
+        final extra = state.extra as Map<String, dynamic>? ?? {};
+        return FamilyBannedUsersScreen(
+          familyId: extra['familyId'] as String? ?? '',
         );
       }),
       _named(agency, (_) => const AgencyDashboardScreen()),

@@ -46,6 +46,7 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
   late final TabController _tabCtrl = TabController(length: 3, vsync: this);
   FamilyItem? _family;
   final _tasks = <FamilyTask>[];
+  FamilyLevelInfo? _levelInfo;
   bool _loading = true;
   String? _error;
   String? _currentUserId;
@@ -54,6 +55,7 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
   bool _signedIn = false;
 
   bool get _isLeader => _currentRole == 'leader';
+  bool get _isManager => _isLeader || (_currentRole ?? '').toLowerCase() == 'co-leader';
   bool get _isMember => _family?.isMember ?? false;
 
   @override
@@ -91,6 +93,12 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
       } catch (e, s) {
         Log.e(_tag, 'getFamilyTasks failed', e, s);
         tasks = FamilyTaskRoot(status: false, message: 'Tasks not available');
+      }
+
+      try {
+        _levelInfo = await ApiService.getFamilyLevelInfo(familyId: widget.familyId);
+      } catch (e, s) {
+        Log.e(_tag, 'getFamilyLevelInfo failed', e, s);
       }
 
       if (mounted) {
@@ -141,6 +149,8 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
                   _showFamilyPKChallengeDialog();
                 },
               ),
+            ],
+            if (_isManager) ...[
               ListTile(
                 leading: const Icon(Icons.pending_actions, color: Colors.blue),
                 title: const Text('Join Requests'),
@@ -153,6 +163,15 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
                 },
               ),
               ListTile(
+                leading: const Icon(Icons.block, color: Colors.red),
+                title: const Text('Banned Users'),
+                subtitle: const Text('Manage blocked family members', style: TextStyle(fontSize: 11, color: Colors.grey)),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  context.pushNamed(AppRoutes.familyBannedUsers, extra: {'familyId': widget.familyId});
+                },
+              ),
+              ListTile(
                 leading: const Icon(Icons.settings, color: AppTheme.primary),
                 title: const Text('Family Settings'),
                 subtitle: const Text('Daily sign-in reward, join rules, announcement', style: TextStyle(fontSize: 11, color: Colors.grey)),
@@ -161,6 +180,8 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
                   context.pushNamed(AppRoutes.familySettings, extra: {'familyId': widget.familyId});
                 },
               ),
+            ],
+            if (_isLeader) ...[
               ListTile(
                 leading: const Icon(Icons.edit, color: AppTheme.primary),
                 title: const Text('Edit Family'),
@@ -401,8 +422,8 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
                     child: GestureDetector(
                       onTap: () => context.pushNamed(AppRoutes.familyLevel, extra: {
                         'level': f.level,
-                        'currentExp': f.totalCoin,
-                        'nextLevelExp': (f.level > 0 ? f.level : 1) * 2500000,
+                        'currentExp': _levelInfo?.xp ?? f.totalCoin,
+                        'nextLevelExp': _levelInfo?.xpToNextLevel ?? (f.level > 0 ? f.level : 1) * 2500000,
                         'familyName': f.name ?? 'Family',
                       }),
                       child: Container(
@@ -545,7 +566,7 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         children: [
-          _actionItem(Icons.workspace_premium, 'Glory Wall', () => context.pushNamed(AppRoutes.familyAchievements)),
+          _actionItem(Icons.workspace_premium, 'Glory Wall', () => context.pushNamed(AppRoutes.familyAchievements, extra: {'familyId': widget.familyId})),
           _actionItem(Icons.leaderboard, 'Rankings', () => context.pushNamed(AppRoutes.familyHonor)),
           _actionItem(Icons.card_giftcard, 'Rewards', () => context.pushNamed(AppRoutes.familyReward)),
           _actionItem(Icons.help_outline, 'Rules', () => context.pushNamed(AppRoutes.familyRules)),
@@ -832,9 +853,15 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
 
   Widget _buildFamilyMemberSection() {
     final f = _family!;
-    final members = f.members;
+    // Sort by contribution so the displayed ranks are meaningful.
+    final members = List<FamilyMember>.from(f.members)
+      ..sort((a, b) => (b.contribution).compareTo(a.contribution));
     final totalCount = f.memberCount > 0 ? f.memberCount : members.length;
-    final maxCapacity = 50 + (f.level > 0 ? f.level : 1) * 50;
+    final maxCapacity = f.maxMembers > 0
+        ? f.maxMembers
+        : (_levelInfo?.maxMembers ?? 0) > 0
+            ? _levelInfo!.maxMembers
+            : 50 + (f.level > 0 ? f.level : 1) * 50;
 
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
@@ -996,8 +1023,8 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
   Widget _buildFamilySupportSection() {
     final f = _family!;
     final level = f.level > 0 ? f.level : 1;
-    final totalCoin = f.totalCoin;
-    final nextLevelTarget = level * 2500000;
+    final totalCoin = _levelInfo?.xp ?? f.totalCoin;
+    final nextLevelTarget = _levelInfo?.xpToNextLevel ?? level * 2500000;
     final progress = nextLevelTarget > 0 ? (totalCoin / nextLevelTarget).clamp(0.0, 1.0) : 0.0;
     final supporters = f.members.toList()..sort((a, b) => b.contribution.compareTo(a.contribution));
     final topSupporters = supporters.take(3).toList();
@@ -1154,12 +1181,17 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
 
   Future<void> _startFamilyBattle(FamilyItem target) async {
     try {
-      final res = await ApiService.startAudioPk(roomId: _family?.roomId ?? 'family_${_family?.id}', targetRoomId: target.roomId ?? 'family_${target.id}');
+      final res = await ApiService.startFamilyPkBattle(
+        familyId: _family?.id ?? '',
+        targetFamilyId: target.id ?? '',
+      );
       if (mounted) {
-        if (res.status) { Fluttertoast.showToast(msg: 'PK Challenge Sent!'); _enterFamilyRoom(); }
+        if (res.status) { Fluttertoast.showToast(msg: 'PK Challenge Sent!'); }
         else { Fluttertoast.showToast(msg: res.message ?? 'Failed to challenge'); }
       }
-    } catch (e) { if (mounted) Fluttertoast.showToast(msg: 'Error starting battle'); }
+    } catch (e) {
+      if (mounted) Fluttertoast.showToast(msg: 'Error starting battle');
+    }
   }
 
   void _showEditFamily() {
@@ -1212,6 +1244,7 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
                 onPressed: () async {
                   Navigator.pop(ctx);
                   try {
+                    final welcome = welcomeCtrl.text.trim();
                     final res = await ApiService.updateFamily(
                       familyId: widget.familyId,
                       userId: _currentUserId ?? '',
@@ -1221,6 +1254,16 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
                       logoFile: newImagePath != null ? File(newImagePath!) : null,
                     );
                     if (res.status) {
+                      // Also update welcome message through the settings endpoint.
+                      try {
+                        await ApiService.updateFamilySettings(
+                          familyId: widget.familyId,
+                          userId: _currentUserId ?? '',
+                          welcomeMessage: welcome,
+                        );
+                      } catch (_) {
+                        // Non-fatal: basic info already saved.
+                      }
                       Fluttertoast.showToast(msg: 'Family updated successfully!');
                       _load();
                     } else {

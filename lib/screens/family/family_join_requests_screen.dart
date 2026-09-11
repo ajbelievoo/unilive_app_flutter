@@ -52,27 +52,33 @@ class _FamilyJoinRequestsScreenState extends State<FamilyJoinRequestsScreen>
     if (_isProcessing || req.id == null) return;
     setState(() => _isProcessing = true);
     try {
-      await ApiService.approveFamilyJoinRequest(
+      final res = await ApiService.approveFamilyJoinRequest(
         requestId: req.id!,
         familyId: widget.familyId,
       );
-      _pending.remove(req);
-      _history.insert(0, FamilyJoinRequest(
-        id: req.id,
-        userId: req.userId,
-        userName: req.userName,
-        userImage: req.userImage,
-        username: req.username,
-        level: req.level,
-        country: req.country,
-        familyId: req.familyId,
-        status: 'approved',
-        requestedAt: req.requestedAt,
-        message: req.message,
-      ));
-      if (mounted) {
+      if (res.status) {
+        _pending.remove(req);
+        _history.insert(0, FamilyJoinRequest(
+          id: req.id,
+          userId: req.userId,
+          userName: req.userName,
+          userImage: req.userImage,
+          username: req.username,
+          level: req.level,
+          country: req.country,
+          familyId: req.familyId,
+          status: 'approved',
+          requestedAt: req.requestedAt,
+          message: req.message,
+        ));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Approved ${req.userName ?? 'user'}'), backgroundColor: Colors.green),
+          );
+        }
+      } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Approved ${req.userName ?? 'user'}'), backgroundColor: Colors.green),
+          SnackBar(content: Text(res.message ?? 'Failed to approve'), backgroundColor: Colors.red),
         );
       }
     } catch (e) {
@@ -89,27 +95,33 @@ class _FamilyJoinRequestsScreenState extends State<FamilyJoinRequestsScreen>
     if (_isProcessing || req.id == null) return;
     setState(() => _isProcessing = true);
     try {
-      await ApiService.rejectFamilyJoinRequest(
+      final res = await ApiService.rejectFamilyJoinRequest(
         requestId: req.id!,
         familyId: widget.familyId,
       );
-      _pending.remove(req);
-      _history.insert(0, FamilyJoinRequest(
-        id: req.id,
-        userId: req.userId,
-        userName: req.userName,
-        userImage: req.userImage,
-        username: req.username,
-        level: req.level,
-        country: req.country,
-        familyId: req.familyId,
-        status: 'rejected',
-        requestedAt: req.requestedAt,
-        message: req.message,
-      ));
-      if (mounted) {
+      if (res.status) {
+        _pending.remove(req);
+        _history.insert(0, FamilyJoinRequest(
+          id: req.id,
+          userId: req.userId,
+          userName: req.userName,
+          userImage: req.userImage,
+          username: req.username,
+          level: req.level,
+          country: req.country,
+          familyId: req.familyId,
+          status: 'rejected',
+          requestedAt: req.requestedAt,
+          message: req.message,
+        ));
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Rejected ${req.userName ?? 'user'}'), backgroundColor: Colors.orange),
+          );
+        }
+      } else if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Rejected ${req.userName ?? 'user'}'), backgroundColor: Colors.orange),
+          SnackBar(content: Text(res.message ?? 'Failed to reject'), backgroundColor: Colors.red),
         );
       }
     } catch (e) {

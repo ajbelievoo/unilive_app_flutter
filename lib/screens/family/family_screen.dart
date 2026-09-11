@@ -3,6 +3,8 @@
 /// Three tabs: All Families | Ranking | My Family.
 /// Search bar, family cards with rank/level/members/join, create button.
 library family;
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -36,6 +38,7 @@ class _FamilyScreenState extends State<FamilyScreen>
   bool _loadingList = true;
   final _searchCtrl = TextEditingController();
   String _query = '';
+  Timer? _searchDebounce;
 
   final _ranking = <FamilyRankItem>[];
   bool _loadingRank = true;
@@ -55,6 +58,7 @@ class _FamilyScreenState extends State<FamilyScreen>
 
   @override
   void dispose() {
+    _searchDebounce?.cancel();
     _tabCtrl.dispose();
     _searchCtrl.dispose();
     super.dispose();
@@ -110,12 +114,20 @@ class _FamilyScreenState extends State<FamilyScreen>
     }
   }
 
-  Future<void> _onSearch(String q) async {
+  void _onSearch(String q) {
     _query = q.trim();
-    if (_query.isEmpty) {
-      _loadFamilies();
-      return;
-    }
+    _searchDebounce?.cancel();
+    _searchDebounce = Timer(const Duration(milliseconds: 500), () {
+      if (_query.isEmpty) {
+        _loadFamilies();
+      } else {
+        _doSearch();
+      }
+    });
+  }
+
+  Future<void> _doSearch() async {
+    if (!mounted) return;
     setState(() => _loadingList = true);
     try {
       final res = await ApiService.searchFamilies(query: _query);

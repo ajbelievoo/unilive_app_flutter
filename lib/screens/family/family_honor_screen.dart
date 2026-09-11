@@ -825,7 +825,7 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
   Widget _topBadge(int rank) {
     if (rank >= 1 && rank <= 3) {
       return Image.asset(
-        'assets/family/tag_family_top$rank.png',
+        'assets/family/tag_family_top$rank.webp',
         width: 44,
         height: 44,
         fit: BoxFit.contain,
