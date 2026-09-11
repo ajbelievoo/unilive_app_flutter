@@ -1,7 +1,8 @@
-/// Family list screen — Bigo Live-style.
+/// Family hub screen — premium Bigo/Chamet-style UI.
 ///
-/// Three tabs: All Families | Ranking | My Family.
-/// Search bar, family cards with rank/level/members/join, create button.
+/// Three tabs: Discover | Ranking | My Family.
+/// Search, create, join, share, and weekly ranking with a polished,
+/// modern dark/glass aesthetic.
 library family;
 import 'dart:async';
 
@@ -220,129 +221,220 @@ class _FamilyScreenState extends State<FamilyScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
-      appBar: AppBar(
-        title: const Text('Family'),
-        backgroundColor: AppTheme.primary,
-        foregroundColor: Colors.white,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.help_outline),
-            tooltip: 'Family Rules',
-            onPressed: () => context.pushNamed(AppRoutes.familyRules),
-          ),
-          IconButton(
-            icon: const Icon(Icons.add),
-            tooltip: 'Create Family',
-            onPressed: () => context.pushNamed(AppRoutes.familyCreate),
+      backgroundColor: const Color(0xFF0A0A18),
+      body: NestedScrollView(
+        headerSliverBuilder: (context, _) => [
+          SliverAppBar(
+            expandedHeight: 160,
+            pinned: true,
+            floating: true,
+            backgroundColor: const Color(0xFF0A0A18),
+            flexibleSpace: FlexibleSpaceBar(
+              title: const Text(
+                'Family',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
+              ),
+              background: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFF1A1240), Color(0xFF0F0B22), Color(0xFF0A0A18)],
+                  ),
+                ),
+                child: Stack(
+                  children: [
+                    Positioned(
+                      right: -40,
+                      top: -40,
+                      child: Container(
+                        width: 180,
+                        height: 180,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.deepPurple.withValues(alpha: 0.25),
+                        ),
+                      ),
+                    ),
+                    Positioned(
+                      left: -30,
+                      bottom: 40,
+                      child: Container(
+                        width: 120,
+                        height: 120,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.amber.withValues(alpha: 0.15),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.help_outline, color: Colors.white70),
+                tooltip: 'Family Rules',
+                onPressed: () => context.pushNamed(AppRoutes.familyRules),
+              ),
+            ],
+            bottom: TabBar(
+              controller: _tabCtrl,
+              indicator: const BoxDecoration(
+                border: Border(
+                  bottom: BorderSide(color: Colors.amber, width: 3),
+                ),
+              ),
+              labelColor: Colors.amber,
+              unselectedLabelColor: Colors.white60,
+              labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+              tabs: const [
+                Tab(text: 'Discover'),
+                Tab(text: 'Ranking'),
+                Tab(text: 'My Family'),
+              ],
+            ),
           ),
         ],
-        bottom: TabBar(
+        body: TabBarView(
           controller: _tabCtrl,
-          indicatorColor: Colors.white,
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white60,
-          tabs: const [
-            Tab(text: 'All'),
-            Tab(text: 'Ranking'),
-            Tab(text: 'My Family'),
+          children: [
+            _allTab(),
+            _rankingTab(),
+            _myFamilyTab(),
           ],
         ),
       ),
-      body: TabBarView(
-        controller: _tabCtrl,
-        children: [
-          _allTab(),
-          _rankingTab(),
-          _myFamilyTab(),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.pushNamed(AppRoutes.familyCreate),
+        backgroundColor: Colors.amber,
+        icon: const Icon(Icons.add, color: Color(0xFF0A0A18)),
+        label: const Text('Create', style: TextStyle(color: Color(0xFF0A0A18), fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  // ---- Discover tab --------------------------------------------------------
+  Widget _allTab() {
+    return RefreshIndicator(
+      onRefresh: _loadFamilies,
+      color: Colors.amber,
+      backgroundColor: const Color(0xFF1A1240),
+      child: CustomScrollView(
+        slivers: [
+          if (_ranking.isNotEmpty)
+            SliverToBoxAdapter(child: _buildGlobalChampionBanner()),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.06),
+                  borderRadius: BorderRadius.circular(30),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                ),
+                child: TextField(
+                  controller: _searchCtrl,
+                  onChanged: _onSearch,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    hintText: 'Search family...',
+                    hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
+                    prefixIcon: const Icon(Icons.search, color: Colors.white60),
+                    suffixIcon: _query.isEmpty
+                        ? null
+                        : IconButton(
+                            icon: const Icon(Icons.clear, color: Colors.white60),
+                            onPressed: () {
+                              _searchCtrl.clear();
+                              _onSearch('');
+                            },
+                          ),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                  ),
+                ),
+              ),
+            ),
+          ),
+          if (_loadingList)
+            const SliverFillRemaining(child: Center(child: PremiumLoading()))
+          else if (_families.isEmpty)
+            SliverFillRemaining(
+              child: EmptyState(
+                icon: Icons.group,
+                title: 'No families found',
+                subtitle: 'Be the first to create a family',
+                actionLabel: 'Create one',
+                onAction: () => context.pushNamed(AppRoutes.familyCreate),
+              ),
+            )
+          else
+            SliverPadding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              sliver: SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, i) => _familyCard(_families[i]),
+                  childCount: _families.length,
+                ),
+              ),
+            ),
         ],
       ),
     );
   }
 
-  // ---- All families tab ---------------------------------------------------
-  Widget _allTab() {
-    return Column(children: [
-      if (_ranking.isNotEmpty) _buildGlobalChampionBanner(),
-      Padding(
-        padding: const EdgeInsets.all(12),
-        child: TextField(
-          controller: _searchCtrl,
-          onChanged: _onSearch,
-          decoration: InputDecoration(
-            hintText: 'Search family...',
-            prefixIcon: const Icon(Icons.search),
-            suffixIcon: _query.isEmpty
-                ? null
-                : IconButton(
-              icon: const Icon(Icons.clear),
-              onPressed: () {
-                _searchCtrl.clear();
-                _onSearch('');
-              },
-            ),
-            filled: true,
-            fillColor: AppTheme.surfaceLight,
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(24),
-              borderSide: BorderSide.none,
-            ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 0),
-          ),
-        ),
-      ),
-      Expanded(
-        child: _loadingList
-            ? const Center(child: PremiumLoading())
-            : _families.isEmpty
-            ? EmptyState(
-          icon: Icons.group,
-          title: 'No families found',
-          actionLabel: 'Create one',
-          onAction: () => context.pushNamed(AppRoutes.familyCreate),
-        )
-            : RefreshIndicator(
-          onRefresh: _loadFamilies,
-          child: ListView.builder(
-            padding: const EdgeInsets.only(bottom: 16),
-            itemCount: _families.length,
-            itemBuilder: (_, i) => _familyCard(_families[i]),
-          ),
-        ),
-      ),
-    ]);
-  }
-
   Widget _buildGlobalChampionBanner() {
     final top1 = _ranking.first;
     return Container(
-      margin: const EdgeInsets.fromLTRB(12, 12, 12, 0),
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 0),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(colors: [Color(0xFF210A49), Color(0xFF3F1682)]),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.amber.withValues(alpha:0.3)),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF2A1E5C), Color(0xFF1A1240)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.3), width: 1.5),
+        boxShadow: [
+          BoxShadow(color: Colors.amber.withValues(alpha: 0.1), blurRadius: 20, spreadRadius: 2),
+        ],
       ),
       child: Row(
         children: [
           Container(
-            width: 50, height: 50,
-            decoration: BoxDecoration(shape: BoxShape.circle, border: Border.all(color: Colors.amber, width: 2)),
-            child: ClipOval(child: top1.image != null ? CachedNetworkImage(imageUrl: top1.image!, fit: BoxFit.cover, errorWidget: (_, __, ___) => const Icon(Icons.group, color: Colors.white)) : const Icon(Icons.group, color: Colors.white)),
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(color: Colors.amber, width: 2),
+              boxShadow: [BoxShadow(color: Colors.amber.withValues(alpha: 0.4), blurRadius: 12, spreadRadius: 2)],
+            ),
+            child: ClipOval(
+              child: top1.image != null && top1.image!.isNotEmpty
+                  ? CachedNetworkImage(imageUrl: top1.image!, fit: BoxFit.cover)
+                  : const Icon(Icons.group, color: Colors.white),
+            ),
           ),
-          const SizedBox(width: 12),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Row(
+                Row(
                   children: [
-                    Icon(Icons.emoji_events, color: Colors.amber, size: 12),
-                    SizedBox(width: 4),
-                    Text('WEEKLY CHAMPION', style: TextStyle(color: Colors.amber, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
+                    const Icon(Icons.emoji_events, color: Colors.amber, size: 14),
+                    const SizedBox(width: 4),
+                    const Text('WEEKLY CHAMPION', style: TextStyle(color: Colors.amber, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1)),
                   ],
                 ),
+                const SizedBox(height: 4),
                 Text(top1.name ?? 'Family', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                const SizedBox(height: 2),
+                Text('${formatCount(top1.totalCoin)} diamonds · ${top1.memberCount} members',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12)),
               ],
             ),
           ),
@@ -362,83 +454,131 @@ class _FamilyScreenState extends State<FamilyScreen>
   }
 
   Widget _familyCard(FamilyItem item) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: AppTheme.cardShadow,
-      ),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(16),
-        onTap: () => _openDetail(item),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
-          child: Row(children: [
-            Container(
-              width: 56,
-              height: 56,
-              decoration: const BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: AppTheme.purpleGradient,
-              ),
-              child: ClipOval(
-                child: item.image != null && item.image!.isNotEmpty
-                    ? CachedNetworkImage(imageUrl: item.image!, fit: BoxFit.cover, errorWidget: (_, __, ___) => const Icon(Icons.group, color: Colors.white))
-                    : const Icon(Icons.group, color: Colors.white),
-              ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Row(children: [
-                  Flexible(
-                    child: Text(item.name ?? 'Family',
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                        maxLines: 1, overflow: TextOverflow.ellipsis),
+    return Hero(
+      tag: 'family-${item.id}',
+      child: Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [const Color(0xFF1E1B32), const Color(0xFF121026)],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          boxShadow: [
+            BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 6)),
+          ],
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(20),
+          onTap: () => _openDetail(item),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(
+              children: [
+                Container(
+                  width: 60,
+                  height: 60,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: AppTheme.purpleGradient,
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.15), width: 2),
+                    boxShadow: [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.3), blurRadius: 10)],
                   ),
-                  const SizedBox(width: 6),
-                  PremiumBadge(text: 'Lv ${item.level}', gradient: AppTheme.goldGradient),
-                ]),
-                const SizedBox(height: 4),
-                Row(children: [
-                  const Icon(Icons.people, size: 14, color: AppTheme.textSecondary),
-                  const SizedBox(width: 4),
-                  Text('${item.memberCount}',
-                      style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                  const SizedBox(width: 10),
-                  const Icon(Icons.diamond, size: 14, color: AppTheme.yellow),
-                  const SizedBox(width: 4),
-                  Text('${item.totalCoin}', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12)),
-                ]),
-                if (item.description != null && item.description!.isNotEmpty) ...[
-                  const SizedBox(height: 4),
-                  Text(item.description!,
-                      maxLines: 1, overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(color: AppTheme.textTertiary, fontSize: 11)),
-                ],
-              ]),
+                  child: ClipOval(
+                    child: item.image != null && item.image!.isNotEmpty
+                        ? CachedNetworkImage(imageUrl: item.image!, fit: BoxFit.cover,
+                            errorWidget: (_, __, ___) => const Icon(Icons.group, color: Colors.white))
+                        : const Icon(Icons.group, color: Colors.white),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Flexible(
+                            child: Text(item.name ?? 'Family',
+                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Colors.white),
+                                maxLines: 1, overflow: TextOverflow.ellipsis),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              gradient: AppTheme.goldGradient,
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text('Lv ${item.level}',
+                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.people, size: 14, color: Colors.white70),
+                          const SizedBox(width: 4),
+                          Text('${item.memberCount} members',
+                              style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                          const SizedBox(width: 12),
+                          const Icon(Icons.diamond, size: 14, color: Colors.amber),
+                          const SizedBox(width: 4),
+                          Text('${formatCount(item.totalCoin)}',
+                              style: const TextStyle(color: Colors.amber, fontSize: 12, fontWeight: FontWeight.w600)),
+                        ],
+                      ),
+                      if (item.description != null && item.description!.isNotEmpty) ...[
+                        const SizedBox(height: 6),
+                        Text(item.description!,
+                            maxLines: 1, overflow: TextOverflow.ellipsis,
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11)),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                item.isMember
+                    ? OutlinedButton(
+                        onPressed: () => _openDetail(item),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.amber,
+                          side: const BorderSide(color: Colors.amber),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        ),
+                        child: const Text('View', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      )
+                    : Container(
+                        decoration: BoxDecoration(
+                          gradient: AppTheme.primaryGradient,
+                          borderRadius: BorderRadius.circular(18),
+                          boxShadow: [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.4), blurRadius: 10)],
+                        ),
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(18),
+                            onTap: () => _joinFamily(item),
+                            child: const Padding(
+                              padding: EdgeInsets.symmetric(horizontal: 18, vertical: 10),
+                              child: Text('Join', style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold)),
+                            ),
+                          ),
+                        ),
+                      ),
+              ],
             ),
-            const SizedBox(width: 8),
-            item.isMember
-                ? OutlinedButton(
-              onPressed: () => _openDetail(item),
-              child: const Text('View'),
-            )
-                : GradientButton(
-              label: 'Join',
-              onPressed: () => _joinFamily(item),
-              width: 80,
-              height: 36,
-              borderRadius: 18,
-            ),
-          ]),
+          ),
         ),
       ),
     );
   }
 
-  // ---- Ranking tab --------------------------------------------------------
+  // ---- Ranking tab ---------------------------------------------------------
   Widget _rankingTab() {
     if (_loadingRank) {
       return const Center(child: PremiumLoading());
@@ -450,14 +590,32 @@ class _FamilyScreenState extends State<FamilyScreen>
     final rest = _ranking.length > 3 ? _ranking.sublist(3) : <FamilyRankItem>[];
     return RefreshIndicator(
       onRefresh: _loadRanking,
-      child: ListView(
-        padding: const EdgeInsets.all(12),
-        children: [
-          _rewardBanner(),
-          const SizedBox(height: 16),
-          if (top3.isNotEmpty) _podium(top3),
-          const SizedBox(height: 16),
-          ...List.generate(rest.length, (i) => _rankCard(rest[i], rank: i + 4)),
+      color: Colors.amber,
+      backgroundColor: const Color(0xFF1A1240),
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: _rewardBanner(),
+            ),
+          ),
+          if (top3.isNotEmpty)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: _podium(top3),
+              ),
+            ),
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+            sliver: SliverList(
+              delegate: SliverChildBuilderDelegate(
+                (context, i) => _rankCard(rest[i], rank: i + 4),
+                childCount: rest.length,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -465,23 +623,33 @@ class _FamilyScreenState extends State<FamilyScreen>
 
   Widget _rewardBanner() {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
       decoration: BoxDecoration(
-        gradient: AppTheme.darkGradient,
-        borderRadius: BorderRadius.circular(14),
-      ),
-      child: const Row(children: [
-        Expanded(
-          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text('Family Ranking Reward',
-                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-            SizedBox(height: 4),
-            Text('Exquisite gifts are waiting for you!',
-                style: TextStyle(color: Colors.white70, fontSize: 12)),
-          ]),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF2A1E5C), Color(0xFF1A1240)],
         ),
-        Text('🏆', style: TextStyle(fontSize: 28)),
-      ]),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.2)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Family Ranking Reward',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15)),
+                const SizedBox(height: 4),
+                Text('Exquisite gifts are waiting for you!',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12)),
+              ],
+            ),
+          ),
+          const Text('🏆', style: TextStyle(fontSize: 32)),
+        ],
+      ),
     );
   }
 
@@ -490,13 +658,26 @@ class _FamilyScreenState extends State<FamilyScreen>
     final first = at(0);
     final second = at(1);
     final third = at(2);
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.end,
-      children: [
-        if (second != null) Expanded(child: _podiumItem(second, 2, 120)) else const Spacer(),
-        if (first != null) Expanded(child: _podiumItem(first, 1, 150)) else const Spacer(),
-        if (third != null) Expanded(child: _podiumItem(third, 3, 110)) else const Spacer(),
-      ],
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [Color(0xFF1A1240), Color(0xFF0F0B22)],
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          if (second != null) Expanded(child: _podiumItem(second, 2, 120)) else const Spacer(),
+          if (first != null) Expanded(child: _podiumItem(first, 1, 150)) else const Spacer(),
+          if (third != null) Expanded(child: _podiumItem(third, 3, 110)) else const Spacer(),
+        ],
+      ),
     );
   }
 
@@ -506,107 +687,177 @@ class _FamilyScreenState extends State<FamilyScreen>
       2 => const LinearGradient(colors: [Color(0xFF90A4AE), Color(0xFF546E7A)]),
       _ => const LinearGradient(colors: [Color(0xFFD7A26E), Color(0xFF8D5524)]),
     };
+    final placeColor = switch (place) {
+      1 => Colors.amber,
+      2 => const Color(0xFFCFD8DC),
+      _ => const Color(0xFFD7A26E),
+    };
     return GestureDetector(
       onTap: () => _openRankDetail(item),
-      child: Column(children: [
-        PremiumBadge(text: 'TOP$place', gradient: gradient, icon: Icons.emoji_events),
-        const SizedBox(height: 8),
-        Container(
-          width: 64,
-          height: 64,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            gradient: gradient,
-            boxShadow: place == 1
-                ? [BoxShadow(color: AppTheme.yellow.withValues(alpha: 0.5), blurRadius: 12, spreadRadius: 2)]
-                : null,
+      child: Column(
+        children: [
+          Stack(
+            alignment: Alignment.topCenter,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: gradient,
+                  boxShadow: place == 1
+                      ? [BoxShadow(color: Colors.amber.withValues(alpha: 0.5), blurRadius: 16, spreadRadius: 3)]
+                      : null,
+                ),
+                child: CircleAvatar(
+                  radius: place == 1 ? 34 : 28,
+                  backgroundColor: const Color(0xFF1A1240),
+                  backgroundImage: item.image != null && item.image!.isNotEmpty
+                      ? CachedNetworkImageProvider(item.image!)
+                      : null,
+                  child: item.image == null || item.image!.isEmpty
+                      ? const Icon(Icons.group, color: Colors.white)
+                      : null,
+                ),
+              ),
+              Positioned(
+                top: 0,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: placeColor,
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text('TOP$place',
+                      style: const TextStyle(color: Color(0xFF0A0A18), fontSize: 9, fontWeight: FontWeight.bold)),
+                ),
+              ),
+            ],
           ),
-          padding: const EdgeInsets.all(2.5),
-          child: ClipOval(
-            child: item.image != null && item.image!.isNotEmpty
-                ? CachedNetworkImage(imageUrl: item.image!, fit: BoxFit.cover, errorWidget: (_, __, ___) => Container(color: AppTheme.surfaceLight, child: const Icon(Icons.group, color: AppTheme.primary)))
-                : Container(color: AppTheme.surfaceLight, child: const Icon(Icons.group, color: AppTheme.primary)),
+          const SizedBox(height: 8),
+          Text(item.name ?? 'Family',
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12),
+              maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.diamond, size: 11, color: Colors.amber),
+              const SizedBox(width: 2),
+              Text(formatCount(item.totalCoin),
+                  style: const TextStyle(color: Colors.amber, fontSize: 11, fontWeight: FontWeight.w600)),
+            ],
           ),
-        ),
-        const SizedBox(height: 8),
-        Text(item.name ?? 'Family',
-            style: const TextStyle(color: AppTheme.textPrimary, fontWeight: FontWeight.w600, fontSize: 12),
-            maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
-        const SizedBox(height: 4),
-        Row(mainAxisSize: MainAxisSize.min, children: [
-          const Text('🔥', style: TextStyle(fontSize: 11)),
-          const SizedBox(width: 2),
-          Text(formatCount(item.totalCoin),
-              style: const TextStyle(color: Colors.orangeAccent, fontSize: 11, fontWeight: FontWeight.w600)),
-        ]),
-        const SizedBox(height: 8),
-        ClipPath(
-          clipper: _ShieldClipper(),
-          child: Container(height: height * 0.35, decoration: BoxDecoration(gradient: gradient)),
-        ),
-      ]),
+          const SizedBox(height: 10),
+          ClipPath(
+            clipper: _ShieldClipper(),
+            child: Container(
+              height: height * 0.35,
+              width: 64,
+              decoration: BoxDecoration(gradient: gradient),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _rankCard(FamilyRankItem item, {required int rank}) {
+    final rankColor = rank == 4
+        ? const Color(0xFFD7A26E)
+        : rank == 5
+            ? const Color(0xFF90A4AE)
+            : Colors.white70;
     return Container(
-      margin: const EdgeInsets.only(bottom: 8),
+      margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.circular(14),
-        boxShadow: AppTheme.cardShadow,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [const Color(0xFF1E1B32), const Color(0xFF121026)],
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: InkWell(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(16),
         onTap: () => _openRankDetail(item),
         child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          child: Row(children: [
-            SizedBox(
-              width: 32,
-              child: Text('$rank',
-                  style: const TextStyle(color: AppTheme.textSecondary, fontWeight: FontWeight.w700),
-                  textAlign: TextAlign.center),
-            ),
-            const SizedBox(width: 10),
-            Container(
-              width: 44,
-              height: 44,
-              decoration: const BoxDecoration(shape: BoxShape.circle, gradient: AppTheme.purpleGradient),
-              child: ClipOval(
-                child: item.image != null && item.image!.isNotEmpty
-                    ? CachedNetworkImage(imageUrl: item.image!, fit: BoxFit.cover, errorWidget: (_, __, ___) => const Icon(Icons.group, color: Colors.white, size: 20))
-                    : const Icon(Icons.group, color: Colors.white, size: 20),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                alignment: Alignment.center,
+                child: Text('$rank',
+                    style: TextStyle(color: rankColor, fontWeight: FontWeight.w800, fontSize: 16)),
               ),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(item.name ?? 'Family',
-                    style: const TextStyle(fontWeight: FontWeight.w600),
-                    maxLines: 1, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 2),
-                Row(children: [
-                  const Icon(Icons.people, size: 12, color: AppTheme.textSecondary),
-                  const SizedBox(width: 3),
-                  Text('${item.memberCount}', style: const TextStyle(color: AppTheme.textSecondary, fontSize: 11)),
-                  const SizedBox(width: 8),
-                  PremiumBadge(text: 'Lv ${item.level}', gradient: AppTheme.goldGradient),
-                ]),
-              ]),
-            ),
-            Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-              Text(formatCount(item.totalCoin),
-                  style: const TextStyle(fontWeight: FontWeight.w700, color: AppTheme.primary)),
-              const Text('diamonds', style: TextStyle(color: AppTheme.textTertiary, fontSize: 10)),
-            ]),
-          ]),
+              const SizedBox(width: 12),
+              Container(
+                width: 46,
+                height: 46,
+                decoration: const BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: AppTheme.purpleGradient,
+                ),
+                child: ClipOval(
+                  child: item.image != null && item.image!.isNotEmpty
+                      ? CachedNetworkImage(imageUrl: item.image!, fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => const Icon(Icons.group, color: Colors.white, size: 20))
+                      : const Icon(Icons.group, color: Colors.white, size: 20),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(item.name ?? 'Family',
+                        style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white, fontSize: 14),
+                        maxLines: 1, overflow: TextOverflow.ellipsis),
+                    const SizedBox(height: 4),
+                    Row(
+                      children: [
+                        const Icon(Icons.people, size: 12, color: Colors.white60),
+                        const SizedBox(width: 4),
+                        Text('${item.memberCount}', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                        const SizedBox(width: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
+                          decoration: BoxDecoration(
+                            gradient: AppTheme.goldGradient,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text('Lv ${item.level}',
+                              style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold)),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.diamond, size: 12, color: Colors.amber),
+                      const SizedBox(width: 3),
+                      Text(formatCount(item.totalCoin),
+                          style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.amber, fontSize: 13)),
+                    ],
+                  ),
+                  Text('diamonds', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10)),
+                ],
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  // ---- My family tab ------------------------------------------------------
+  // ---- My family tab -------------------------------------------------------
   Widget _myFamilyTab() {
     if (_loadingMine) return const Center(child: PremiumLoading());
     if (_myFamily == null) {
@@ -619,182 +870,296 @@ class _FamilyScreenState extends State<FamilyScreen>
       );
     }
     final f = _myFamily!;
-    return ListView(
-      padding: const EdgeInsets.all(16),
-      children: [
-        // Cover header
-        Container(
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(20),
-            gradient: AppTheme.darkGradient,
-            boxShadow: AppTheme.cardShadow,
-          ),
-          child: Stack(children: [
-            if (f.coverImage != null && f.coverImage!.isNotEmpty)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(20),
-                child: CachedNetworkImage(
-                  imageUrl: f.coverImage!,
-                  height: 160,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  errorWidget: (_, __, ___) => const SizedBox(height: 160),
-                ),
-              )
-            else
-              const SizedBox(height: 160),
-            Container(
-              height: 160,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(20),
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
-                ),
+    return RefreshIndicator(
+      onRefresh: _loadMyFamily,
+      color: Colors.amber,
+      backgroundColor: const Color(0xFF1A1240),
+      child: CustomScrollView(
+        slivers: [
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  // Cover header
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      gradient: const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFF2A1E5C), Color(0xFF1A1240)],
+                      ),
+                      boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.4), blurRadius: 20, offset: const Offset(0, 10))],
+                    ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: Stack(
+                        children: [
+                          if (f.coverImage != null && f.coverImage!.isNotEmpty)
+                            CachedNetworkImage(
+                              imageUrl: f.coverImage!,
+                              height: 180,
+                              width: double.infinity,
+                              fit: BoxFit.cover,
+                              errorWidget: (_, __, ___) => const SizedBox(height: 180),
+                            )
+                          else
+                            Container(
+                              height: 180,
+                              decoration: const BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [Color(0xFF7B61FF), Color(0xFF2A1E5C)],
+                                ),
+                              ),
+                            ),
+                          Container(
+                            height: 180,
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                begin: Alignment.topCenter,
+                                end: Alignment.bottomCenter,
+                                colors: [Colors.transparent, const Color(0xFF0A0A18).withValues(alpha: 0.95)],
+                              ),
+                            ),
+                          ),
+                          Positioned(
+                            left: 18, bottom: 18, right: 18,
+                            child: Row(
+                              children: [
+                                Container(
+                                  width: 64, height: 64,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    gradient: AppTheme.purpleGradient,
+                                    border: Border.all(color: Colors.white, width: 2.5),
+                                    boxShadow: [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.4), blurRadius: 12)],
+                                  ),
+                                  child: ClipOval(
+                                    child: f.image != null && f.image!.isNotEmpty
+                                        ? CachedNetworkImage(imageUrl: f.image!, fit: BoxFit.cover,
+                                            errorWidget: (_, __, ___) => const Icon(Icons.group, color: Colors.white))
+                                        : const Icon(Icons.group, color: Colors.white),
+                                  ),
+                                ),
+                                const SizedBox(width: 14),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(f.name ?? 'Family',
+                                          style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                                      const SizedBox(height: 6),
+                                      Row(
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                                            decoration: BoxDecoration(
+                                              gradient: AppTheme.goldGradient,
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Text('Lv ${f.level}',
+                                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Text('${f.memberCount} members',
+                                              style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  // Stats
+                  Row(
+                    children: [
+                      Expanded(child: _miniStat('Diamonds', formatCount(f.totalCoin), Icons.diamond, AppTheme.greenGradient)),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
+                  // Action buttons
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: AppTheme.primaryGradient,
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [BoxShadow(color: AppTheme.primary.withValues(alpha: 0.4), blurRadius: 12)],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () => _openDetail(f),
+                              child: const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 14),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.arrow_forward, color: Colors.white, size: 18),
+                                    SizedBox(width: 8),
+                                    Text('Open Family', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            final code = f.joinCode ?? '';
+                            final msg = code.isNotEmpty
+                                ? 'Join my family ${f.name ?? ''} on Belive! Code: $code'
+                                : 'Join my family ${f.name ?? ''} on Belive!';
+                            Share.share(msg);
+                          },
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.white,
+                            side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          icon: const Icon(Icons.share, size: 18),
+                          label: const Text('Share'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () => _confirmLeave(f),
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: Colors.redAccent,
+                            side: const BorderSide(color: Colors.redAccent),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                          ),
+                          icon: const Icon(Icons.logout, size: 18, color: Colors.redAccent),
+                          label: const Text('Leave', style: TextStyle(color: Colors.redAccent)),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  if (f.members.isNotEmpty) ...[
+                    const Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text('Members', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                    ),
+                    const SizedBox(height: 12),
+                    ...f.members.take(5).map((m) => _memberRow(m)),
+                    if (f.members.length > 5)
+                      TextButton(
+                        onPressed: () => _openDetail(f),
+                        child: Text('View all ${f.members.length} members', style: const TextStyle(color: Colors.amber)),
+                      ),
+                  ],
+                ],
               ),
             ),
-            Positioned(
-              left: 16, bottom: 12,
-              child: Row(children: [
-                Container(
-                  width: 56, height: 56,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: AppTheme.purpleGradient,
-                    border: Border.all(color: Colors.white, width: 2),
-                  ),
-                  child: ClipOval(
-                    child: f.image != null && f.image!.isNotEmpty
-                        ? CachedNetworkImage(imageUrl: f.image!, fit: BoxFit.cover, errorWidget: (_, __, ___) => const Icon(Icons.group, color: Colors.white))
-                        : const Icon(Icons.group, color: Colors.white),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(f.name ?? 'Family',
-                      style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 4),
-                  Row(children: [
-                    PremiumBadge(text: 'Lv ${f.level}', gradient: AppTheme.goldGradient),
-                    const SizedBox(width: 8),
-                    Text('${f.memberCount} members',
-                        style: const TextStyle(color: Colors.white70, fontSize: 12)),
-                  ]),
-                ]),
-              ]),
-            ),
-          ]),
-        ),
-        const SizedBox(height: 16),
-        // Stats
-        Row(children: [
-          Expanded(child: _miniStat('Diamonds', formatCount(f.totalCoin), Icons.diamond, AppTheme.greenGradient)),
-        ]),
-        const SizedBox(height: 16),
-        // Welcome message
-        if (f.welcomeMessage != null && f.welcomeMessage!.isNotEmpty) ...[
-          const SectionHeader(title: 'Welcome'),
-          const SizedBox(height: 8),
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: AppTheme.surfaceLight,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(color: AppTheme.primary.withValues(alpha: 0.2)),
-            ),
-            child: Text(f.welcomeMessage!, style: const TextStyle(color: AppTheme.textPrimary, fontSize: 13)),
           ),
-          const SizedBox(height: 16),
         ],
-        // Action buttons
-        GradientButton(
-          label: 'Open Family',
-          icon: Icons.arrow_forward,
-          onPressed: () => _openDetail(f),
-        ),
-        const SizedBox(height: 10),
-        Row(children: [
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () {
-                final code = f.joinCode ?? '';
-                final msg = code.isNotEmpty
-                    ? 'Join my family ${f.name ?? ''} on Belive! Code: $code'
-                    : 'Join my family ${f.name ?? ''} on Belive!';
-                Share.share(msg);
-              },
-              icon: const Icon(Icons.share),
-              label: const Text('Share'),
-            ),
-          ),
-          const SizedBox(width: 10),
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () => _confirmLeave(f),
-              icon: const Icon(Icons.logout, color: Colors.red),
-              label: const Text('Leave', style: TextStyle(color: Colors.red)),
-            ),
-          ),
-        ]),
-        const SizedBox(height: 16),
-        // Members preview
-        if (f.members.isNotEmpty) ...[
-          const SectionHeader(title: 'Members'),
-          const SizedBox(height: 8),
-          ...f.members.take(5).map((m) => _memberRow(m)),
-          if (f.members.length > 5)
-            TextButton(
-              onPressed: () => _openDetail(f),
-              child: Text('View all ${f.members.length} members'),
-            ),
-        ],
-      ],
+      ),
     );
   }
 
   Widget _miniStat(String label, String value, IconData icon, Gradient g) {
     return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(gradient: g, borderRadius: BorderRadius.circular(14)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(icon, color: Colors.white, size: 20),
-        const SizedBox(height: 6),
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-        Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 11)),
-      ]),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: g,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.2), blurRadius: 10)],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: Colors.white, size: 22),
+          const SizedBox(height: 8),
+          Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.85), fontSize: 11)),
+        ],
+      ),
     );
   }
 
   Widget _memberRow(FamilyMember m) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 6),
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceLight,
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white.withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
-      child: Row(children: [
-        ClipOval(
-          child: SizedBox(
-            width: 36,
-            height: 36,
-            child: m.image != null && m.image!.isNotEmpty
-                ? CachedNetworkImage(imageUrl: m.image!, fit: BoxFit.cover, errorWidget: (_, __, ___) => Container(color: AppTheme.surface, child: const Icon(Icons.person, color: Colors.white54, size: 18)))
-                : Container(color: AppTheme.surface, child: const Icon(Icons.person, color: Colors.white54, size: 18)),
+      child: Row(
+        children: [
+          ClipOval(
+            child: SizedBox(
+              width: 40,
+              height: 40,
+              child: m.image != null && m.image!.isNotEmpty
+                  ? CachedNetworkImage(imageUrl: m.image!, fit: BoxFit.cover,
+                      errorWidget: (_, __, ___) => Container(color: const Color(0xFF1E1B32), child: const Icon(Icons.person, color: Colors.white54, size: 20)))
+                  : Container(color: const Color(0xFF1E1B32), child: const Icon(Icons.person, color: Colors.white54, size: 20)),
+            ),
           ),
-        ),
-        const SizedBox(width: 10),
-        Expanded(
-          child: Text(m.name ?? '—', style: const TextStyle(fontWeight: FontWeight.w500)),
-        ),
-        if (m.role == 'leader')
-          const PremiumBadge(text: 'Leader', gradient: AppTheme.goldGradient, icon: Icons.star)
-        else if (m.role == 'co-leader')
-          const PremiumBadge(text: 'Co-Leader', gradient: AppTheme.purpleGradient, icon: Icons.shield)
-        else
-          const Text('Member', style: TextStyle(color: AppTheme.textTertiary, fontSize: 12)),
-      ]),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Text(m.name ?? '—', style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.white)),
+          ),
+          if (m.role == 'leader')
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                gradient: AppTheme.goldGradient,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.star, color: Colors.white, size: 10),
+                  SizedBox(width: 3),
+                  Text('Leader', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            )
+          else if (m.role == 'co-leader')
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                gradient: AppTheme.purpleGradient,
+                borderRadius: BorderRadius.circular(6),
+              ),
+              child: const Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(Icons.shield, color: Colors.white, size: 10),
+                  SizedBox(width: 3),
+                  Text('Co-Leader', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                ],
+              ),
+            )
+          else
+            const Text('Member', style: TextStyle(color: Colors.white60, fontSize: 12)),
+        ],
+      ),
     );
   }
 }
