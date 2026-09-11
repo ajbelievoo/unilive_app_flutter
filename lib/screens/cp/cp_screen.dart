@@ -8,6 +8,9 @@
 ///   Requests, Ranking, Invite (with discover filters)
 library cp_screen;
 
+import 'dart:math';
+import 'dart:ui';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -40,11 +43,13 @@ class CPScreen extends StatefulWidget {
   State<CPScreen> createState() => _CPScreenState();
 }
 
-class _CPScreenState extends State<CPScreen> {
+class _CPScreenState extends State<CPScreen>
+    with SingleTickerProviderStateMixin {
   late bool _isFriendMode;
   late int _selectedTab;
   int _selectedLevel = 1;
   late final PageController _pageController;
+  late final AnimationController _glowController;
 
   @override
   void initState() {
@@ -52,11 +57,16 @@ class _CPScreenState extends State<CPScreen> {
     _isFriendMode = widget.initialIsFriendMode;
     _selectedTab = widget.initialTab;
     _pageController = PageController(initialPage: _selectedTab);
+    _glowController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 6),
+    )..repeat(reverse: true);
     _loadAll();
   }
 
   @override
   void dispose() {
+    _glowController.dispose();
     _pageController.dispose();
     super.dispose();
   }
@@ -131,46 +141,161 @@ class _CPScreenState extends State<CPScreen> {
     final cp = context.watch<CpProvider>();
     final friend = context.watch<FriendProvider>();
 
+    final accentColor = _isFriendMode ? AppTheme.friendAccent : AppTheme.cpAccent;
+
     return Scaffold(
       backgroundColor: AppTheme.cpDarkBg,
-      body: Container(
-        decoration: BoxDecoration(gradient: headerGradient),
-        child: SafeArea(
-          bottom: false,
-          child: Column(
-            children: [
-              _buildTopBar(),
-              _isFriendMode ? _friendStatus(friend) : _cpStatus(cp),
-              const SizedBox(height: 8),
-              _buildTabs(),
-              Expanded(
-                child: Container(
-                  decoration: const BoxDecoration(
-                    color: AppTheme.cpDarkBg,
-                    borderRadius: BorderRadius.vertical(
-                      top: Radius.circular(28),
+      body: Stack(
+        children: [
+          // Base animated-style gradient
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(gradient: headerGradient),
+            ),
+          ),
+          // Radial glow behind the hero card
+          Positioned(
+            top: -60,
+            left: -80,
+            right: -80,
+            height: 360,
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: RadialGradient(
+                  center: Alignment.topCenter,
+                  radius: 0.8,
+                  colors: [
+                    accentColor.withValues(alpha: 0.55),
+                    accentColor.withValues(alpha: 0.18),
+                    Colors.transparent,
+                  ],
+                  stops: const [0.0, 0.4, 1.0],
+                ),
+              ),
+            ),
+          ),
+          // Bottom vignette
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Colors.transparent,
+                    AppTheme.cpDarkBg.withValues(alpha: 0.4),
+                    AppTheme.cpDarkBg.withValues(alpha: 0.9),
+                  ],
+                  stops: const [0.0, 0.6, 1.0],
+                ),
+              ),
+            ),
+          ),
+          // Twinkling star field
+          Positioned.fill(
+            child: IgnorePointer(
+              child: AnimatedBuilder(
+                animation: _glowController,
+                builder: (context, child) {
+                  return CustomPaint(
+                    painter: _StarFieldPainter(
+                      animation: _glowController.value,
+                      accentColor: accentColor,
                     ),
-                  ),
-                  child: ClipRRect(
-                    borderRadius: const BorderRadius.vertical(
-                      top: Radius.circular(28),
+                    size: Size.infinite,
+                  );
+                },
+              ),
+            ),
+          ),
+          // Floating blurred orbs
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 120,
+            right: -40,
+            child: Container(
+              width: 160,
+              height: 160,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: accentColor.withValues(alpha: 0.22),
+              ),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 30, sigmaY: 30),
+                child: const SizedBox.expand(),
+              ),
+            ),
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 260,
+            left: -50,
+            child: Container(
+              width: 140,
+              height: 140,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: (_isFriendMode ? AppTheme.friendAccentLight : AppTheme.cpAccentLight).withValues(alpha: 0.18),
+              ),
+              child: BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 28, sigmaY: 28),
+                child: const SizedBox.expand(),
+              ),
+            ),
+          ),
+          // Content
+          SafeArea(
+            bottom: false,
+            child: Column(
+              children: [
+                _buildTopBar(),
+                _isFriendMode ? _friendStatus(friend) : _cpStatus(cp),
+                const SizedBox(height: 6),
+                _buildTabs(),
+                Expanded(
+                  child: Container(
+                    margin: const EdgeInsets.only(top: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.18),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(32),
+                      ),
+                      border: Border(
+                        top: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.12),
+                          width: 1,
+                        ),
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.35),
+                          blurRadius: 30,
+                          offset: const Offset(0, -6),
+                        ),
+                      ],
                     ),
-                    child: PageView.builder(
-                      key: ValueKey('pageview_$_isFriendMode'),
-                      controller: _pageController,
-                      itemCount: _tabNames.length,
-                      onPageChanged: (i) {
-                        if (_selectedTab != i) setState(() => _selectedTab = i);
-                      },
-                      itemBuilder:
-                          (context, index) => _buildPage(_tabNames[index]),
+                    child: ClipRRect(
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(32),
+                      ),
+                      child: BackdropFilter(
+                        filter: ImageFilter.blur(sigmaX: 24, sigmaY: 24),
+                        child: PageView.builder(
+                          key: ValueKey('pageview_$_isFriendMode'),
+                          controller: _pageController,
+                          itemCount: _tabNames.length,
+                          onPageChanged: (i) {
+                            if (_selectedTab != i) setState(() => _selectedTab = i);
+                          },
+                          itemBuilder:
+                              (context, index) => _buildPage(_tabNames[index]),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -721,7 +846,7 @@ class _PrivilegesContent extends StatelessWidget {
 
     dynamic selectedLevelData;
     if (hasApiLevels) {
-      selectedLevelData = levels.firstWhere(
+      selectedLevelData = levels.cast<dynamic>().firstWhere(
         (dynamic l) => (l as dynamic).level == selectedLevel,
         orElse: () => levels.first,
       );
@@ -2434,4 +2559,63 @@ class _InviteCard extends StatelessWidget {
       ),
     );
   }
+}
+
+// ===========================================================================
+// Twinkling star-field background for CP/Friend hub
+// ===========================================================================
+class _StarFieldPainter extends CustomPainter {
+  _StarFieldPainter({required this.animation, required this.accentColor});
+
+  final double animation;
+  final Color accentColor;
+
+  static List<_Star>? _stars;
+  static Size? _lastSize;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (_stars == null || _lastSize != size) {
+      _lastSize = size;
+      final random = Random(42);
+      final count = ((size.width * size.height) / 4500).clamp(30, 90).toInt();
+      _stars = List<_Star>.generate(
+        count,
+        (i) => _Star(
+          x: random.nextDouble() * size.width,
+          y: random.nextDouble() * size.height,
+          radius: random.nextDouble() * 1.4 + 0.4,
+          phase: random.nextDouble() * pi * 2,
+          speed: random.nextDouble() * 2 + 1,
+        ),
+      );
+    }
+
+    final paint = Paint()..strokeCap = StrokeCap.round;
+    for (final star in _stars!) {
+      final twinkle = 0.4 + 0.6 * sin(animation * pi * 2 * star.speed + star.phase);
+      paint.color = accentColor.withValues(alpha: twinkle * 0.45);
+      paint.strokeWidth = star.radius;
+      canvas.drawCircle(Offset(star.x, star.y), star.radius, paint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant _StarFieldPainter oldDelegate) => true;
+}
+
+class _Star {
+  _Star({
+    required this.x,
+    required this.y,
+    required this.radius,
+    required this.phase,
+    required this.speed,
+  });
+
+  final double x;
+  final double y;
+  final double radius;
+  final double phase;
+  final double speed;
 }

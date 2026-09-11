@@ -93,7 +93,8 @@ class AppTheme {
   static const LinearGradient cpHeaderGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF6C309B), Color(0xFFE35384), Color(0xFF6900BC)],
+    colors: [Color(0xFF2A0A3A), Color(0xFF6C309B), Color(0xFFE35384), Color(0xFF4A0E6B), Color(0xFF0D0815)],
+    stops: [0.0, 0.25, 0.5, 0.8, 1.0],
   );
 
   /// Deep dark card gradient for CP bond cards (glassmorphism feel).
@@ -112,7 +113,8 @@ class AppTheme {
   static const LinearGradient friendHeaderGradient = LinearGradient(
     begin: Alignment.topLeft,
     end: Alignment.bottomRight,
-    colors: [Color(0xFF6C309B), Color(0xFF7B61FF), Color(0xFF4F8DFD)],
+    colors: [Color(0xFF1A103A), Color(0xFF6C309B), Color(0xFF7B61FF), Color(0xFF4F8DFD), Color(0xFF0D0815)],
+    stops: [0.0, 0.25, 0.45, 0.75, 1.0],
   );
 
   /// Deep dark card gradient for Friend bond cards.

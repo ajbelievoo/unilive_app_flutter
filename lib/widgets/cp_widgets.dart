@@ -3,6 +3,8 @@
 /// Keeps the couple avatar pair, bond progress bar, level badge and stat
 /// tiles in one place so the screens stay compact and consistent.
 library cp_widgets;
+import 'dart:ui';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
@@ -537,26 +539,32 @@ class GlassCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: margin,
-      padding: padding,
-      decoration: BoxDecoration(
-        color: backgroundColor ?? AppTheme.cpDarkCard.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(
-          color: borderColor ?? Colors.white.withValues(alpha: 0.08),
-          width: 1,
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(borderRadius),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+        child: Container(
+          margin: margin,
+          padding: padding,
+          decoration: BoxDecoration(
+            color: backgroundColor ?? AppTheme.cpDarkCard.withValues(alpha: 0.40),
+            borderRadius: BorderRadius.circular(borderRadius),
+            border: Border.all(
+              color: borderColor ?? Colors.white.withValues(alpha: 0.18),
+              width: 1,
+            ),
+            boxShadow: shadow ??
+                [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.25),
+                    blurRadius: 20,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+          ),
+          child: child,
         ),
-        boxShadow: shadow ??
-            [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: 0.25),
-                blurRadius: 20,
-                offset: const Offset(0, 8),
-              ),
-            ],
       ),
-      child: child,
     );
   }
 }
