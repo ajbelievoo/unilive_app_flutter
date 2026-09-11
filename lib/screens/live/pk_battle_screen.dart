@@ -789,6 +789,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
           senderImage,
           giftAmount,
         );
+        _host1Score += giftAmount;
       } else if (receiverId == h2Id) {
         _updateGifterMap(
           _host2Gifters,
@@ -797,6 +798,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
           senderImage,
           giftAmount,
         );
+        _host2Score += giftAmount;
       }
       setState(() {});
     } catch (e) {
@@ -848,7 +850,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
   /// Called when the countdown timer reaches 0.
   /// Host emits PK end/punishment event with final scores and winner.
   void _onTimerFinish() {
-    if (!widget.isHost1) return; // Only Host1 emits
+    if (!widget.isHost || !widget.isHost1) return; // Only Host1 emits
 
     final h1Id = _config.host1Id ?? '';
     final h2Id = _config.host2Id ?? '';
@@ -2161,6 +2163,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
               giftType = 0,
               required count,
               required totalCoins,
+              bool isLucky = false,
             }) {
               final giftEvent = GiftEvent(
                 giftId: giftId,

@@ -10,6 +10,7 @@ import '../utils/media_utils.dart';
 import '../utils/vip_privilege_helper.dart';
 import 'svga_player_widget.dart';
 import 'user_avatar.dart';
+import 'video_gift_thumbnail.dart';
 
 /// Immutable data model for a single audio room comment.
 class AudioRoomComment {
@@ -28,6 +29,9 @@ class AudioRoomComment {
     this.userImage,
     this.frameUrl,
     this.giftImage,
+    this.giftAnimationUrl,
+    this.giftType = 1,
+    this.giftName,
     this.giftReceiverName,
     this.giftReceiverImage,
     this.giftCoin,
@@ -75,6 +79,9 @@ class AudioRoomComment {
   final String? userImage;
   final String? frameUrl;
   final String? giftImage;
+  final String? giftAnimationUrl;
+  final int giftType;
+  final String? giftName;
   final String? giftReceiverName;
   final String? giftReceiverImage;
   final int? giftCoin;
@@ -335,17 +342,47 @@ class AudioRoomCommentBubble extends StatelessWidget {
                         const SizedBox(width: 7),
                       ],
                       if (c.giftImage?.isNotEmpty == true)
-                        _giftAsset(c.giftImage!, 52)
+                        _giftAsset(c.giftImage!, 52, giftType: 1)
+                      else if (c.giftAnimationUrl?.isNotEmpty == true)
+                        _giftAsset(
+                          c.giftAnimationUrl!,
+                          52,
+                          giftType: c.giftType,
+                        )
                       else
-                        const ImageIcon(const AssetImage("assets/gift/official_gift.png"), color: Color(0xFFFFD700), size: 45),
-                      const SizedBox(width: 8),
-                      Text(
-                        'x${c.giftCount ?? 1}',
-                        style: const TextStyle(
-                          color: Color(0xFFFFD740),
-                          fontSize: 18,
-                          fontWeight: FontWeight.w900,
+                        const ImageIcon(
+                          AssetImage("assets/gift/official_gift.png"),
+                          color: Color(0xFFFFD700),
+                          size: 45,
                         ),
+                      const SizedBox(width: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          if (c.giftName?.isNotEmpty == true)
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 90),
+                              child: Text(
+                                c.giftName!,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ),
+                          Text(
+                            'x${c.giftCount ?? 1}',
+                            style: const TextStyle(
+                              color: Color(0xFFFFD740),
+                              fontSize: 18,
+                              fontWeight: FontWeight.w900,
+                            ),
+                          ),
+                        ],
                       ),
                       if ((c.giftCoin ?? 0) > 0) ...[
                         const SizedBox(width: 7),
@@ -782,10 +819,21 @@ class AudioRoomCommentBubble extends StatelessWidget {
     );
   }
 
-  Widget _giftAsset(String rawUrl, double size) {
-    final isSvga = SvgaHelper.isSvgaUrl(rawUrl);
+  Widget _giftAsset(String rawUrl, double size, {int giftType = 1}) {
+    final isSvga = giftType == 2 || SvgaHelper.isSvgaUrl(rawUrl);
+    // Video assets (.mp4/.mov/.webm) cannot be decoded by CachedNetworkImage —
+    // they produced a broken/empty gift box in comments ("comment me gift ka
+    // box aata hai par konsa gift nahi dikhata"). Derive the backend's
+    // conventional `<name>_thumb.jpg` thumbnail for video assets; if it does
+    // not exist, the errorWidget below still shows the generic gift icon.
+    final lower = rawUrl.toLowerCase().split('?').first;
+    final isVideo =
+        giftType == 3 ||
+        lower.endsWith('.mp4') ||
+        lower.endsWith('.mov') ||
+        lower.endsWith('.webm');
     final url =
-        isSvga
+        isSvga || isVideo
             ? VideoUtil.getFullSvgaUrl(rawUrl)
             : VideoUtil.getFullImageUrl(rawUrl);
     if (url.isEmpty) {
@@ -795,7 +843,14 @@ class AudioRoomCommentBubble extends StatelessWidget {
       width: size,
       height: size,
       child:
-          isSvga
+          isVideo
+              ? VideoGiftThumbnail(
+                videoUrl: url,
+                width: size,
+                height: size,
+                forceVideo: true,
+              )
+              : isSvga
               ? SvgaPlayer(
                 url: url,
                 width: size,

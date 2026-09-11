@@ -675,7 +675,7 @@ class _DiscoveryTabState extends State<_DiscoveryTab>
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        formatCount(top.view),
+                        formatCount(top.view > 0 ? top.view : 1),
                         style: const TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.w600,
@@ -1271,26 +1271,50 @@ class _DiscoveryTabState extends State<_DiscoveryTab>
         }
         context.pushNamed(AppRoutes.fakeWatchLive, extra: {'host': fakeHost});
       } else {
+        final resolvedHostId =
+            room.liveUserId ??
+            selectedUser.liveUserId ??
+            room.channel ??
+            selectedUser.channel ??
+            selectedUser.id;
+        final resolvedLiveId =
+            room.liveStreamingId ??
+            selectedUser.liveStreamingId ??
+            liveStreamingId;
+        final resolvedChannel =
+            (room.channel?.isNotEmpty == true
+                ? room.channel
+                : selectedUser.channel) ??
+            resolvedHostId;
+        if (resolvedHostId?.isNotEmpty != true ||
+            resolvedLiveId.isEmpty ||
+            resolvedChannel?.isNotEmpty != true) {
+          Fluttertoast.showToast(msg: 'Live ended or unavailable');
+          _loadUsers(silent: true);
+          return;
+        }
         final liveStreamUser = live_stream.LiveUser(
-          id: room.liveStreamingId ?? room.id,
-          userId: room.liveUserId,
-          name: room.name,
-          image: room.image,
-          userImage: room.image,
-          roomName: room.roomName,
-          roomImage: room.roomImage,
-          roomWelcome: room.roomWelcome,
-          channel: room.channel,
-          agoraUID: room.agoraUID,
-          token: room.token,
-          livekitToken: room.livekitToken,
-          livekitUrl: room.livekitUrl,
-          service: room.service,
+          id: resolvedLiveId,
+          liveStreamingId: resolvedLiveId,
+          userId: resolvedHostId,
+          name: room.name ?? selectedUser.name,
+          image: room.image ?? selectedUser.image,
+          userImage: room.image ?? selectedUser.image,
+          roomName: room.roomName ?? selectedUser.roomName,
+          roomImage: room.roomImage ?? selectedUser.roomImage,
+          roomWelcome: room.roomWelcome ?? selectedUser.roomWelcome,
+          channel: resolvedChannel,
+          agoraUID:
+              room.agoraUID != 0 ? room.agoraUID : selectedUser.agoraUID,
+          token: room.token ?? selectedUser.token,
+          livekitToken: room.livekitToken ?? selectedUser.livekitToken,
+          livekitUrl: room.livekitUrl ?? selectedUser.livekitUrl,
+          service: room.service ?? selectedUser.service,
           isAudio: false,
           liveType: 'video',
-          view: room.view,
-          uniqueId: room.uniqueId,
-          createdAt: room.createdAt,
+          view: room.view > 0 ? room.view : selectedUser.view,
+          uniqueId: room.uniqueId ?? selectedUser.uniqueId,
+          createdAt: room.createdAt ?? selectedUser.createdAt,
         );
         context.pushNamed(
           AppRoutes.liveRoom,
@@ -1469,7 +1493,7 @@ class _LiveGridTile extends StatelessWidget {
                       ),
                       const SizedBox(width: 4),
                       Text(
-                        formatCount(user.view),
+                        formatCount(user.view > 0 ? user.view : 1),
                         style: const TextStyle(
                           color: Colors.white,
                           fontSize: 12,

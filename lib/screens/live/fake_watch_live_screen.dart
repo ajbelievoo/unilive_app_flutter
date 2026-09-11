@@ -170,6 +170,7 @@ class _FakeWatchLiveScreenState extends State<FakeWatchLiveScreen> {
         int giftType = 1,
         required int count,
         required int totalCoins,
+        bool isLucky = false,
       }) {
         // Show gift animation overlay locally.
         final session = context.read<SessionManager>();

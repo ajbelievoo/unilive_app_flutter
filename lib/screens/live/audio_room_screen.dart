@@ -51,6 +51,7 @@ import '../../services/socket_service.dart';
 import '../../services/system_ui_service.dart';
 import '../../theme/app_theme.dart';
 import '../../services/push_notification_service.dart';
+import '../../services/room_ban_service.dart';
 import '../../utils/format_utils.dart';
 import '../../utils/log.dart';
 import '../../utils/media_utils.dart';
@@ -321,7 +322,12 @@ class _GoAudioLiveScreenState extends State<GoAudioLiveScreen> {
     setState(() => _starting = true);
     final session = context.read<SessionManager>();
     try {
-      await [Permission.microphone].request();
+      final micStatus = await Permission.microphone.request();
+      if (micStatus.isDenied || micStatus.isPermanentlyDenied) {
+        Fluttertoast.showToast(msg: 'Microphone permission is required to host');
+        setState(() => _starting = false);
+        return;
+      }
       final agoraUID = Random().nextInt(999999) + 100000;
       final passcode = _passcodeCtrl.text.trim();
       final res = await ApiService.createAudioRoom(
@@ -573,6 +579,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   bool? _pendingMicEnabled;
   bool _micEnabled = true;
   bool _speakerMuted = false;
+  bool _screenshotProtectionEnabled = false;
   int _selfPosition = -1;
 
   /// Local user's Agora uid — host joins with `agoraUID`, audience with a
@@ -630,6 +637,12 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   late List<SeatItem> _seats;
   int _viewerCount = 0;
   final _viewers = <ViewerEntry>[];
+
+  // Viewers removed by real-time events (lessView / left comment / kicked) are
+  // kept here for a few seconds so a stale in-flight `view` snapshot doesn't
+  // immediately bring them back into the online list.
+  final _recentlyRemovedViewers = <String, DateTime>{};
+
   final _comments = <_LiveComment>[];
   int _clientCommentCount = 0;
   int _clientGiftCount = 0;
@@ -661,6 +674,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   int _luckyBannerCoins = 0;
   Timer? _luckyBannerTimer;
   Function? _cancelLuckyGiftSub;
+  Function? _cancelLuckyGiftBroadcastSub;
   Function? _cancelLuckyBagCreateSub;
   Function? _cancelLuckyBagClaimSub;
 
@@ -897,6 +911,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   int _comboCountdown = 10;
   Timer? _comboTimer;
   Map<String, dynamic>? _comboGiftData;
+  String? _comboGiftEvent;
 
   // Wheat mode (free talk)
   bool _wheatMode = false;
@@ -948,8 +963,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
 
   // Admin state — computed from _admins list and current user ID.
   bool get _iAmAdmin {
-    final session = context.read<SessionManager>();
-    final myId = session.userId;
+    final myId = SessionManager.instance?.userId ?? '';
     return _isAdminUser(myId);
   }
 
@@ -1037,6 +1051,25 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
           )
           .userId;
 
+  /// If the current user was kicked from this room and the ban hasn't
+  /// expired yet, show a toast and close the screen before any join happens.
+  Future<void> _enforceKickBan() async {
+    final roomKey = _liveId;
+    if (roomKey.isEmpty) return;
+    try {
+      final remaining = await RoomBanService.bannedRemaining(roomKey);
+      if (remaining != null && mounted) {
+        Fluttertoast.showToast(
+          msg:
+              'You were kicked from this room. Try again after '
+              '${RoomBanService.formatRemaining(remaining)}',
+          toastLength: Toast.LENGTH_LONG,
+        );
+        Navigator.of(context).pop();
+      }
+    } catch (_) {}
+  }
+
   @override
   void initState() {
     super.initState();
@@ -1046,6 +1079,9 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     // Respect 3-button nav: full screen only when the nav bar is hidden.
     SystemUiService.instance.applyForLive();
     _roomUser = widget.roomUser;
+    // Kick-ban guard: if this user was kicked from this room recently, do not
+    // let them back in (2h per kick, 24h after 3+ kicks in a day).
+    _enforceKickBan();
     _hasAuthoritativeHostPosition = _roomUser.hasHostPosition;
     _authoritativeHostPosition = _roomUser.hostPosition;
     _hostWantsNoSeat =
@@ -1130,8 +1166,8 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
           _hostUserId ?? widget.roomUser.liveUserId ?? session.userId;
       if (hostId.isEmpty) return;
       try {
-        await ApiService.updateLiveTime(hostId, _liveId);
-        Log.d(_tag, 'updateLiveTime pinged liveId=$_liveId');
+        await ApiService.updateLiveTime(hostId, _liveId, seconds: _watchSeconds);
+        Log.d(_tag, 'updateLiveTime pinged liveId=$_liveId seconds=$_watchSeconds');
       } catch (e) {
         // Backend may not expose this endpoint; the socket heartbeat is the
         // primary keep-alive.
@@ -1146,14 +1182,21 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       final hostId =
           _hostUserId ?? widget.roomUser.liveUserId ?? session.userId;
       unawaited(pingLiveTime());
-      SocketService.instance.emit(Const.eventRoomTime, {
+      final roomTimePayload = {
         'liveStreamingId': _liveId,
         'liveUserId': hostId,
         'userId': session.userId,
         'watchSeconds': _watchSeconds,
+        'elapsedSeconds': _watchSeconds,
+        'seconds': _watchSeconds,
+        'duration': _watchSeconds,
+        'time': _watchSeconds,
         'micOn': _micEnabled,
         'isHost': _amHost,
-      });
+        'timestamp': DateTime.now().millisecondsSinceEpoch,
+      };
+      SocketService.instance.emit(Const.eventRoomTime, roomTimePayload);
+      SocketService.instance.emit(Const.eventLiveTimeSync, roomTimePayload);
 
       // Sync to local cache using the session userId so the Host Dashboard,
       // which loads data with the same id, can read the cached progress. The
@@ -1196,6 +1239,28 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       // Count from backend includes the host, so subtract 1 for viewer count.
       _viewerCount = max(0, _roomUser.view - 1);
     }
+  }
+
+  /// Track that a viewer was just removed via a real-time event. Used to
+  /// suppress stale `eventView` snapshots that were already in-flight.
+  void _markViewerRemoved(String userId) {
+    _recentlyRemovedViewers[userId] = DateTime.now();
+    // Clean old entries so the map doesn't grow forever.
+    _recentlyRemovedViewers.removeWhere(
+      (_, t) => DateTime.now().difference(t).inSeconds > 5,
+    );
+  }
+
+  /// Returns true if this viewer should be ignored because they were very
+  /// recently removed from the list (prevents stale snapshots re-adding them).
+  bool _isRecentlyRemoved(String userId) {
+    final removedAt = _recentlyRemovedViewers[userId];
+    if (removedAt == null) return false;
+    if (DateTime.now().difference(removedAt).inSeconds > 3) {
+      _recentlyRemovedViewers.remove(userId);
+      return false;
+    }
+    return true;
   }
 
   /// Host-only: broadcast the official room time and theme every 5 seconds
@@ -1248,12 +1313,13 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       'requestFullList': true,
     };
     SocketService.instance.emit(Const.eventView, payload);
-    _viewerRefreshTimer = Timer.periodic(const Duration(seconds: 15), (t) {
+    _viewerRefreshTimer = Timer.periodic(const Duration(seconds: 5), (t) {
       if (!mounted) {
         t.cancel();
         return;
       }
-      // Emit view event to get fresh list from server
+      // Emit view event to get fresh list from server. 5s keeps the top
+      // viewer strip/count much closer to real time without spamming backend.
       SocketService.instance.emit(Const.eventView, payload);
     });
   }
@@ -1568,6 +1634,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   @override
   void dispose() {
     _cancelLuckyGiftSub?.call();
+    _cancelLuckyGiftBroadcastSub?.call();
     _cancelLuckyBagCreateSub?.call();
     _cancelLuckyBagClaimSub?.call();
     _luckyBannerTimer?.cancel();
@@ -1688,6 +1755,20 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
           'liveStreamingId': _liveId,
           'userId': context.read<SessionManager>().userId,
           'returnedAt': DateTime.now().toIso8601String(),
+        });
+      }
+
+      // Refresh viewer list when app returns to foreground so we don't
+      // keep stale users/numbers visible after users left while backgrounded.
+      if (_liveId.isNotEmpty) {
+        SocketService.instance.emit(Const.eventView, {
+          'liveStreamingId': _liveId,
+          'roomId': _liveId,
+          'liveRoom': _liveId,
+          'liveUserMongoId': _roomUser.id ?? '',
+          'liveUserId': _hostUserId ?? _roomUser.liveUserId ?? '',
+          'userId': context.read<SessionManager>().userId,
+          'requestFullList': true,
         });
       }
     } else if (state == AppLifecycleState.paused ||
@@ -1949,7 +2030,12 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         return;
       }
 
-      await [Permission.microphone].request();
+      final micStatus = await Permission.microphone.request();
+      if (_amHost && !micStatus.isGranted) {
+        Fluttertoast.showToast(msg: 'Microphone permission is required to host');
+        if (mounted) setState(() => _engineReady = true);
+        return;
+      }
       _engine = createAgoraRtcEngine();
       await _engine.initialize(
         RtcEngineContext(
@@ -1967,6 +2053,12 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
             _applyPendingAgoraState();
             _reconnectAttempts = 0;
             _isReconnecting = false;
+            // Route audio to speaker now that the channel is joined.
+            // Calling setEnableSpeakerphone before join completes returns
+            // ERR_NOT_READY (-3).
+            _engine.setEnableSpeakerphone(true).catchError((e) {
+              Log.w(_tag, 'setEnableSpeakerphone failed: $e');
+            });
             // Capture the actual Agora-assigned uid. When audience joins
             // with uid=0, Agora assigns a random uid — we must track it
             // to match volume indications for the local user.
@@ -2170,15 +2262,22 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
               }
             }
 
-            setState(() {
-              for (final seat in _seats) {
-                // Only show speaking waves if NOT muted. For local user, check _micEnabled.
-                final isLocalSeat = seat.userId == myUserId;
-                final canSpeak = !seat.isMuted && (!isLocalSeat || _micEnabled);
-                seat.isSpeaking =
-                    canSpeak && anySpeaking.contains(seat.position);
+            // This callback fires every 250ms (enableAudioVolumeIndication
+            // interval). Only rebuild when a seat's speaking flag actually
+            // changes — an unconditional setState rebuilds the whole room
+            // (including gift overlays) 4×/sec for nothing.
+            var speakingChanged = false;
+            for (final seat in _seats) {
+              // Only show speaking waves if NOT muted. For local user, check _micEnabled.
+              final isLocalSeat = seat.userId == myUserId;
+              final canSpeak = !seat.isMuted && (!isLocalSeat || _micEnabled);
+              final speaking = canSpeak && anySpeaking.contains(seat.position);
+              if (seat.isSpeaking != speaking) {
+                seat.isSpeaking = speaking;
+                speakingChanged = true;
               }
-            });
+            }
+            if (speakingChanged && mounted) setState(() {});
             // Reset speaking clear timer — clear all after 600ms of silence
             _speakingClearTimer?.cancel();
             _speakingClearTimer = Timer(const Duration(milliseconds: 600), () {
@@ -2226,12 +2325,18 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       // Enable wake lock — screen stays on during audio room
       await AudioQualityService.enableWakeLock();
       // Start foreground service — audio runs in background
-      await AudioQualityService.startForegroundService();
+      await AudioQualityService.startForegroundService(
+        title: widget.isHost ? 'Audio Room' : 'Audio Room',
+        text:
+            widget.isHost
+                ? 'You are hosting an audio room'
+                : 'Listening to an audio room',
+      );
       // Start network quality monitoring
       _technicalService.startNetworkMonitoring(_engine);
-      // Temporarily disable screenshot protection so user can take screenshots.
-      // TODO: re-enable before production release.
-      await SecurityModerationService.disableScreenshotProtection();
+      if (_screenshotProtectionEnabled) {
+        await SecurityModerationService.enableScreenshotProtection();
+      }
 
       if (_amHost) {
         await _engine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
@@ -2248,12 +2353,21 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         appCert: appCert,
         channel: channel,
         uid: uid,
+        preferBackend: _amHost,
       );
 
       Log.d(
         _tag,
         'joinAudioRoom channel=$channel uid=$uid tokenSet=${token.isNotEmpty} isHost=${_amHost} certSet=${appCert != null && appCert.isNotEmpty}',
       );
+
+      // setDefaultAudioRouteToSpeakerphone must be called BEFORE joinChannel
+      // (Agora requirement) so the default route is speaker, not earpiece.
+      try {
+        await _engine.setDefaultAudioRouteToSpeakerphone(true);
+      } catch (e) {
+        Log.w(_tag, 'setDefaultAudioRouteToSpeakerphone failed: $e');
+      }
 
       await _engine.joinChannel(
         token: token,
@@ -2268,17 +2382,6 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         ),
         uid: uid,
       );
-
-      // Force speakerphone so audio is audible (not routed to earpiece).
-      try {
-        await _engine.setDefaultAudioRouteToSpeakerphone(true);
-        await _engine.setEnableSpeakerphone(true);
-      } catch (e) {
-        Log.w(
-          _tag,
-          'setDefaultAudioRouteToSpeakerphone/speakerphone failed: $e',
-        );
-      }
 
       // Make the host's broadcaster role and microphone publication
       // authoritative after join. setClientRole alone does not republish a
@@ -2316,7 +2419,12 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       }
     } catch (e, s) {
       Log.e(_tag, 'initAgora failed', e, s);
-      if (mounted) setState(() => _engineReady = true);
+      if (mounted) {
+        Fluttertoast.showToast(
+          msg: 'Audio room connection failed. Please try again.',
+        );
+        setState(() => _engineReady = true);
+      }
     }
   }
 
@@ -2683,7 +2791,8 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         'isAdmin': _iAmAdmin,
         'isAgency': user?.isAgency ?? false,
         'isBd': user?.isBd ?? false,
-        'level': user?.level?.name ?? '',
+        'level': user?.level?.toJson() ?? {'name': '1'},
+        'levelName': user?.level?.name ?? '1',
         'hostLevel': user?.hostLevel?.name ?? '',
         'Invisible': false,
         'liveType': 'audio',
@@ -3183,12 +3292,24 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       if (targetUserId.isEmpty) return;
       final myUserId = context.read<SessionManager>().userId;
       if (targetUserId == myUserId) {
-        Fluttertoast.showToast(msg: 'You were kicked out of the room');
+        // Record the kick — kicked users are blocked from this room for 2h
+        // (24h if kicked 3+ times within a day).
+        final roomKey =
+            _liveId.isNotEmpty ? _liveId : (_roomUser.id ?? '');
+        RoomBanService.recordKick(roomKey).then((ban) {
+          if (!mounted) return;
+          Fluttertoast.showToast(
+            msg:
+                'You were kicked out — you can rejoin this room after '
+                '${RoomBanService.formatRemaining(ban)}',
+          );
+        });
         _cleanupAndLeave();
         return;
       }
       setState(() {
         _viewers.removeWhere((viewer) => viewer.userId == targetUserId);
+        if (targetUserId.isNotEmpty) _markViewerRemoved(targetUserId);
         for (var i = 0; i < _seats.length; i++) {
           if (_seats[i].userId == targetUserId) {
             _seats[i] = SeatItem(
@@ -3836,6 +3957,9 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         final targetUserId = map['userId']?.toString();
         final session = context.read<SessionManager>();
         if (targetUserId == session.userId) {
+          // Already seated — ignore duplicate invites so we never end up on
+          // two seats (or get moved) by a stale invite event.
+          if (_selfPosition != -1) return;
           final hostName = map['hostName']?.toString() ?? 'Host';
           final position = _parsePosition(
             map['position'] ?? map['targetPosition'] ?? map['seatPosition'],
@@ -3994,6 +4118,15 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
             if (position != null && position == _selfPosition) {
               return;
             }
+            // Already seated somewhere — a second acceptance would move/dupe
+            // me. Only accept when I'm actually in the audience.
+            if (_selfPosition != -1) {
+              Log.d(
+                _tag,
+                'acceptJoinRequest: already seated at $_selfPosition — ignoring',
+              );
+              return;
+            }
             Fluttertoast.showToast(msg: 'Seat request accepted!');
             if (position != null) {
               _directJoinSeat(position, preferredRole: role);
@@ -4037,13 +4170,104 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
 
     _cancelLuckyGiftSub = socket.on(Const.luckyGift, (data) {
       try {
+        // Winner-only payload: the backend may emit just the coin amount —
+        // native `onLuckyGift` treats a bare number as "You won N diamonds".
+        if (data is num || data is String) {
+          final coins =
+              data is num ? data.toInt() : (int.tryParse(data) ?? 0);
+          if (coins <= 0) return;
+          Fluttertoast.showToast(msg: 'You won $coins diamonds');
+          _creditLuckyWin(coins);
+          if (mounted) {
+            setState(
+              () => _comments.add(
+                _LiveComment(
+                  name: 'System',
+                  text: 'You won $coins diamonds in lucky gift!',
+                  isLuckyWin: true,
+                  luckyCoins: coins,
+                  isSystem: true,
+                ),
+              ),
+            );
+            _clientCommentCount++;
+            _scrollToBottom();
+          }
+          return;
+        }
         if (!_effectSettings.showLuckyBagBroadcast) return;
         final map = _unwrapSocketData(data);
         if (map == null) return;
-        final name = map['name']?.toString() ?? 'Someone';
-        final coins = (map['coin'] as num?)?.toInt() ?? 0;
+        // Some backends emit the broadcast shape {message, data:{image}} on
+        // winLuckyGift too — fall back to it when the flat fields are absent.
+        final inner =
+            map['data'] is Map
+                ? Map<String, dynamic>.from(map['data'] as Map)
+                : const <String, dynamic>{};
+        final message =
+            map['message']?.toString() ?? inner['message']?.toString() ?? '';
+        var name =
+            map['name']?.toString() ??
+            inner['name']?.toString() ??
+            inner['userName']?.toString() ??
+            'Someone';
+        var coins =
+            (map['coin'] as num?)?.toInt() ??
+            (map['coins'] as num?)?.toInt() ??
+            (inner['coin'] as num?)?.toInt() ??
+            (inner['coins'] as num?)?.toInt() ??
+            (inner['diamonds'] as num?)?.toInt() ??
+            0;
         final image =
-            map['image']?.toString() ?? map['user']?['image']?.toString();
+            map['image']?.toString() ??
+            map['user']?['image']?.toString() ??
+            inner['image']?.toString() ??
+            inner['userImage']?.toString();
+        // Parse "X won lucky gift N Diamonds"-style messages when the
+        // structured fields are absent.
+        final lm = RegExp(
+          r'^(.*?)\s*won\s*(?:a\s+)?(?:lucky\s*gift\s*)?([\d,]+)',
+          caseSensitive: false,
+        ).firstMatch(message);
+        if (lm != null) {
+          if (name == 'Someone') name = (lm.group(1) ?? '').trim();
+          if (coins == 0) {
+            coins =
+                int.tryParse((lm.group(2) ?? '').replaceAll(',', '')) ?? 0;
+          }
+        }
+        if (coins <= 0 && message.isNotEmpty) {
+          // Message-only broadcast — banner + comment, no gift card.
+          setState(() {
+            _luckyBannerName =
+                name == 'Someone' ? message : name;
+            _luckyBannerImage = image;
+            _luckyBannerCoins = coins;
+          });
+          _luckyBannerTimer?.cancel();
+          _luckyBannerTimer = Timer(const Duration(seconds: 5), () {
+            if (mounted) {
+              setState(() {
+                _luckyBannerName = null;
+                _luckyBannerImage = null;
+              });
+            }
+          });
+          _comments.add(
+            _LiveComment(
+              name: 'System',
+              text: message,
+              isLuckyWin: true,
+              luckyCoins: coins,
+              userImage: image,
+              isSystem: true,
+            ),
+          );
+          _clientCommentCount++;
+          _scrollToBottom();
+          return;
+        }
+        if (coins <= 0) return;
         setState(() {
           _luckyBannerName = name;
           _luckyBannerImage = image;
@@ -4091,11 +4315,107 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
           event.luckyCoins = coins;
           _giftController.addGift(event);
         }
-        // Show combo button for lucky gifts — ports native showComboButton
-        if (name == (context.read<AuthProvider>().user?.name ?? '') &&
-            coins > 0) {
+        // Credit the win + show combo button when the current user won —
+        // ports native showComboButton.
+        final myId = context.read<SessionManager>().userId;
+        final isMe =
+            (map['userId']?.toString() == myId) ||
+            name == (context.read<AuthProvider>().user?.name ?? '');
+        if (isMe && coins > 0) {
+          _creditLuckyWin(coins);
           _triggerComboButton(Map<String, dynamic>.from(map), coins);
         }
+      } catch (_) {}
+    });
+
+    // Room-wide lucky gift win broadcast — native `onLuckyGiftBroadcast`.
+    // Payload: { message: "X won lucky gift N Diamonds", data: {image} }.
+    // Some backends send this event name instead of a map on winLuckyGift;
+    // it only drives the golden winner banner + a chat line.
+    _cancelLuckyGiftBroadcastSub = socket.on(Const.eventLuckyGiftBroadcast, (
+      data,
+    ) {
+      try {
+        if (!_effectSettings.showLuckyBagBroadcast) return;
+        final map = _unwrapSocketData(data);
+        if (map == null) return;
+        final inner =
+            map['data'] is Map
+                ? Map<String, dynamic>.from(map['data'] as Map)
+                : const <String, dynamic>{};
+        final message =
+            map['message']?.toString() ?? inner['message']?.toString() ?? '';
+        var name =
+            inner['name']?.toString() ??
+            inner['userName']?.toString() ??
+            map['name']?.toString() ??
+            map['userName']?.toString() ??
+            '';
+        var coins =
+            (inner['coin'] as num?)?.toInt() ??
+            (inner['coins'] as num?)?.toInt() ??
+            (inner['diamonds'] as num?)?.toInt() ??
+            (map['coin'] as num?)?.toInt() ??
+            (map['coins'] as num?)?.toInt() ??
+            0;
+        final image =
+            inner['image']?.toString() ??
+            inner['userImage']?.toString() ??
+            map['image']?.toString() ??
+            map['user']?['image']?.toString();
+        // Parse "X won lucky gift N Diamonds"-style messages when the
+        // structured fields are absent.
+        final m = RegExp(
+          r'^(.*?)\s*won\s*(?:a\s+)?(?:lucky\s*gift\s*)?([\d,]+)',
+          caseSensitive: false,
+        ).firstMatch(message);
+        if (m != null) {
+          if (name.isEmpty) name = (m.group(1) ?? '').trim();
+          if (coins == 0) {
+            coins =
+                int.tryParse((m.group(2) ?? '').replaceAll(',', '')) ?? 0;
+          }
+        }
+        if (!mounted) return;
+        if (message.isEmpty && coins <= 0) return;
+        setState(() {
+          _luckyBannerName = name.isNotEmpty ? name : message;
+          _luckyBannerImage = image;
+          _luckyBannerCoins = coins;
+        });
+        _luckyBannerTimer?.cancel();
+        _luckyBannerTimer = Timer(const Duration(seconds: 5), () {
+          if (mounted) {
+            setState(() {
+              _luckyBannerName = null;
+              _luckyBannerImage = null;
+            });
+          }
+        });
+        _showNotification(
+          message.isNotEmpty
+              ? message
+              : '$name won $coins diamonds in lucky gift!',
+        );
+        _comments.add(
+          _LiveComment(
+            name: name.isNotEmpty ? name : 'Someone',
+            text:
+                message.isNotEmpty
+                    ? message
+                    : 'got $coins diamonds from a lucky bag',
+            isLuckyWin: true,
+            luckyCoins: coins,
+            userImage: image,
+            isSystem: false,
+            userId:
+                inner['userId']?.toString() ??
+                map['userId']?.toString() ??
+                '',
+          ),
+        );
+        _clientCommentCount++;
+        _scrollToBottom();
       } catch (_) {}
     });
 
@@ -4996,7 +5316,16 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
             (map['host2LiveId'] ?? map['targetRoomId'] ?? map['toRoomId'])
                 ?.toString();
         if (targetId.isNotEmpty && targetId != myId) return;
-        if (targetRoomId?.isNotEmpty == true && targetRoomId != _liveId) return;
+        final myRoomIds = <String>{
+          _liveId,
+          widget.roomUser.liveStreamingId ?? '',
+          widget.roomUser.id ?? '',
+        }..removeWhere((s) => s.isEmpty);
+        if (targetRoomId != null &&
+            targetRoomId.isNotEmpty &&
+            !myRoomIds.contains(targetRoomId)) {
+          return;
+        }
         final fromName =
             map['host1Name']?.toString() ??
             map['fromName']?.toString() ??
@@ -5262,8 +5591,17 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
 
       final myId = context.read<SessionManager>().userId;
       final isJoined =
-          map['isJoined'] == true || map['user']?['isJoined'] == true;
-      final isLeft = map['isLeft'] == true || map['user']?['isLeft'] == true;
+          map['isJoined'] == true ||
+          map['user']?['isJoined'] == true ||
+          map['type']?.toString() == 'joined' ||
+          map['type']?.toString() == 'join' ||
+          map['type']?.toString() == 'enter';
+      final isLeft =
+          map['isLeft'] == true ||
+          map['user']?['isLeft'] == true ||
+          map['type']?.toString() == 'left' ||
+          map['type']?.toString() == 'leave' ||
+          map['type']?.toString() == 'exit';
 
       // Deduplicate comments/join/left messages that may arrive on both
       // `comment` and `commentAudio` channels (or as local echo + backend echo).
@@ -5499,7 +5837,8 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         );
         _clientCommentCount++;
         _scrollToBottom();
-        // Also clear this user's seat if they were seated
+        // Also clear this user's seat if they were seated and remove them
+        // from the online viewer list if a lessView event was not received.
         if (userId != null && userId.isNotEmpty) {
           setState(() {
             for (var i = 0; i < _seats.length; i++) {
@@ -5508,11 +5847,17 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
               }
             }
           });
+          _tryRemoveViewerFromSocket({'userId': userId});
         }
         return;
       }
 
       if (isSystem || isJoined) {
+        // Always update the online viewer list immediately for join/left
+        // system comments, even if the enter-room toast is disabled.
+        if (isJoined && userId != null && userId.isNotEmpty) {
+          _tryAddViewerFromSocket(map);
+        }
         if (!_effectSettings.showEnterRoomMessage) return;
         setState(
           () => _comments.add(
@@ -5720,6 +6065,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   }
 
   /// Open opponent selection sheet and start audio room PK battle.
+  // ignore: unused_element
   void _openAudioRoomPkOpponentSelection() {
     showAudioRoomPkOpponentSheet(
       context,
@@ -5951,12 +6297,33 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     Fluttertoast.showToast(msg: 'Room background updated');
   }
 
+  /// Optimistically credit a lucky-gift win so the wallet reflects the
+  /// reward immediately (native shows "You win lucky gift X coins"). If the
+  /// backend later pushes an authoritative `userCoinUpdate`, it overwrites
+  /// this value with the exact balance.
+  void _creditLuckyWin(int coins) {
+    try {
+      if (coins <= 0) return;
+      final session = context.read<SessionManager>();
+      final auth = context.read<AuthProvider>();
+      final current = session.getUser()?.coin.toInt() ?? 0;
+      auth.updateUserCoins(current + coins);
+    } catch (_) {}
+  }
+
   /// Show combo gift button — ports native showComboButton.
   void _triggerComboButton(Map<String, dynamic> giftData, int totalCoin) {
     setState(() {
       _showComboButton = true;
       _comboCountdown = 10;
-      _comboGiftData = giftData;
+      // Prefer the real send payload captured by the gift sheet — the
+      // broadcast map passed on a win is not a valid re-send payload.
+      _comboGiftData =
+          GiftBottomSheet.lastLuckyPayload != null
+              ? Map<String, dynamic>.from(GiftBottomSheet.lastLuckyPayload!)
+              : giftData;
+      _comboGiftEvent =
+          GiftBottomSheet.lastLuckyEvent ?? Const.eventNormalUserGift;
     });
     _comboTimer?.cancel();
     _comboTimer = Timer.periodic(const Duration(seconds: 1), (t) {
@@ -5977,8 +6344,30 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
 
   /// Handle combo button click — sends combo gift again.
   void _handleComboClick() {
-    if (_comboGiftData == null) return;
-    SocketService.instance.emit(Const.eventNormalUserGift, _comboGiftData);
+    final payload = _comboGiftData;
+    // Not a sendable gift payload (e.g. a win broadcast map) — ignore.
+    if (payload == null || payload['gift'] == null) return;
+    final session = context.read<SessionManager>();
+    final coin = (payload['coin'] as num?)?.toInt() ?? 0;
+    final user = session.getUser();
+    if (coin > 0 && (user?.coin.toInt() ?? 0) < coin) {
+      Fluttertoast.showToast(msg: 'Insufficient diamonds');
+      return;
+    }
+    // Fresh timestamp — receivers deduplicate gift echoes by timeStamp.
+    final resend = Map<String, dynamic>.from(payload);
+    resend['timeStamp'] = DateTime.now().millisecondsSinceEpoch;
+    final event = _comboGiftEvent ?? Const.eventNormalUserGift;
+    SocketService.instance.emit(event, resend);
+    if (event != Const.eventGift) {
+      SocketService.instance.emit(Const.eventGift, {
+        ...resend,
+        'sourceEvent': event,
+      });
+    }
+    if (coin > 0 && user != null) {
+      context.read<AuthProvider>().updateUserCoins(user.coin.toInt() - coin);
+    }
     // Reset countdown
     setState(() => _comboCountdown = 10);
   }
@@ -7137,6 +7526,11 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       Log.d(_tag, 'autoAccept: invalid data userId=$userId position=$position');
       return;
     }
+    // Already seated — a second auto-accept would double-seat them.
+    if (_seats.any((s) => s.isOccupied && s.userId == userId)) {
+      Log.d(_tag, 'autoAccept: userId=$userId already seated — skipping');
+      return;
+    }
 
     // Preserve admin role if the accepted user is already an admin.
     final role = _isAdminUser(userId) ? 'admin' : 'user';
@@ -7214,6 +7608,20 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     if (targetUserId.isEmpty) return;
     final targetName = c.name ?? 'User';
     final targetImage = c.userImage;
+
+    // Already seated — don't seat them twice. Clean up the stale request and
+    // hide the accept button on the comment.
+    final alreadySeated = _seats.any(
+      (s) => s.isOccupied && s.userId == targetUserId,
+    );
+    if (alreadySeated) {
+      setState(() {
+        _seatRequests.removeWhere((r) => r['userId'] == targetUserId);
+      });
+      _seatSpeakerService.removeFromQueue(targetUserId);
+      Fluttertoast.showToast(msg: '$targetName is already on a seat');
+      return;
+    }
 
     // Look up the full request data (which includes agoraUid, voiceWaveUrl,
     // isVIP, avatarFrame, etc.) so the seat broadcast carries VIP data.
@@ -7848,6 +8256,8 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       if (!mounted) return;
       if (accept == true) {
         final userId = context.read<SessionManager>().userId;
+        // Already on a seat — ignore the invite (prevents double seating).
+        if (_selfPosition != -1) return;
         _directJoinSeat(position);
         SocketService.instance.emit(Const.acceptJoinRequest, {
           'liveUserId': _roomUser.liveUserId,
@@ -8161,7 +8571,12 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
 
   /// Half-screen profile room card for an occupied seat.
   void _showProfileRoomCard(SeatItem seat) {
-    final isMySeat = seat.userId == context.read<SessionManager>().userId;
+    final myUserId = context.read<SessionManager>().userId;
+    // A seat counts as "mine" when its userId matches me OR it's the host
+    // seat and I'm the host (backend may tag the host seat with a different
+    // id field, which would otherwise hide the Leave Seat button).
+    final isMySeat =
+        seat.userId == myUserId || (_amHost && seat.isHost);
     showProfileRoomCard(
       context,
       roomUser: widget.roomUser,
@@ -8866,24 +9281,11 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
 
   /// Pick the best static image URL from raw gift / svga URLs.
   String _staticGiftImageFromUrls(String? giftImage, String? svgaImage) {
-    final candidates = [giftImage, svgaImage];
-    for (final c in candidates) {
-      if (c == null || c.isEmpty) continue;
-      final lower = c.toLowerCase();
-      if (lower.contains('.svga') ||
-          lower.contains('.mp4') ||
-          lower.contains('.mov') ||
-          lower.contains('.webm')) {
-        final png = c.replaceAll(
-          RegExp(r'\.(svga|mp4|mov|webm)$', caseSensitive: false),
-          '.png',
-        );
-        if (png != c) return VideoUtil.getFullImageUrl(png);
-      }
-    }
-    for (final c in candidates) {
-      if (c != null && c.isNotEmpty) {
-        final full = VideoUtil.getFullImageUrl(c);
+    for (final candidate in [giftImage, svgaImage]) {
+      if (candidate == null || candidate.isEmpty) continue;
+      final path = candidate.toLowerCase().split('?').first;
+      if (RegExp(r'\.(png|jpe?g|gif|webp|bmp)$').hasMatch(path)) {
+        final full = VideoUtil.getFullImageUrl(candidate);
         if (full.isNotEmpty) return full;
       }
     }
@@ -9175,9 +9577,10 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     final batchKey = _giftBatchCommentKey(map);
     if (_processedGiftBatchCommentKeys.contains(batchKey)) return;
     _processedGiftBatchCommentKeys.add(batchKey);
+    final event = GiftQueueController.fromSocketData(map);
     final senderName =
         map['name']?.toString() ?? map['senderName']?.toString() ?? 'Someone';
-    final giftName = map['giftName']?.toString() ?? 'a gift';
+    final giftName = event?.giftName ?? map['giftName']?.toString() ?? 'Gift';
     final senderImage =
         map['image']?.toString() ??
         map['senderImage']?.toString() ??
@@ -9193,22 +9596,22 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     // Without this, only the sender's own _onAudioGiftSent comment was
     // visible; socket-received gifts from other users showed only a
     // notification banner, not a chat comment.
+    final nestedGift =
+        map['gift'] is Map ? map['gift'] as Map : const <String, dynamic>{};
     final rawGiftImage =
         map['giftImage']?.toString() ??
-        map['gift']?['image']?.toString() ??
+        nestedGift['image']?.toString() ??
         map['image']?.toString() ??
         '';
-    final rawSvgaImage =
+    final rawAnimationUrl =
+        event?.svgaImage ??
         map['svgaImage']?.toString() ??
-        map['gift']?['svgaImage']?.toString() ??
+        nestedGift['svgaImage']?.toString() ??
         '';
-    // Try to find a static .png first; if none exists, pass the RAW
-    // animation URL so the comment bubble's _giftAsset can show the
-    // SVGA's first frame (the gift's theme) instead of a generic icon.
-    final commentGiftImage = _staticGiftImageFromUrls(rawGiftImage, rawSvgaImage);
-    final fallbackGiftImage = commentGiftImage.isNotEmpty
-        ? commentGiftImage
-        : (rawGiftImage.isNotEmpty ? rawGiftImage : rawSvgaImage);
+    final commentGiftImage =
+        event?.giftImage.isNotEmpty == true
+            ? event!.giftImage
+            : _staticGiftImageFromUrls(rawGiftImage, rawAnimationUrl);
     setState(
       () => _comments.add(
         _LiveComment(
@@ -9217,7 +9620,10 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
           userId: map['userId']?.toString() ?? map['senderId']?.toString() ?? '',
           isGift: true,
           userImage: VideoUtil.getFullImageUrl(senderImage),
-          giftImage: fallbackGiftImage.isNotEmpty ? fallbackGiftImage : null,
+          giftImage: commentGiftImage.isNotEmpty ? commentGiftImage : null,
+          giftAnimationUrl: rawAnimationUrl.isNotEmpty ? rawAnimationUrl : null,
+          giftType: event?.giftType ?? _parseGiftType(map),
+          giftName: giftName,
           giftCount: giftCount,
           giftCoin: totalCoins,
           giftReceiverName: receiverName,
@@ -9340,7 +9746,10 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         final uniqueViewers = <String, ViewerEntry>{};
         for (final viewer in parsed) {
           final userId = viewer.userId;
-          if (userId != null && userId.isNotEmpty && userId != hostId) {
+          if (userId != null &&
+              userId.isNotEmpty &&
+              userId != hostId &&
+              !_isRecentlyRemoved(userId)) {
             uniqueViewers[userId] = viewer;
           }
         }
@@ -9372,6 +9781,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
           final isNew = !_viewers.any((x) => x.userId == v.userId);
           _viewers.removeWhere((x) => x.userId == v.userId);
           _viewers.add(v);
+          _recentlyRemovedViewers.remove(v.userId);
           if (isNew) added = true;
         }
         _viewerCount = _viewers.length;
@@ -9387,7 +9797,18 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     try {
       String? userId;
       if (data is Map) {
-        userId = (data['userId'] ?? data['id'] ?? data['_id'])?.toString();
+        final userMap = data['user'];
+        final userMapData =
+            userMap is Map ? Map<String, dynamic>.from(userMap) : null;
+        userId =
+            (data['userId'] ??
+                data['viewerId'] ??
+                data['id'] ??
+                data['_id'] ??
+                userMapData?['userId'] ??
+                userMapData?['_id'] ??
+                userMapData?['id'])
+                ?.toString();
       } else if (data is String || data is num) {
         userId = data.toString();
       }
@@ -9399,6 +9820,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         _viewerCount = _viewers.length;
         removed = _viewers.length < before;
       });
+      if (removed && userId != null) _markViewerRemoved(userId);
       return removed;
     } catch (_) {
       return false;
@@ -9865,6 +10287,24 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     });
   }
 
+  Future<void> _toggleScreenshotProtection() async {
+    if (!_amHost) return;
+    final newState = !_screenshotProtectionEnabled;
+    try {
+      if (newState) {
+        await SecurityModerationService.enableScreenshotProtection();
+      } else {
+        await SecurityModerationService.disableScreenshotProtection();
+      }
+    } catch (e, s) {
+      Log.e(_tag, 'screenshot protection toggle failed', e, s);
+      Fluttertoast.showToast(msg: 'Screenshot protection toggle failed');
+      return;
+    }
+    if (!mounted) return;
+    setState(() => _screenshotProtectionEnabled = newState);
+  }
+
   Future<void> _toggleSpeaker() async {
     setState(() => _speakerMuted = !_speakerMuted);
     try {
@@ -10149,6 +10589,20 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
           onTap: () {
             Navigator.pop(context);
             _startFamilyWar();
+          },
+        ),
+      );
+
+      items.add(
+        MenuItem(
+          icon: _screenshotProtectionEnabled ? Icons.lock : Icons.lock_open,
+          label:
+              _screenshotProtectionEnabled
+                  ? 'Disable Screenshot Protection'
+                  : 'Enable Screenshot Protection',
+          onTap: () {
+            Navigator.pop(context);
+            _toggleScreenshotProtection();
           },
         ),
       );
@@ -11452,6 +11906,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     required List<String> receiverIds,
     required bool isAll,
     required int timeStamp,
+    bool isLucky = false,
   }) {
     if (!mounted) return;
     final session = context.read<SessionManager>();
@@ -11499,9 +11954,10 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     // Try static .png first; if none, pass the RAW animation URL so the
     // comment bubble's _giftAsset can show the SVGA's first frame.
     final commentGiftImage = _staticGiftImageFromUrls(rawGiftImage, rawSvgaImage);
-    final fallbackGiftImage = commentGiftImage.isNotEmpty
-        ? commentGiftImage
-        : (rawGiftImage.isNotEmpty ? rawGiftImage : rawSvgaImage);
+    final commentAnimationUrl =
+        rawSvgaImage.isNotEmpty
+            ? rawSvgaImage
+            : ((giftType == 2 || giftType == 3) ? rawGiftImage : '');
     setState(
       () => _comments.add(
         _LiveComment(
@@ -11511,7 +11967,11 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
           isGift: true,
           isMine: true,
           userImage: senderImage,
-          giftImage: fallbackGiftImage.isNotEmpty ? fallbackGiftImage : null,
+          giftImage: commentGiftImage.isNotEmpty ? commentGiftImage : null,
+          giftAnimationUrl:
+              commentAnimationUrl.isNotEmpty ? commentAnimationUrl : null,
+          giftType: giftType,
+          giftName: giftName,
           giftCount: count,
           giftCoin: totalCoins,
           giftReceiverName: allDisplay,
@@ -11683,6 +12143,15 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       'isGift': true,
     });
 
+    // Lucky gift → show the combo re-send button (native showComboButton)
+    // so the sender can quickly re-send for another draw.
+    if (isLucky && GiftBottomSheet.lastLuckyPayload != null) {
+      _triggerComboButton(
+        Map<String, dynamic>.from(GiftBottomSheet.lastLuckyPayload!),
+        totalCoins,
+      );
+    }
+
     GiftSoundService.instance.playSendSound();
   }
 
@@ -11719,7 +12188,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       liveStreamingId:
           widget.roomUser.liveStreamingId ?? widget.roomUser.id ?? '',
       userId: session.userId,
-      isHost: true,
+      isHost: _amHost,
       roomType: 'audio',
       roomName: _roomUser.roomName ?? _roomUser.name,
       hostUserId: _hostUserId,
@@ -11994,6 +12463,17 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   }
 
   void _openViewers() {
+    // Request the latest viewer list before opening the sheet so stale
+    // numbers are less likely to show.
+    SocketService.instance.emit(Const.eventView, {
+      'liveStreamingId': _liveId,
+      'roomId': _liveId,
+      'liveRoom': _liveId,
+      'liveUserMongoId': _roomUser.id ?? '',
+      'liveUserId': _hostUserId ?? _roomUser.liveUserId ?? '',
+      'userId': context.read<SessionManager>().userId,
+      'requestFullList': true,
+    });
     showViewersSheet(
       context,
       viewers: _viewers,
@@ -12116,6 +12596,8 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                     controller: _shakeController,
                     child: Stack(
                       alignment: Alignment.topLeft,
+                      fit: StackFit.expand,
+                      clipBehavior: Clip.none,
                       children: [
                         Positioned(
                           top: MediaQuery.of(context).padding.top + 54,
@@ -12248,7 +12730,6 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                           controller: _giftController,
                           comboBurstController: _comboBurstController,
                         ),
-                        BigGiftOverlay(controller: _bigGiftController),
                         GiftFlyOverlay(key: _giftFlyKey),
                         GiftTrailOverlay(controller: _giftTrailController),
                         GiftComboBurstOverlay(
@@ -12602,7 +13083,9 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                                         ),
                                       ),
                                     Text(
-                                      '$_luckyBannerName won ${formatCount(_luckyBannerCoins)} diamonds!',
+                                      _luckyBannerCoins > 0
+                                          ? '$_luckyBannerName won ${formatCount(_luckyBannerCoins)} diamonds!'
+                                          : '$_luckyBannerName',
                                       style: const TextStyle(
                                         color: Colors.white,
                                         fontWeight: FontWeight.bold,
@@ -12645,6 +13128,9 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                             _scrollToBottom();
                           },
                         ),
+                        // Big full-screen gift overlay must paint on top of
+                        // every other overlay so the animation is never hidden.
+                        BigGiftOverlay(controller: _bigGiftController),
                       ],
                     ),
                   ),
@@ -13686,6 +14172,16 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   }
 
   Widget _buildCommentBubble(_LiveComment c) {
+    // Only keep the Accept button while the request is still pending AND the
+    // requester is not already seated — prevents double-seating when the host
+    // taps accept on a stale comment.
+    final seatRequestPending =
+        c.isSeatRequest &&
+        c.seatRequestUserId != null &&
+        _seatRequests.any((r) => r['userId'] == c.seatRequestUserId) &&
+        !_seats.any(
+          (s) => s.isOccupied && s.userId == c.seatRequestUserId,
+        );
     return AudioRoomCommentBubble(
       comment: _toAudioRoomComment(c),
       myUserId: context.read<SessionManager>().userId,
@@ -13693,7 +14189,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       iAmAdmin: _iAmAdmin,
       onTapUser: () => _onCommentUserTap(c),
       onAcceptSeatRequest:
-          c.isSeatRequest ? () => _acceptSeatRequestFromComment(c) : null,
+          seatRequestPending ? () => _acceptSeatRequestFromComment(c) : null,
       onCopy: () => _copyComment(c.text ?? ''),
       onLongPressName: () {
         if (c.name != null && c.userId != null) {
@@ -13719,6 +14215,9 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       userImage: c.userImage,
       frameUrl: c.frameUrl,
       giftImage: c.giftImage,
+      giftAnimationUrl: c.giftAnimationUrl,
+      giftType: c.giftType,
+      giftName: c.giftName,
       giftReceiverName: c.giftReceiverName,
       giftReceiverImage: c.giftReceiverImage,
       giftCoin: c.giftCoin,
@@ -13989,7 +14488,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     final showVoiceEmoji = ai.shouldShowButton(AIFeatureKeys.voiceEmoji);
     final showDrawAndGuess = ai.shouldShowButton(AIFeatureKeys.drawAndGuess);
 
-    const double buttonW = 40.0; // _bottomAction is 36 wide + 2*2 margin
+    const double buttonW = 44.0; // _bottomAction is 40 wide + 2*2 margin
     const double messageMargin = 12.0; // message box has 6+6 horizontal margin
 
     final leftButtons = <Widget>[
@@ -14020,8 +14519,6 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         bg: const Color(0xFFFFEA00),
       ),
       _bottomAction(Icons.favorite, const Color(0xFFFF4081), _sendCheer),
-      // Menu — room actions and seat requests.
-      _bottomAction(Icons.menu, Colors.white, _showPkMenu),
       // Bigo-parity: Voice Emoji (audio room).
       if (showVoiceEmoji)
         AIFeatureGuard(
@@ -14047,49 +14544,61 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     return LayoutBuilder(
       builder: (context, constraints) {
         final viewport = constraints.maxWidth;
+        // The menu is pinned outside the scroll area so it never slides
+        // off-screen when the button row is wider than the viewport.
+        final innerViewport = viewport - buttonW;
         final fixedWidth = (leftButtons.length + rightButtons.length) * buttonW;
-        final messageWidth = max(110.0, viewport - fixedWidth - messageMargin);
+        final messageWidth = max(110.0, innerViewport - fixedWidth - messageMargin);
         final contentWidth = fixedWidth + messageWidth + messageMargin;
 
-        return SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: ConstrainedBox(
-            constraints: BoxConstraints.tightFor(width: contentWidth),
-            child: Row(
-              mainAxisSize: MainAxisSize.max,
-              children: [
-                ...leftButtons,
-                GestureDetector(
-                  onTap: () {
-                    setState(() => _isTyping = true);
-                    WidgetsBinding.instance.addPostFrameCallback((_) {
-                      _commentFocus.requestFocus();
-                    });
-                  },
-                  child: Container(
-                    width: messageWidth,
-                    height: 36,
-                    margin: const EdgeInsets.symmetric(horizontal: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.25),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    alignment: Alignment.centerLeft,
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    child: Text(
-                      'Send a message...',
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        fontSize: 13,
+        return Row(
+          children: [
+            Expanded(
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints.tightFor(width: contentWidth),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.max,
+                    children: [
+                      ...leftButtons,
+                      GestureDetector(
+                        onTap: () {
+                          setState(() => _isTyping = true);
+                          WidgetsBinding.instance.addPostFrameCallback((_) {
+                            _commentFocus.requestFocus();
+                          });
+                        },
+                        child: Container(
+                          width: messageWidth,
+                          height: 36,
+                          margin: const EdgeInsets.symmetric(horizontal: 6),
+                          decoration: BoxDecoration(
+                            color: Colors.black.withValues(alpha: 0.25),
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          alignment: Alignment.centerLeft,
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          child: Text(
+                            'Send a message...',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.5),
+                              fontSize: 13,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
                       ),
-                      overflow: TextOverflow.ellipsis,
-                    ),
+                      ...rightButtons,
+                    ],
                   ),
                 ),
-                ...rightButtons,
-              ],
+              ),
             ),
-          ),
+            // Menu — room actions and seat requests. Pinned outside the
+            // scroll area so it is always visible.
+            _bottomAction(Icons.menu, Colors.white, _showPkMenu),
+          ],
         );
       },
     );
@@ -14213,7 +14722,6 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
             ),
           ],
         ),
-        _buildKeyboardToolbar(),
       ],
     );
   }
@@ -14222,7 +14730,6 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   Widget _buildQuickChatChips() {
     return Container(
       height: 38,
-      margin: const EdgeInsets.only(bottom: 8),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         padding: const EdgeInsets.symmetric(horizontal: 4),
@@ -14339,30 +14846,39 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     String? imageAsset,
   }) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
       child: Container(
-        width: 36,
-        height: 36,
+        width: 40,
+        height: 40,
         margin: const EdgeInsets.symmetric(horizontal: 2),
         decoration: BoxDecoration(
-          color: bg ?? Colors.black.withValues(alpha: 0.25),
+          color: bg ?? Colors.white.withValues(alpha: 0.12),
           shape: BoxShape.circle,
-          boxShadow: imageAsset != null
-              ? [
-                  BoxShadow(
-                    color: (bg ?? const Color(0xFFFFEA00)).withValues(
-                      alpha: 0.6,
+          boxShadow:
+              imageAsset != null
+                  ? [
+                    BoxShadow(
+                      color: (bg ?? const Color(0xFFFFEA00)).withValues(
+                        alpha: 0.6,
+                      ),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                      offset: const Offset(0, 2),
                     ),
-                    blurRadius: 10,
-                    spreadRadius: 2,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
+                  ]
+                  : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
         ),
-        child: imageAsset != null
-            ? Image.asset(imageAsset, width: 14, height: 14)
-            : Icon(icon, color: color, size: 20),
+        child:
+            imageAsset != null
+                ? Image.asset(imageAsset, width: 20, height: 20)
+                : Icon(icon, color: color, size: 22),
       ),
     );
   }
@@ -14865,6 +15381,9 @@ class _LiveComment {
     this.userImage,
     this.frameUrl,
     this.giftImage,
+    this.giftAnimationUrl,
+    this.giftType = 1,
+    this.giftName,
     this.giftReceiverName,
     this.giftReceiverImage,
     this.giftCoin,
@@ -14910,6 +15429,9 @@ class _LiveComment {
   /// VIP profile frame overlay URL (shown around the comment avatar).
   final String? frameUrl;
   final String? giftImage;
+  final String? giftAnimationUrl;
+  final int giftType;
+  final String? giftName;
   final String? giftReceiverName;
   final String? giftReceiverImage;
   final int? giftCoin;

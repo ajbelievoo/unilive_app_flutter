@@ -126,7 +126,9 @@ class _HostCenterScreenState extends State<HostCenterScreen>
     if (cacheFallback) {
       try {
         final cache = await HostLiveCache.getTodayProgress(hostId);
-        _todayLive!['data'] = [cache];
+        _todayLive!['data'] = [
+          if (first != null) {...first, ...cache} else cache,
+        ];
       } catch (e) {
         Log.e(_tag, 'today cache fallback failed', e);
       }
@@ -680,27 +682,70 @@ class _HostCenterScreenState extends State<HostCenterScreen>
 
   Widget _taskTile(Map<String, dynamic> t) {
     final type = t['type']?.toString() ?? 'video';
-    final timeRequired = parseInt(t['timeRequired'] ?? 0);
-    final coinsRewarded = parseInt(t['coinsRewarded'] ?? 0);
-    final coinRequired = parseInt(t['coinRequired'] ?? 0);
-    final isClaimed = parseBool(t['isClaimed'] ?? t['claimed']);
-    final taskId = t['_id']?.toString() ?? t['id']?.toString() ?? '';
+    final targetType = t['targetType']?.toString() ?? '';
+    final timeRequired = _firstInt(t, const [
+      'timeRequired',
+      'timeRequirement',
+      'timeTarget',
+      'targetTime',
+      'target',
+      'requiredTime',
+      'required',
+      'duration',
+      'minutes',
+      'time',
+    ]);
+    final coinRequired = _firstInt(t, const [
+      'coinRequired',
+      'coinRequirement',
+      'rCoinRequired',
+      'earningRequired',
+      'earnRequired',
+      'earningTarget',
+      'targetEarning',
+      'targetAmount',
+      'beansRequired',
+      'amount',
+      'target',
+    ]);
+    final coinsRewarded = _firstInt(t, const [
+      'coinsRewarded',
+      'rewardCoins',
+      'reward',
+      'coin',
+    ]);
+    final isClaimed = _parseClaimed(t);
+    final taskId = t['_id']?.toString() ?? t['id']?.toString() ?? t['taskId']?.toString() ?? '';
 
     // Get today's progress from _todayLive
     final todayData = _todayLive?['data'] as List? ?? [];
     final today = todayData.isNotEmpty ? todayData[0] as Map<String, dynamic> : <String, dynamic>{};
-    final completedTime = parseInt(type == 'audio'
-        ? today['audioDuration'] ?? 0
-        : today['videoDuration'] ?? 0);
-    final todayEarning = parseInt(today['todayEarning'] ?? 0);
+    final completedTime = _firstInt(today, type == 'audio'
+        ? const ['audioDuration', 'audioMinutes', 'audioTime', 'duration', 'totalMinutes', 'minutes']
+        : const ['videoDuration', 'videoMinutes', 'videoTime', 'duration', 'totalMinutes', 'minutes']);
+    final todayEarning = _firstInt(today, const [
+      'todayEarning',
+      'todayEarnings',
+      'earning',
+      'earnings',
+      'coin',
+      'coins',
+      'rCoin',
+      'todayRcoin',
+      'todayRCoin',
+      'totalEarning',
+      'totalEarnings',
+    ]);
 
-    // Prefer the backend's completion flag when provided, otherwise fall back to
-    // local today-live computation. This stops the user from seeing a claimable
-    // button for tasks the server will still reject with "not enough video time".
+    // Prefer the backend's completion flag when provided. When the backend
+    // doesn't yet mark the task complete, still let the user try to claim —
+    // the server may accept it once it sees the live duration update. This
+    // matches the native UnilivePro behaviour where the claim button appears
+    // as soon as the local progress bar reaches 100%.
     final backendCompleted = t.containsKey('completed') ? parseBool(t['completed']) : null;
     final timeDone = completedTime >= timeRequired;
     final coinDone = todayEarning >= coinRequired;
-    final canClaim = (backendCompleted ?? (timeDone && coinDone)) && !isClaimed;
+    final canClaim = (backendCompleted == true || (timeDone && coinDone)) && !isClaimed;
 
     // Progress percentage
     final timeProgress = timeRequired > 0 ? (completedTime / timeRequired).clamp(0.0, 1.0) : 1.0;
@@ -950,18 +995,103 @@ class _HostCenterScreenState extends State<HostCenterScreen>
     });
   }
 
+  Future<void> _syncLiveHistoryBeforeClaim(String hostId) async {
+    final ids = <String>{};
+    for (final source in [_todayLive?['data'], _liveHistory?['data']]) {
+      final entries = source is List ? source : (source is Map ? [source] : const []);
+      for (final entry in entries.take(10)) {
+        if (entry is! Map) continue;
+        final id =
+            parseString(
+              entry['liveStreamingId'] ??
+                  entry['liveId'] ??
+                  entry['streamId'] ??
+                  entry['_id'],
+              '',
+            ) ??
+            '';
+        if (id.isNotEmpty) ids.add(id);
+      }
+    }
+    await Future.wait(
+      ids.map((id) async {
+        try {
+          await ApiService.updateLiveTime(hostId, id);
+        } catch (_) {}
+      }),
+    );
+  }
+
   Future<void> _claimTask(String taskId) async {
     final session = context.read<SessionManager>();
     try {
-      final res = await ApiService.claimTaskReward(hostId: session.userId, taskId: taskId);
-      if (res['status'] == true) {
-        Fluttertoast.showToast(msg: res['message']?.toString() ?? 'Reward claimed!');
+      await _syncLiveHistoryBeforeClaim(session.userId);
+      final today = _todayLive?['data'] is List
+          ? (_todayLive!['data'] as List).isNotEmpty
+              ? _todayLive!['data'][0] as Map<String, dynamic>
+              : <String, dynamic>{}
+          : <String, dynamic>{};
+      final videoDuration = parseInt(today['videoDuration'] ?? today['videoMinutes'] ?? today['videoTime'] ?? 0);
+      final audioDuration = parseInt(today['audioDuration'] ?? today['audioMinutes'] ?? today['audioTime'] ?? 0);
+      final earning = parseInt(today['todayEarning'] ?? today['earning'] ?? today['coin'] ?? today['rCoin'] ?? 0);
+      final liveId = parseString(today['liveStreamingId'] ?? today['liveId'] ?? today['streamId'] ?? today['_id']);
+      final res = await ApiService.claimTaskReward(
+        hostId: session.userId,
+        taskId: taskId,
+        liveStreamingId: liveId,
+        videoDuration: videoDuration > 0 ? videoDuration : null,
+        audioDuration: audioDuration > 0 ? audioDuration : null,
+        rCoin: earning > 0 ? earning : null,
+        coin: earning > 0 ? earning : null,
+      );
+      final data = res['data'] is Map ? Map<String, dynamic>.from(res['data'] as Map) : res;
+      final ok = parseBool(res['status']) ||
+          parseBool(res['success']) ||
+          parseBool(data['status']) ||
+          parseBool(data['success']);
+      if (ok) {
+        Fluttertoast.showToast(
+          msg: res['message']?.toString() ?? data['message']?.toString() ?? 'Reward claimed!',
+        );
+        // Refresh the session user so the new balance shows everywhere.
+        try {
+          final userRes = await ApiService.getUser({'userId': session.userId});
+          final fresh = userRes.user;
+          if (fresh != null) session.saveUser(fresh);
+        } catch (e) {
+          Log.w(_tag, 'user refresh after claim failed: $e');
+        }
         _loadAll();
       } else {
-        Fluttertoast.showToast(msg: res['message']?.toString() ?? 'Failed to claim');
+        final msg = res['message']?.toString() ?? data['message']?.toString() ?? 'Failed to claim';
+        Log.e(_tag, 'claimTask failed: $msg res=$res');
+        Fluttertoast.showToast(msg: msg);
       }
-    } catch (e) {
+    } catch (e, s) {
+      Log.e(_tag, 'claimTask exception', e, s);
       Fluttertoast.showToast(msg: 'Failed to claim reward');
     }
+  }
+
+  /// Parse a claimed flag from common backend keys.
+  bool _parseClaimed(Map<String, dynamic> t) {
+    const keys = ['isClaimed', 'claimed', 'isRewardClaimed', 'rewardClaimed'];
+    for (final key in keys) {
+      final value = t[key];
+      if (value != null) return parseBool(value);
+    }
+    return false;
+  }
+
+  /// Read the first non-null numeric value from a list of keys.
+  int _firstInt(Map<String, dynamic> map, List<String> keys) {
+    for (final key in keys) {
+      final value = map[key];
+      if (value == null) continue;
+      if (value is num) return value.toInt();
+      final parsed = int.tryParse(value.toString());
+      if (parsed != null) return parsed;
+    }
+    return 0;
   }
 }

@@ -48,9 +48,11 @@ LiveVideoParticipantRole resolveLiveVideoParticipant({
 
   // Try global host1/host2 score keys first. These are authoritative because
   // both hosts see the same canonical scores.
+  // If both are 0 it is likely a stale opening payload, so fall through and
+  // keep any existing local scores.
   final h1v = resolve(const ['host1Score', 'score1', 'host1Rank']);
   final h2v = resolve(const ['host2Score', 'score2', 'host2Rank']);
-  if (h1v != null || h2v != null) {
+  if ((h1v ?? 0) > 0 || (h2v ?? 0) > 0) {
     return (host1: h1v ?? currentHost1, host2: h2v ?? currentHost2);
   }
 
@@ -62,14 +64,8 @@ LiveVideoParticipantRole resolveLiveVideoParticipant({
     final remote = resolve(const ['remoteScore', 'remoteRank']);
     if (local != null || remote != null) {
       return localIsHost1
-          ? (
-              host1: local ?? currentHost1,
-              host2: remote ?? currentHost2,
-            )
-          : (
-              host1: remote ?? currentHost1,
-              host2: local ?? currentHost2,
-            );
+          ? (host1: local ?? currentHost1, host2: remote ?? currentHost2)
+          : (host1: remote ?? currentHost1, host2: local ?? currentHost2);
     }
   }
 

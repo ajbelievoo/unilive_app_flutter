@@ -182,11 +182,23 @@ class _LoginScreenState extends State<LoginScreen> with TickerProviderStateMixin
       }
       final res = await auth.googleLogin(name: googleUser.displayName ?? '', email: googleUser.email, image: googleUser.photoUrl ?? '', androidId: identity, fcmToken: fcmToken);
       _handleResult(res, session);
-      if (res.status && res.user != null && _referralCtrl.text.trim().isNotEmpty) {
+      final enteredCode = _referralCtrl.text.trim();
+      if (res.status && res.user != null && enteredCode.isNotEmpty && !res.user!.isReferral) {
         try {
-          await ApiService.addReferralCode({'userId': res.user!.id ?? '', 'referralCode': _referralCtrl.text.trim()});
-        } catch (e) {
-          Log.e(_tag, 'referralCode failed', e);
+          // Redeem the referral code explicitly when the login response did not
+          // already apply it. The backend is responsible for crediting both the
+          // new user (referee) and the referrer who shared the code.
+          final redeemRes = await ApiService.redeemReferralCode(
+            userId: res.user!.id ?? '',
+            referralCode: enteredCode,
+          );
+          if (redeemRes.status && redeemRes.user != null) {
+            auth.setUser(redeemRes.user);
+          } else {
+            Log.w(_tag, 'referral redeem failed: ${redeemRes.message}');
+          }
+        } catch (e, s) {
+          Log.e(_tag, 'referralCode failed', e, s);
         }
       }
     } on PlatformException catch (e) {

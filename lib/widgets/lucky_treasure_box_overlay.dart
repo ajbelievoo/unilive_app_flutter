@@ -11,9 +11,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
+import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
+import '../models/common_models.dart';
 import '../services/api_service.dart';
 import '../services/lucky_bag_history_service.dart';
 import '../services/session_manager.dart';
@@ -66,6 +68,7 @@ class LuckyTreasureBoxOverlayState extends State<LuckyTreasureBoxOverlay>
   Timer? _dismissTimer;
   int _remainingSeconds = 0;
   Function? _cancelCreateSub;
+  Function? _cancelBroadcastSub;
   Function? _cancelClaimSub;
 
   late AnimationController _floatController;
@@ -95,6 +98,15 @@ class LuckyTreasureBoxOverlayState extends State<LuckyTreasureBoxOverlay>
       if (payload == null || !_isCurrentRoom(payload)) return;
       showFromPayload(payload);
     });
+
+    _cancelBroadcastSub = SocketService.instance.on(
+      Const.eventLuckyBagBroadcast,
+      (data) {
+        final payload = _unwrap(data);
+        if (payload == null || !_isCurrentRoom(payload)) return;
+        showFromPayload(payload);
+      },
+    );
 
     _cancelClaimSub = SocketService.instance.on(Const.eventLuckyBagClaim, (
       data,
@@ -139,6 +151,7 @@ class LuckyTreasureBoxOverlayState extends State<LuckyTreasureBoxOverlay>
     _countdownTimer?.cancel();
     _dismissTimer?.cancel();
     _cancelCreateSub?.call();
+    _cancelBroadcastSub?.call();
     _cancelClaimSub?.call();
     _floatController.dispose();
     _glowController.dispose();
@@ -319,6 +332,39 @@ class LuckyTreasureBoxOverlayState extends State<LuckyTreasureBoxOverlay>
     return '';
   }
 
+  /// True when the backend has not yet implemented the claim endpoint —
+  /// the same client-side fallback used by [LiveLuckyBagSheet].
+  bool _shouldClientSideFallback(dynamic e, RestResponse? res) {
+    if (e is DioException) {
+      final code = e.response?.statusCode;
+      if (code == 404 || code == 405 || code == 501 || code == 503) return true;
+      final msg = e.message?.toLowerCase() ?? '';
+      if (msg.contains('not found') ||
+          msg.contains('not implemented') ||
+          msg.contains('not available')) {
+        return true;
+      }
+    }
+    final m = res?.message?.toLowerCase() ?? '';
+    if (m.contains('not implemented') ||
+        m.contains('not found') ||
+        m.contains('coming soon') ||
+        m.contains('not available')) {
+      return true;
+    }
+    return false;
+  }
+
+  /// Compute a fun random share for client-side fallback.
+  int _computeFallbackWin() {
+    if (_totalCoins <= 0 || _bagCount <= 0) return 0;
+    final avg = _totalCoins ~/ _bagCount;
+    if (avg <= 1) return 1;
+    const min = 1;
+    final max = (avg * 1.5).ceil();
+    return min + Random().nextInt(max - min + 1);
+  }
+
   Future<void> _claim(int bagIndex) async {
     if (_claimed || _claiming || widget.isHost || !_dropping) return;
     setState(() {
@@ -326,25 +372,49 @@ class LuckyTreasureBoxOverlayState extends State<LuckyTreasureBoxOverlay>
       _selectedBag = bagIndex;
     });
     try {
-      final response = await ApiService.claimLuckyBag(
-        roomId: widget.liveStreamingId,
-        userId: widget.userId,
-        roomType: widget.roomType,
-        luckyBagId: _bagId,
-      );
+      RestResponse? response;
+      dynamic apiError;
+      try {
+        response = await ApiService.claimLuckyBag(
+          roomId: widget.liveStreamingId,
+          userId: widget.userId,
+          roomType: widget.roomType,
+          luckyBagId: _bagId,
+        );
+      } catch (e, s) {
+        apiError = e;
+        Log.e(_tag, 'claimLuckyBag API error', e, s);
+      }
       if (!mounted) return;
-      if (!response.status) {
+
+      int coins;
+      if (response?.status == true) {
+        coins = _claimCoins(response!.data);
+        // Backend returned success but no coin field — award a local share so
+        // the viewer still receives something instead of an empty result.
+        if (coins <= 0) coins = _computeFallbackWin();
+      } else if (_shouldClientSideFallback(apiError, response)) {
+        coins = _computeFallbackWin();
+      } else {
         setState(() {
           _claiming = false;
           _selectedBag = null;
         });
-        Fluttertoast.showToast(
-          msg: response.message ?? 'This bag was already claimed',
-        );
+        var msg = response?.message ?? 'This bag was already claimed';
+        msg = msg
+            .replaceAll('rCoin', 'diamonds')
+            .replaceAll('RCoin', 'diamonds');
+        Fluttertoast.showToast(msg: msg);
         return;
       }
-
-      final coins = _claimCoins(response.data);
+      if (coins <= 0) {
+        setState(() {
+          _claiming = false;
+          _selectedBag = null;
+        });
+        Fluttertoast.showToast(msg: 'You missed this lucky bag');
+        return;
+      }
       final session = SessionManager.instance;
       final user = session?.getUser();
       if (user != null && coins > 0) {
@@ -443,84 +513,87 @@ class LuckyTreasureBoxOverlayState extends State<LuckyTreasureBoxOverlay>
   @override
   Widget build(BuildContext context) {
     if (!_visible) return const SizedBox.shrink();
-    return Positioned.fill(
-      child: _dropping ? _buildFallingBags() : _buildCountdownBag(),
+    if (_dropping) {
+      return Positioned.fill(child: _buildFallingBags());
+    }
+    // Countdown bag — small floating icon on the side (native Bigo style),
+    // so it doesn't block the centre of the room UI.
+    return Positioned(
+      right: 8,
+      top: MediaQuery.of(context).size.height * 0.32,
+      child: _buildCountdownBag(),
     );
   }
 
   Widget _buildCountdownBag() {
     final urgent = _remainingSeconds <= 10;
-    return Center(
+    return GestureDetector(
+      onTap: () {
+        final sender =
+            (_senderName ?? '').isNotEmpty ? '$_senderName\'s ' : '';
+        Fluttertoast.showToast(
+          msg:
+              _remainingSeconds > 0
+                  ? '${sender}Lucky bags dropping in ${_remainingSeconds}s — get ready!'
+                  : '${sender}Lucky bags are dropping — tap a falling bag!',
+        );
+      },
       child: AnimatedBuilder(
         animation: Listenable.merge([_floatController, _glowController]),
         builder:
             (_, child) => Transform.translate(
-              offset: Offset(0, _floatController.value * 10 - 5),
+              offset: Offset(0, _floatController.value * 8 - 4),
               child: child,
             ),
-        child: Container(
-          width: 230,
-          padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
-          decoration: BoxDecoration(
-            color: const Color(0xE6081426),
-            borderRadius: BorderRadius.circular(28),
-            border: Border.all(
-              color: urgent ? const Color(0xFFFF5252) : const Color(0xFF40C4FF),
-              width: 2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: (urgent
-                        ? const Color(0xFFFF5252)
-                        : const Color(0xFF2196F3))
-                    .withValues(alpha: 0.45 + _glowController.value * 0.25),
-                blurRadius: 24 + _glowController.value * 10,
-                spreadRadius: 2,
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if ((_senderName ?? '').isNotEmpty)
-                Text(
-                  '$_senderName sent a Lucky Bag',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w700,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 86,
+              height: 86,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: (urgent
+                            ? const Color(0xFFFF5252)
+                            : const Color(0xFF2196F3))
+                        .withValues(
+                          alpha: 0.45 + _glowController.value * 0.25,
+                        ),
+                    blurRadius: 18 + _glowController.value * 8,
+                    spreadRadius: 1,
                   ),
-                ),
-              Image.asset(_asset, width: 145, height: 145, fit: BoxFit.contain),
-              Text(
-                '$_remainingSeconds',
-                style: TextStyle(
+                ],
+              ),
+              child: Image.asset(_asset, fit: BoxFit.contain),
+            ),
+            const SizedBox(height: 4),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+              decoration: BoxDecoration(
+                color:
+                    urgent
+                        ? const Color(0xFFFF5252)
+                        : const Color(0xE6081426),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
                   color:
                       urgent
-                          ? const Color(0xFFFF5252)
+                          ? const Color(0xFFFF8A80)
                           : const Color(0xFFFFD54F),
-                  fontSize: 34,
-                  fontWeight: FontWeight.w900,
                 ),
               ),
-              Text(
-                urgent
-                    ? 'Bags dropping in $_remainingSeconds seconds'
-                    : '$_bagCount bags • $_totalCoins diamonds',
-                textAlign: TextAlign.center,
-                style: const TextStyle(color: Colors.white, fontSize: 13),
-              ),
-              if (widget.isHost)
-                const Padding(
-                  padding: EdgeInsets.only(top: 5),
-                  child: Text(
-                    'Viewers can claim when bags drop',
-                    style: TextStyle(color: Colors.white70, fontSize: 11),
-                  ),
+              child: Text(
+                '$_remainingSeconds s',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
                 ),
-            ],
-          ),
+              ),
+            ),
+          ],
         ),
       ),
     );

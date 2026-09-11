@@ -70,6 +70,7 @@ class _FeedbackScreenState extends State<FeedbackScreen> {
         userId: session.userId,
         contactDetails: _contactCtrl.text.trim(),
         issue: msg,
+        category: _category,
       );
       if (res.status) {
         Fluttertoast.showToast(msg: 'Feedback submitted');

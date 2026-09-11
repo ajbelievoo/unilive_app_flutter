@@ -121,6 +121,7 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
 
   Timer? _countdownTimer;
   Function? _cancelCreateSub;
+  Function? _cancelBroadcastSub;
   Function? _cancelClaimSub;
 
   @override
@@ -141,6 +142,7 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
   void dispose() {
     _countdownTimer?.cancel();
     _cancelCreateSub?.call();
+    _cancelBroadcastSub?.call();
     _cancelClaimSub?.call();
     super.dispose();
   }
@@ -151,9 +153,7 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
   }
 
   void _listenForLuckyBag() {
-    _cancelCreateSub = SocketService.instance.on(Const.eventLuckyBagCreate, (
-      data,
-    ) {
+    void onCreate(dynamic data) {
       final payload = _unwrap(data);
       if (payload != null && _isCurrentRoom(payload)) {
         setState(() {
@@ -188,7 +188,16 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
         });
         _startCountdown();
       }
-    });
+    }
+
+    _cancelCreateSub = SocketService.instance.on(
+      Const.eventLuckyBagCreate,
+      onCreate,
+    );
+    _cancelBroadcastSub = SocketService.instance.on(
+      Const.eventLuckyBagBroadcast,
+      onCreate,
+    );
 
     _cancelClaimSub = SocketService.instance.on(Const.eventLuckyBagClaim, (
       data,
@@ -433,7 +442,9 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
           Navigator.pop(context);
         }
       } else {
-        Fluttertoast.showToast(msg: res?.message ?? 'Failed to send lucky bag');
+        var msg = res?.message ?? 'Failed to send lucky bag';
+        msg = msg.replaceAll('rCoin', 'diamonds').replaceAll('RCoin', 'diamonds');
+        Fluttertoast.showToast(msg: msg);
       }
     } catch (e, s) {
       Log.e(_tag, 'send failed', e, s);
@@ -499,9 +510,9 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
           'image': session.userImage,
         });
       } else {
-        Fluttertoast.showToast(
-          msg: res?.message ?? 'You missed this lucky bag',
-        );
+        var msg = res?.message ?? 'You missed this lucky bag';
+        msg = msg.replaceAll('rCoin', 'diamonds').replaceAll('RCoin', 'diamonds');
+        Fluttertoast.showToast(msg: msg);
       }
     } catch (e, s) {
       Log.e(_tag, 'claim failed', e, s);

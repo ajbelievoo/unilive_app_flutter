@@ -565,73 +565,241 @@ class _MainScreenState extends State<MainScreen> {
   void _showGoLiveOptions(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppTheme.surface,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.55),
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       builder:
-          (ctx) => SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(vertical: 12),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Padding(
-                    padding: EdgeInsets.all(16),
-                    child: Text(
-                      'Create',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+          (ctx) => ClipRRect(
+            borderRadius: const BorderRadius.vertical(
+              top: Radius.circular(32),
+            ),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+              child: Container(
+                decoration: BoxDecoration(
+                  gradient: const LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [Color(0xE61A1A2E), Color(0xF30D0D1A)],
+                  ),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(32),
+                  ),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppTheme.primary.withValues(alpha: 0.3),
+                      blurRadius: 40,
+                      spreadRadius: 4,
+                    ),
+                  ],
+                ),
+                child: SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(20, 16, 20, 24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Drag handle
+                        Center(
+                          child: Container(
+                            width: 44,
+                            height: 4,
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.25),
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        // Title with glow
+                        ShaderMask(
+                          shaderCallback:
+                              (bounds) => const LinearGradient(
+                                colors: [Color(0xFFFF8BBF), Color(0xFF7B61FF)],
+                              ).createShader(bounds),
+                          child: const Text(
+                            'Create',
+                            style: TextStyle(
+                              fontSize: 22,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'What would you like to share today?',
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: Colors.white.withValues(alpha: 0.55),
+                          ),
+                        ),
+                        const SizedBox(height: 24),
+                        _buildCreateOption(
+                          ctx,
+                          icon: Icons.add_photo_alternate,
+                          label: 'Create Post',
+                          subtitle: 'Share photos & moments',
+                          gradient: const [
+                            Color(0xFFFF8BBF),
+                            Color(0xFFE9428F),
+                          ],
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            context.pushNamed(AppRoutes.createPost);
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        _buildCreateOption(
+                          ctx,
+                          icon: Icons.videocam,
+                          label: 'Video Live',
+                          subtitle: 'Go live with your camera',
+                          gradient: const [
+                            Color(0xFF7B61FF),
+                            Color(0xFF4F8DFD),
+                          ],
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            context.pushNamed(AppRoutes.goLive);
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        _buildCreateOption(
+                          ctx,
+                          icon: Icons.mic,
+                          label: 'Audio Live',
+                          subtitle: 'Start an audio room',
+                          gradient: const [
+                            Color(0xFF34C759),
+                            Color(0xFF30D158),
+                          ],
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            AudioRoomNavigation.openAudioRoomOrCreate(context);
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                        _buildCreateOption(
+                          ctx,
+                          icon: Icons.video_call,
+                          label: 'Random Call',
+                          subtitle: 'Match with someone new',
+                          gradient: const [
+                            Color(0xFFFFB800),
+                            Color(0xFFFF8C00),
+                          ],
+                          onTap: () {
+                            Navigator.pop(ctx);
+                            context.pushNamed(AppRoutes.randomCall);
+                          },
+                        ),
+                        const SizedBox(height: 12),
+                      ],
                     ),
                   ),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.add_photo_alternate,
-                      color: AppTheme.primary,
-                    ),
-                    title: const Text('Create Post'),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      context.pushNamed(AppRoutes.createPost);
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.videocam,
-                      color: AppTheme.primary,
-                    ),
-                    title: const Text('Video Live'),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      context.pushNamed(AppRoutes.goLive);
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(Icons.mic, color: AppTheme.primary),
-                    title: const Text('Audio Live'),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      AudioRoomNavigation.openAudioRoomOrCreate(context);
-                    },
-                  ),
-                  ListTile(
-                    leading: const Icon(
-                      Icons.video_call,
-                      color: AppTheme.primary,
-                    ),
-                    title: const Text('Random Call'),
-                    onTap: () {
-                      Navigator.pop(ctx);
-                      context.pushNamed(AppRoutes.randomCall);
-                    },
-                  ),
-                  const SizedBox(height: 10),
-                ],
+                ),
               ),
             ),
           ),
+    );
+  }
+
+  Widget _buildCreateOption(
+    BuildContext ctx, {
+    required IconData icon,
+    required String label,
+    required String subtitle,
+    required List<Color> gradient,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 150),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              Colors.white.withValues(alpha: 0.08),
+              Colors.white.withValues(alpha: 0.03),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.12),
+          ),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: gradient,
+                ),
+                borderRadius: BorderRadius.circular(14),
+                boxShadow: [
+                  BoxShadow(
+                    color: gradient.last.withValues(alpha: 0.45),
+                    blurRadius: 16,
+                    spreadRadius: 1,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: Icon(icon, color: Colors.white, size: 24),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    label,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    subtitle,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.55),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.08),
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(
+                Icons.arrow_forward_ios,
+                color: Colors.white70,
+                size: 14,
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

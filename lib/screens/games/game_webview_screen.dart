@@ -7,6 +7,7 @@
 library game_webview_screen;
 
 import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 
 import '../../constants/const.dart';
@@ -31,6 +32,7 @@ Future<void> openGameWebView(
   final session = SessionManager.instance;
   final user = session?.getUser();
   final userId = user?.id ?? '';
+  final uniqueId = user?.uniqueId ?? '';
   final diamond = user?.coin.toInt() ?? 0;
   final token = user?.token ?? '';
   final userName = user?.name ?? '';
@@ -49,6 +51,8 @@ Future<void> openGameWebView(
             ..['user_id'] = userId
             ..['user'] = userId
             ..['id'] = userId
+            ..['uid'] = userId
+            ..['uniqueId'] = uniqueId
             ..['diamond'] = '$diamond'
             ..['userDiamond'] = '$diamond'
             ..['balance'] = '$diamond'
@@ -63,8 +67,9 @@ Future<void> openGameWebView(
       finalUrl = parsed.replace(queryParameters: query).toString();
     } else {
       final sep = gameUrl.contains('?') ? '&' : '?';
+      const enc = Uri.encodeQueryComponent;
       finalUrl =
-          '$gameUrl${sep}userId=$userId&user=$userId&diamond=$diamond&userDiamond=$diamond&balance=$diamond&coin=$diamond&token=$token&name=$userName&image=$userImage';
+          '$gameUrl${sep}userId=${enc(userId)}&user=${enc(userId)}&uid=${enc(userId)}&uniqueId=${enc(uniqueId)}&diamond=$diamond&userDiamond=$diamond&balance=$diamond&coin=$diamond&token=${enc(token)}&name=${enc(userName)}&image=${enc(userImage)}';
     }
   }
   Log.d(
@@ -85,6 +90,7 @@ Future<void> openGameWebView(
           gameUrl: finalUrl,
           gameType: gameType,
           userId: userId,
+          uniqueId: uniqueId,
           diamond: diamond,
           token: token,
           userName: userName,
@@ -104,6 +110,7 @@ class _GameWebViewSheet extends StatefulWidget {
     required this.gameUrl,
     required this.gameType,
     required this.userId,
+    required this.uniqueId,
     required this.diamond,
     required this.token,
     required this.userName,
@@ -114,6 +121,7 @@ class _GameWebViewSheet extends StatefulWidget {
   final String gameUrl;
   final String gameType;
   final String userId;
+  final String uniqueId;
   final int diamond;
   final String token;
   final String userName;
@@ -150,6 +158,8 @@ class _GameWebViewSheetState extends State<_GameWebViewSheet> {
     window.userID = '${_escapeJs(widget.userId)}';
     window.user = '${_escapeJs(widget.userId)}';
     window.id = '${_escapeJs(widget.userId)}';
+    window.uid = '${_escapeJs(widget.userId)}';
+    window.uniqueId = '${_escapeJs(widget.uniqueId)}';
     window.diamond = ${widget.diamond};
     window.userDiamond = ${widget.diamond};
     window.balance = ${widget.diamond};
@@ -160,10 +170,41 @@ class _GameWebViewSheetState extends State<_GameWebViewSheet> {
     window.name = '${_escapeJs(widget.userName)}';
     window.userImage = '${_escapeJs(widget.userImage)}';
     window.image = '${_escapeJs(widget.userImage)}';
+    // window.Android bridge — native WebActivity exposes this object via
+    // addJavascriptInterface. Game pages call it for identity, balance,
+    // closing the sheet (Android.showToast finishes the native screen), and
+    // toast messages. Without it, games that call Android.* throw and break.
+    window.Android = {
+      showToast: function(m){ try{ GameBridge.postMessage('close'); }catch(e){} },
+      showAndroidToast: function(m){ try{ GameBridge.postMessage('toast:'+m); }catch(e){} },
+      ok: function(m){ try{ GameBridge.postMessage('toast:'+m); }catch(e){} },
+      close: function(){ try{ GameBridge.postMessage('close'); }catch(e){} },
+      closeGame: function(){ try{ GameBridge.postMessage('close'); }catch(e){} },
+      finish: function(){ try{ GameBridge.postMessage('close'); }catch(e){} },
+      exit: function(){ try{ GameBridge.postMessage('close'); }catch(e){} },
+      updateCoin: function(){ try{ GameBridge.postMessage('coin_update'); }catch(e){} },
+      getUserId: function(){ return '${_escapeJs(widget.userId)}'; },
+      getUserID: function(){ return '${_escapeJs(widget.userId)}'; },
+      getId: function(){ return '${_escapeJs(widget.userId)}'; },
+      getUid: function(){ return '${_escapeJs(widget.userId)}'; },
+      getUniqueId: function(){ return '${_escapeJs(widget.uniqueId)}'; },
+      getCoin: function(){ return ${widget.diamond}; },
+      getCoins: function(){ return ${widget.diamond}; },
+      getDiamond: function(){ return ${widget.diamond}; },
+      getBalance: function(){ return ${widget.diamond}; },
+      getToken: function(){ return '${_escapeJs(widget.token)}'; },
+      getName: function(){ return '${_escapeJs(widget.userName)}'; },
+      getUserName: function(){ return '${_escapeJs(widget.userName)}'; },
+      getImage: function(){ return '${_escapeJs(widget.userImage)}'; },
+      getUserImage: function(){ return '${_escapeJs(widget.userImage)}'; }
+    };
+    window.uniGameBridge = window.Android;
     try {
       localStorage.setItem('userId', '${_escapeJs(widget.userId)}');
       localStorage.setItem('userID', '${_escapeJs(widget.userId)}');
       localStorage.setItem('user', '${_escapeJs(widget.userId)}');
+      localStorage.setItem('uid', '${_escapeJs(widget.userId)}');
+      localStorage.setItem('uniqueId', '${_escapeJs(widget.uniqueId)}');
       localStorage.setItem('diamond', '${widget.diamond}');
       localStorage.setItem('userDiamond', '${widget.diamond}');
       localStorage.setItem('balance', '${widget.diamond}');
@@ -202,6 +243,10 @@ class _GameWebViewSheetState extends State<_GameWebViewSheet> {
     _controller =
         WebViewController()
           ..setJavaScriptMode(JavaScriptMode.unrestricted)
+          ..addJavaScriptChannel(
+            'GameBridge',
+            onMessageReceived: (msg) => _onGameMessage(msg.message),
+          )
           ..enableZoom(true)
           ..setNavigationDelegate(
             NavigationDelegate(
@@ -245,8 +290,59 @@ class _GameWebViewSheetState extends State<_GameWebViewSheet> {
                 }
               },
             ),
-          )
-          ..loadRequest(Uri.parse(widget.gameUrl));
+          );
+    _loadGame();
+  }
+
+  /// Sets identity cookies on the game domain (some game SPAs read
+  /// `document.cookie` for userId/token) and then loads the game URL.
+  Future<void> _loadGame() async {
+    try {
+      final host = Uri.tryParse(widget.gameUrl)?.host;
+      if (host != null && host.isNotEmpty) {
+        final cookieManager = WebViewCookieManager();
+        final cookies = <String, String>{
+          'userId': widget.userId,
+          'uniqueId': widget.uniqueId,
+          'token': widget.token,
+          'coin': '${widget.diamond}',
+          'diamond': '${widget.diamond}',
+        };
+        for (final entry in cookies.entries) {
+          if (entry.value.isEmpty) continue;
+          await cookieManager.setCookie(
+            WebViewCookie(
+              name: entry.key,
+              value: entry.value,
+              domain: host,
+              path: '/',
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      Log.w('GameWebView', 'cookie set failed: $e');
+    }
+    await _controller.loadRequest(Uri.parse(widget.gameUrl));
+  }
+
+  /// Handles messages from the injected `window.Android` bridge — matches the
+  /// native WebAppInterface contract (showToast closes the game sheet).
+  void _onGameMessage(String message) {
+    if (message == 'close') {
+      if (mounted) Navigator.of(context).pop();
+      return;
+    }
+    if (message == 'coin_update') {
+      if (widget.userId.isNotEmpty) {
+        SocketService.instance.emit(Const.eventUserCoinUpdate, widget.userId);
+      }
+      return;
+    }
+    if (message.startsWith('toast:')) {
+      final text = message.substring(6);
+      if (text.isNotEmpty) Fluttertoast.showToast(msg: text);
+    }
   }
 
   @override

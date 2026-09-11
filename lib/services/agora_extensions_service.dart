@@ -12,9 +12,9 @@
 /// The service uses the public `agora_rtc_engine` Dart API:
 ///  * Voice changer  → `RtcEngine.setVoiceBeautifierPreset`,
 ///                      `setVoiceConversionPreset`, `setVoiceAITuner`
-///  * 3D spatial     → `RtcEngine.enableSpatialAudio` +
-///                      `getLocalSpatialAudioEngine().updateSelfPosition`
-///                      / `updateRemotePosition`
+///  * 3D spatial     → `RtcEngine.enableSpatialAudio` only. Position APIs are
+///    disabled because Agora 6.5.4's `LocalSpatialAudioEngineImpl.release()`
+///    crashes on room leave (see `enableSpatialAudio()` for details).
 library;
 
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
@@ -113,7 +113,6 @@ class AgoraExtensionsService {
 
   static const String _tag = 'AgoraExt';
 
-  LocalSpatialAudioEngine? _spatial;
   bool _spatialInitialised = false;
   bool _voiceChangerActive = false;
 
@@ -174,11 +173,17 @@ class AgoraExtensionsService {
     }
     if (_spatialInitialised) return true;
     try {
+      // NOTE: Do NOT call getLocalSpatialAudioEngine() / initialize() here.
+      // Agora 6.5.4's LocalSpatialAudioEngineImpl.release() triggers a
+      // platform-channel call (LocalSpatialAudioEngine_release) that returns
+      // null where a Map is expected, crashing the app on room leave:
+      //   "type 'Null' is not a subtype of type 'Map<dynamic, dynamic>'".
+      // enableSpatialAudio(true/false) itself is safe and RtcEngine.release()
+      // will clean up the native spatial engine. The position APIs are not
+      // currently used by the audio/video room UI.
       await engine.enableSpatialAudio(true);
-      _spatial = engine.getLocalSpatialAudioEngine();
-      await _spatial?.initialize();
       _spatialInitialised = true;
-      Log.d(_tag, '3D spatial audio initialised');
+      Log.d(_tag, '3D spatial audio enabled');
       return true;
     } catch (e, s) {
       Log.e(_tag, 'enableSpatialAudio failed', e, s);
@@ -196,33 +201,14 @@ class AgoraExtensionsService {
     required List<double> axisRight,
     required List<double> axisUp,
   }) async {
-    if (!_spatialInitialised || _spatial == null) return;
-    try {
-      await _spatial!.updateSelfPosition(
-        position: position,
-        axisForward: axisForward,
-        axisRight: axisRight,
-        axisUp: axisUp,
-      );
-    } catch (e, s) {
-      Log.e(_tag, 'updateSelfPosition failed', e, s);
-    }
+    // Position APIs intentionally disabled — see enableSpatialAudio() note.
+    return;
   }
 
   /// Place a remote user at a fixed point in the 3D audio space.
   Future<void> setRemoteUserPosition(int uid, double x, double y, double z) async {
-    if (!_spatialInitialised || _spatial == null) return;
-    try {
-      await _spatial!.updateRemotePosition(
-        uid: uid,
-        posInfo: RemoteVoicePositionInfo(
-          position: [x, y, z],
-          forward: [0, 0, 1],
-        ),
-      );
-    } catch (e, s) {
-      Log.e(_tag, 'setRemoteUserPosition failed', e, s);
-    }
+    // Position APIs intentionally disabled — see enableSpatialAudio() note.
+    return;
   }
 
   /// Tear down everything tied to this engine. Call on room leave.
@@ -230,11 +216,9 @@ class AgoraExtensionsService {
     await disableVoiceChanger(engine, ai);
     if (_spatialInitialised) {
       try {
-        await _spatial?.clearRemotePositions();
         await engine.enableSpatialAudio(false);
       } catch (_) {}
       _spatialInitialised = false;
-      _spatial = null;
     }
   }
 }

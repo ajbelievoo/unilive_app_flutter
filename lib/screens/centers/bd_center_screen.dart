@@ -9,7 +9,10 @@
 library centers;
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../models/json_annotation_helper.dart';
 import '../../services/api_service.dart';
@@ -266,7 +269,7 @@ class _BdCenterScreenState extends State<BdCenterScreen>
                 _infoRow('Unique ID', data['uniqueId']?.toString() ?? 'N/A', Icons.badge),
                 _infoRow('Total Agencies', '$totalAgencies', Icons.business),
                 _infoRow('Bank Details', data['bankDetails']?.toString() ?? 'N/A', Icons.account_balance),
-                _infoRow('Invite Link', data['inviteLink']?.toString() ?? 'N/A', Icons.link),
+                _linkRow('Invite Link', data['inviteLink']?.toString() ?? 'N/A', Icons.link),
               ],
             ),
           ),
@@ -373,6 +376,60 @@ class _BdCenterScreenState extends State<BdCenterScreen>
         Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
       ]),
     );
+  }
+
+  Widget _linkRow(String label, String url, IconData icon) {
+    final isValid = url.startsWith('http');
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(children: [
+        Icon(icon, color: AppTheme.primary, size: 18),
+        const SizedBox(width: 12),
+        Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14)),
+        const SizedBox(width: 8),
+        Expanded(
+          child: isValid
+              ? GestureDetector(
+                  onTap: () => _openLink(url),
+                  child: Text(
+                    url,
+                    textAlign: TextAlign.end,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Color(0xFF4F8DFD),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.underline,
+                      decorationColor: Color(0xFF4F8DFD),
+                    ),
+                  ),
+                )
+              : Text(url, textAlign: TextAlign.end,
+                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+        ),
+        if (isValid) ...[
+          const SizedBox(width: 8),
+          GestureDetector(
+            onTap: () {
+              Clipboard.setData(ClipboardData(text: url));
+              Fluttertoast.showToast(msg: 'Invite link copied');
+            },
+            child: const Icon(Icons.copy, color: Colors.white54, size: 16),
+          ),
+        ],
+      ]),
+    );
+  }
+
+  Future<void> _openLink(String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    try {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } catch (e, s) {
+      Log.e(_tag, 'open invite link failed', e, s);
+      Fluttertoast.showToast(msg: 'Could not open link');
+    }
   }
 
   Widget _earningTile(Map<String, dynamic> d) {

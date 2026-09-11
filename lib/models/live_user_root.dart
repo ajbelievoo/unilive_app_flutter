@@ -108,17 +108,43 @@ class LiveUser {
   String? get userId => liveUserId ?? id;
   String? get userImage => image;
 
+  /// Public room id — same as `live_stream_root.dart` LiveUser.
+  String? get liveRoomId => liveStreamingId ?? id;
+
   factory LiveUser.fromJson(Map<String, dynamic> json) => LiveUser(
     id: parseString(json['_id'] ?? json['id']),
-    name: parseString(json['name']),
-    username: parseString(json['username']),
-    image: parseString(json['image']),
+    name: parseString(
+      json['name'] ??
+          (json['userId'] is Map ? json['userId']['name'] : null) ??
+          (json['user'] is Map ? json['user']['name'] : null),
+    ),
+    username: parseString(
+      json['username'] ??
+          (json['userId'] is Map ? json['userId']['username'] : null) ??
+          (json['user'] is Map ? json['user']['username'] : null),
+    ),
+    image: parseString(
+      json['image'] ??
+          json['userImage'] ??
+          (json['userId'] is Map ? json['userId']['image'] : null) ??
+          (json['user'] is Map ? json['user']['image'] : null),
+    ),
     country: parseString(json['country']),
     countryFlagImage: parseString(json['countryFlagImage']),
     diamond: parseNum(json['diamond'], 0),
-    view: parseInt(json['view'], 0),
+    view: parseInt(
+      json['view'] ??
+          json['viewerCount'] ??
+          json['viewersCount'] ??
+          json['viewCount'] ??
+          json['totalView'] ??
+          json['views'],
+      0,
+    ),
     rCoin: parseInt(json['rCoin'], 0),
-    channel: parseString(json['channel']),
+    channel: parseString(
+      json['channel'] ?? json['channelName'] ?? json['agoraChannel'],
+    ),
     isVIP: parseBool(json['isVIP'] ?? json['isVip'] ?? json['vip']),
     token: parseString(json['token']),
     service: parseString(json['service']),
@@ -146,12 +172,20 @@ class LiveUser {
     roomName: parseString(json['roomName']),
     roomImage: parseString(json['roomImage']),
     roomWelcome: parseString(json['roomWelcome']),
-    liveUserId: parseString(json['liveUserId']),
+    liveUserId: parseString(
+      json['liveUserId'] ??
+          (json['userId'] is Map
+              ? (json['userId']['_id'] ?? json['userId']['id'])
+              : json['userId']) ??
+          (json['user'] is Map
+              ? (json['user']['_id'] ?? json['user']['id'])
+              : null),
+    ),
     liveStreamingId: parseString(
       json['liveStreamingId'] ?? json['_id'] ?? json['id'],
     ),
     link: parseString(json['link']),
-    agoraUID: parseInt(json['agoraUID'], 0),
+    agoraUID: parseInt(json['agoraUID'] ?? json['agoraUid'] ?? json['uid'], 0),
     uniqueId: parseString(json['uniqueId']),
     createdAt: parseString(json['createdAt']),
     time: parseInt(json['time'], 0),

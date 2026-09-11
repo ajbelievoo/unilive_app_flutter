@@ -192,8 +192,15 @@ class LiveUser {
     service: parseString(json['service']),
     isPublic: parseBool(json['isPublic']),
     passcode: parseString(json['passcode']),
-    view: parseInt(json['view'], 0),
-    totalView: parseInt(json['totalView'], 0),
+    view: parseInt(
+      json['view'] ??
+          json['viewerCount'] ??
+          json['viewersCount'] ??
+          json['viewCount'] ??
+          json['views'],
+      0,
+    ),
+    totalView: parseInt(json['totalView'] ?? json['totalViews'], 0),
     coin: parseInt(json['coin'], 0),
     isVIP: parseBool(json['isVIP'] ?? json['isVip'] ?? json['vip']),
     isAudio:

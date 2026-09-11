@@ -4034,6 +4034,7 @@ class _ChatScreenState extends State<ChatScreen> {
                       giftType = 0,
                       required count,
                       required totalCoins,
+                      bool isLucky = false,
                     }) {
                       _onChatGiftSent(
                         giftId: giftId,

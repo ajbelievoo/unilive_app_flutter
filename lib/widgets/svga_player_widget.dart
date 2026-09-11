@@ -11,10 +11,30 @@ import 'package:dio/dio.dart';
 import '../services/gift_sound_service.dart';
 import '../utils/log.dart';
 import '../utils/media_utils.dart';
-import 'preloader.dart';
 
 /// Minimum bytes we consider a potentially valid file.
 const _kMinSvgaBytes = 8;
+
+bool _isRasterImageBytes(Uint8List data) {
+  if (data.length < 12) return false;
+  final png =
+      data[0] == 0x89 &&
+      data[1] == 0x50 &&
+      data[2] == 0x4E &&
+      data[3] == 0x47;
+  final jpeg = data[0] == 0xFF && data[1] == 0xD8 && data[2] == 0xFF;
+  final gif = data[0] == 0x47 && data[1] == 0x49 && data[2] == 0x46;
+  final webp =
+      data[0] == 0x52 &&
+      data[1] == 0x49 &&
+      data[2] == 0x46 &&
+      data[3] == 0x46 &&
+      data[8] == 0x57 &&
+      data[9] == 0x45 &&
+      data[10] == 0x42 &&
+      data[11] == 0x50;
+  return png || jpeg || gif || webp;
+}
 
 /// Strips HTTP-level gzip/deflate compression if the CDN applied it on top
 /// of the already zlib-compressed SVGA protobuf payload.
@@ -104,6 +124,10 @@ class SvgaCacheManager {
     for (var attempt = 0; attempt < 2; attempt++) {
       final bytes = await _getBytes(url, forceNetwork: attempt > 0);
       if (bytes == null || bytes.isEmpty) return null;
+      if (_isRasterImageBytes(bytes)) {
+        Log.d('SvgaCacheManager', 'Raster fallback detected for $url');
+        return null;
+      }
 
       try {
         // SVGAParser.decodeFromBuffer() handles zlib decompression internally
@@ -129,6 +153,13 @@ class SvgaCacheManager {
       }
     }
     return null;
+  }
+
+  static Future<Uint8List?> loadRasterFallback(String rawUrl) async {
+    final url = VideoUtil.getFullSvgaUrl(rawUrl.trim());
+    if (url.isEmpty) return null;
+    final bytes = await _getBytes(url);
+    return bytes != null && _isRasterImageBytes(bytes) ? bytes : null;
   }
 
   /// Returns cached bytes while coalescing concurrent downloads for one URL.
@@ -173,7 +204,9 @@ class SvgaCacheManager {
           if (raw.length >= _kMinSvgaBytes) {
             // Disk cache stores the raw zlib-compressed SVGA bytes.
             // If a previous version stored something else, delete & re-download.
-            if (raw[0] == 0x78 || (raw[0] == 0x1F && raw[1] == 0x8B)) {
+            if (raw[0] == 0x78 ||
+                (raw[0] == 0x1F && raw[1] == 0x8B) ||
+                _isRasterImageBytes(raw)) {
               // Strip any HTTP-level compression that may have been cached.
               final cleaned = _stripHttpCompression(raw);
               if (cleaned != raw) {
@@ -290,6 +323,7 @@ class SvgaPlayer extends StatefulWidget {
     this.fit = BoxFit.contain,
     this.playEmbeddedAudio = false,
     this.onLoaded,
+    this.onCompleted,
   });
 
   final String? url;
@@ -309,6 +343,7 @@ class SvgaPlayer extends StatefulWidget {
   /// Called when the SVGA file is loaded with the total animation duration
   /// in milliseconds. Used by entry overlays to time the entrance.
   final ValueChanged<int>? onLoaded;
+  final VoidCallback? onCompleted;
 
   @override
   State<SvgaPlayer> createState() => _SvgaPlayerState();
@@ -320,6 +355,7 @@ class _SvgaPlayerState extends State<SvgaPlayer>
   String? _loadedUrl;
   bool _hasError = false;
   bool _isLoading = true;
+  Uint8List? _rasterFallbackBytes;
   int _loadGeneration = 0;
 
   @override
@@ -349,6 +385,7 @@ class _SvgaPlayerState extends State<SvgaPlayer>
         setState(() {
           _hasError = false;
           _isLoading = false;
+          _rasterFallbackBytes = null;
         });
       }
       return;
@@ -367,6 +404,7 @@ class _SvgaPlayerState extends State<SvgaPlayer>
       setState(() {
         _hasError = false;
         _isLoading = true;
+        _rasterFallbackBytes = null;
       });
     }
 
@@ -383,7 +421,21 @@ class _SvgaPlayerState extends State<SvgaPlayer>
     if (!mounted || generation != _loadGeneration || widget.url?.trim() != url) return;
 
     if (video == null) {
-      if (mounted) {
+      final rasterBytes = await SvgaCacheManager.loadRasterFallback(url);
+      if (!mounted || generation != _loadGeneration) return;
+      if (rasterBytes != null) {
+        setState(() {
+          _rasterFallbackBytes = rasterBytes;
+          _hasError = false;
+          _isLoading = false;
+        });
+        widget.onLoaded?.call(4000);
+        Future.delayed(const Duration(seconds: 4), () {
+          if (mounted && generation == _loadGeneration) {
+            widget.onCompleted?.call();
+          }
+        });
+      } else {
         setState(() {
           _hasError = true;
           _isLoading = false;
@@ -400,10 +452,13 @@ class _SvgaPlayerState extends State<SvgaPlayer>
     oldController?.dispose();
     // Listen for animation completion — stop embedded audio so it doesn't
     // keep playing after the SVGA animation finishes (non-repeat mode).
-    if (widget.playEmbeddedAudio && !widget.repeat) {
+    if (!widget.repeat) {
       controller.addStatusListener((status) {
         if (status == AnimationStatus.completed && mounted) {
-          GiftSoundService.instance.stopSvgaAudio();
+          if (widget.playEmbeddedAudio) {
+            GiftSoundService.instance.stopSvgaAudio();
+          }
+          widget.onCompleted?.call();
         }
       });
     }
@@ -495,6 +550,18 @@ class _SvgaPlayerState extends State<SvgaPlayer>
       return _placeholder();
     }
 
+    if (_rasterFallbackBytes != null) {
+      return SizedBox(
+        width: widget.width,
+        height: widget.height,
+        child: Image.memory(
+          _rasterFallbackBytes!,
+          fit: widget.fit,
+          gaplessPlayback: true,
+        ),
+      );
+    }
+
     if (_controller == null || _controller!.videoItem == null) {
       return _placeholder();
     }
@@ -569,16 +636,6 @@ class _SvgaPlayerState extends State<SvgaPlayer>
   }
 
   Widget _loadingBox() {
-    return SizedBox(
-      width: widget.width,
-      height: widget.height,
-      child: const Center(
-        child: SizedBox(
-          width: 20,
-          height: 20,
-          child: Preloader(strokeWidth: 2, color: Colors.white54),
-        ),
-      ),
-    );
+    return SizedBox(width: widget.width, height: widget.height);
   }
 }

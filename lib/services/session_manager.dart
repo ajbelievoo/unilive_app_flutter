@@ -234,6 +234,12 @@ class SessionManager {
   void clearPendingReferralCode() {
     _pref.remove(Const.referralCode);
   }
+
+  String get _hostRequestSubmittedKey => '${Const.hostRequestSubmitted}_$userId';
+
+  bool get hostRequestSubmitted => getBool(_hostRequestSubmittedKey);
+
+  set hostRequestSubmitted(bool value) => saveBool(_hostRequestSubmittedKey, value);
 }
 
 /// Minimal [SharedPreferences] implementation used as a fallback when the

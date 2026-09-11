@@ -62,8 +62,9 @@ android {
             isShrinkResources = false
         }
         release {
-            // Release keystore SHA-1 is now registered in Firebase.
-            signingConfig = signingConfigs.getByName("release")
+            // Temporary: use debug signing so Google login works for testing.
+            // Release keystore SHA-1 is not registered in Firebase yet.
+            signingConfig = signingConfigs.getByName("debug")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

@@ -57,6 +57,13 @@ class GiftBottomSheet extends StatefulWidget {
   /// distinguishes `liveUserGift` (gift to the host) from `normalUserGift`
   /// (viewer-to-viewer gift) by the *receiver*, not the sender.
   final String? hostId;
+
+  /// Socket payload + event name of the most recently sent Lucky gift.
+  /// Live rooms read these to drive the native-style combo re-send button
+  /// (`showComboButton`). Reset to null whenever a non-lucky gift is sent.
+  static Map<String, dynamic>? lastLuckyPayload;
+  static String? lastLuckyEvent;
+
   final void Function({
     required String giftId,
     required String giftName,
@@ -65,6 +72,7 @@ class GiftBottomSheet extends StatefulWidget {
     int giftType,
     required int count,
     required int totalCoins,
+    bool isLucky,
   })?
   onGiftSent;
 
@@ -82,6 +90,7 @@ class GiftBottomSheet extends StatefulWidget {
     required List<String> receiverIds,
     required bool isAll,
     required int timeStamp,
+    bool isLucky,
   })?
   onAudioGiftSent;
 
@@ -104,6 +113,7 @@ class GiftBottomSheet extends StatefulWidget {
       int giftType,
       required int count,
       required int totalCoins,
+      bool isLucky,
     })?
     onGiftSent,
     void Function({
@@ -117,6 +127,7 @@ class GiftBottomSheet extends StatefulWidget {
       required List<String> receiverIds,
       required bool isAll,
       required int timeStamp,
+      bool isLucky,
     })?
     onAudioGiftSent,
   }) async {
@@ -153,6 +164,13 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
   final _categories = <GiftCategory>[];
   final _gifts = <GiftItem>[];
   final _giftsByCategory = <String, List<GiftItem>>{};
+  // giftId -> category id/name under which the gift was loaded. Many backend
+  // gift-list responses don't repeat `category`/`categoryName` on every gift
+  // item, so we remember it here and include it in the `gift` socket payload
+  // — the backend needs it to detect "Lucky" category gifts for the win-back
+  // draw (native sends the full GiftItem JSON which carries these fields).
+  final _giftCategoryIds = <String, String?>{};
+  final _giftCategoryNames = <String, String?>{};
   int _selectedCategoryIndex = 0;
   GiftItem? _selectedGift;
   int _count = 1;
@@ -198,10 +216,12 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
 
   Future<void> _loadData() async {
     final session = context.read<SessionManager>();
-    final user = session.getUser();
-    // Backend merges coin/diamond into a single synced field (Option A).
-    // Flutter reads user.coin as the "Diamonds" balance everywhere.
-    _userDiamonds = user?.coin.toInt() ?? 0;
+    try {
+      _userDiamonds = session.getUser()?.coin.toInt() ?? 0;
+    } catch (e, s) {
+      Log.e(_tag, 'cached user parse failed', e, s);
+      _userDiamonds = 0;
+    }
     try {
       final catRes = await ApiService.getGiftCategories(userId: session.userId);
       Log.d(
@@ -300,18 +320,36 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
           'first gift: id=${res.gift.first.id} name=${res.gift.first.name} image=${res.gift.first.image} type=${res.gift.first.type}',
         );
       }
+      var effectiveCategoryId = categoryId;
       // Fallback: if this category is empty, try all gifts once.
       if ((res.gift.isEmpty || !res.status) && (categoryId ?? '').isNotEmpty) {
         res = await ApiService.getGifts(
           categoryId: null,
           userId: session.userId,
         );
+        effectiveCategoryId = null;
         Log.d(
           _tag,
           'loadGifts fallback all: status=${res.status} count=${res.gift.length}',
         );
       }
       if (res.status && res.gift.isNotEmpty) {
+        // Remember which category each gift was loaded under — the gift
+        // item JSON may not repeat `category`/`categoryName`, but the
+        // backend needs it in the socket payload to detect Lucky gifts.
+        final loadedCatId = effectiveCategoryId;
+        final loadedCatName =
+            _categories
+                .where((c) => c.id == loadedCatId)
+                .map((c) => c.name)
+                .firstOrNull;
+        for (final g in res.gift) {
+          final gid = g.id;
+          if (gid != null && gid.isNotEmpty) {
+            _giftCategoryIds[gid] = g.category ?? loadedCatId;
+            _giftCategoryNames[gid] = g.categoryName ?? loadedCatName;
+          }
+        }
         _gifts
           ..clear()
           ..addAll(res.gift);
@@ -319,10 +357,10 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
         // Sync backend big-gift threshold so BigGiftController uses the
         // server-configured value (fixes 1000 vs 5000 mismatch).
         BigGiftController.setBackendThreshold(res.bigGiftThreshold);
-        // NOTE: Do NOT preload gift assets here. Preloading all images +
-        // SVGA files for every category causes the OS low-memory killer
-        // to terminate the app on devices with limited RAM. Images are
-        // loaded lazily by the grid as tiles come into view.
+        // Prefetch only raw animation files for the active category. Nothing
+        // is decoded here, and video prefetch is capped to avoid memory/network
+        // pressure while making the first selected MP4/SVGA start immediately.
+        _preloadGiftMedia(res.gift);
       } else if (_gifts.isEmpty && previousGifts.isNotEmpty) {
         // Restore previous list so the user still sees something usable.
         _gifts.addAll(previousGifts);
@@ -371,6 +409,10 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
         return;
       }
     }
+    GiftMediaCache.preload(
+      _bestAnimationUrl(gift),
+      giftType: _normalizedGiftType(gift),
+    );
     setState(() {
       _selectedGift = gift;
       _count = 1;
@@ -426,11 +468,7 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
 
   /// Returns true if the gift URL points to an SVGA asset. Native gift data
   /// commonly stores this URL in `image`, not `svgaImage`.
-  bool _isSvgaGift(String? url) {
-    if (url == null || url.isEmpty) return false;
-    final lower = url.toLowerCase();
-    return lower.contains('.svga') || lower.contains('/svga');
-  }
+  bool _isSvgaGift(String? url) => SvgaHelper.isSvgaUrl(url);
 
   /// Resolves a gift asset URL. SVGA files must use [VideoUtil.getFullSvgaUrl]
   /// because [VideoUtil.getFullImageUrl] intentionally returns '' for .svga
@@ -452,6 +490,39 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
     if (_isVideoGift(gift.image) || _isVideoGift(gift.svgaImage)) return 3;
     return gift.type == 2 ? 2 : 1;
   }
+
+  /// The gift's category id — from the gift item itself when present,
+  /// otherwise from the category under which it was loaded.
+  String? _giftCategoryId(GiftItem gift) {
+    if ((gift.category ?? '').isNotEmpty) return gift.category;
+    final gid = gift.id ?? '';
+    if (gid.isNotEmpty) return _giftCategoryIds[gid];
+    return null;
+  }
+
+  /// The gift's category name — from the gift item, resolved from the
+  /// category list by id, or from the load-time category map.
+  String? _giftCategoryName(GiftItem gift) {
+    if ((gift.categoryName ?? '').isNotEmpty) return gift.categoryName;
+    final gid = gift.id ?? '';
+    if (gid.isNotEmpty) {
+      final remembered = _giftCategoryNames[gid];
+      if (remembered != null && remembered.isNotEmpty) return remembered;
+    }
+    final catId = _giftCategoryId(gift);
+    if (catId != null && catId.isNotEmpty) {
+      for (final c in _categories) {
+        if (c.id == catId) return c.name;
+      }
+    }
+    return null;
+  }
+
+  /// True when the gift belongs to the "Lucky" category. The backend runs a
+  /// win-back draw for these gifts and emits `winLuckyGift` / `luckyGift`
+  /// socket events — matching native which keys off `categoryName == "Lucky"`.
+  bool _isLuckyCategoryGift(GiftItem gift) =>
+      (_giftCategoryName(gift) ?? '').toLowerCase().contains('lucky');
 
   /// Returns the best animation URL (SVGA or video) for a gift.
   ///
@@ -486,6 +557,19 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
       return VideoUtil.getFullSvgaUrl(gift.svgaImage);
     }
     return '';
+  }
+
+  void _preloadGiftMedia(Iterable<GiftItem> gifts) {
+    var videos = 0;
+    for (final gift in gifts) {
+      final url = _bestAnimationUrl(gift);
+      if (url.isEmpty) continue;
+      if (_isVideoGift(url)) {
+        if (videos >= 6) continue;
+        videos++;
+      }
+      GiftMediaCache.preload(url, giftType: _normalizedGiftType(gift));
+    }
   }
 
   Future<void> _sendGift() async {
@@ -548,6 +632,15 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
 
       final giftType = _normalizedGiftType(_selectedGift!);
 
+      // Lucky gifts are identified by the gift's category — the backend
+      // runs the win-back draw only when it can see `category` /
+      // `categoryName` (or `isLucky`) inside the `gift` JSON. Native sends
+      // the full GiftItem via Gson; our trimmed-down JSON was missing the
+      // category, so the backend treated Lucky gifts as normal gifts.
+      final isLuckyGift = _isLuckyCategoryGift(_selectedGift!);
+      final giftCategoryId = _giftCategoryId(_selectedGift!);
+      final giftCategoryName = _giftCategoryName(_selectedGift!);
+
       // VIP exp boost flag — sent to backend so it can apply the multiplier.
       final senderUser = session.getUser();
       final isExpBoostEnabled =
@@ -606,6 +699,9 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
           'type': giftType,
           'coin': _selectedGift!.coin,
           'count': _count,
+          'category': giftCategoryId,
+          'categoryName': giftCategoryName,
+          if (isLuckyGift) 'isLucky': true,
         });
         final roomHostId = widget.hostId ?? widget.receiverId ?? '';
         // One shared timestamp for the whole multi-send batch. The client
@@ -626,7 +722,13 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
           receiverIds: receiverIds,
           isAll: _selectAll,
           timeStamp: timeStamp,
+          isLucky: isLuckyGift,
         );
+
+        // Reset the lucky re-send payload — only re-populated below when a
+        // Lucky-category gift is emitted.
+        GiftBottomSheet.lastLuckyPayload = null;
+        GiftBottomSheet.lastLuckyEvent = null;
 
         for (final receiverId in receiverIds) {
           try {
@@ -684,7 +786,12 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
               'giftId': _selectedGift!.id ?? '',
               'hostId': roomHostId,
               'timeStamp': timeStamp,
+              // NOTE: do NOT set a top-level `isLucky` — receivers render
+              // `isLucky: true` as a gold "won lucky gift" card; the win
+              // card must only come from winLuckyGift/luckyGift broadcasts.
               if (_luckyMode) 'isLucky': true,
+              if (giftCategoryId != null) 'category': giftCategoryId,
+              if (giftCategoryName != null) 'categoryName': giftCategoryName,
               if (isExpBoostEnabled) 'isExpBoostEnabled': true,
               if (_messageCtrl.text.trim().isNotEmpty)
                 'message': _messageCtrl.text.trim(),
@@ -696,8 +803,81 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
                 'sourceEvent': eventName,
               });
             }
+            if (isLuckyGift) {
+              // Keep the last payload so the room can offer the native
+              // combo re-send button (showComboButton) for this gift.
+              GiftBottomSheet.lastLuckyPayload = Map<String, dynamic>.from(
+                giftData,
+              );
+              GiftBottomSheet.lastLuckyEvent = eventName;
+            }
           } catch (e) {
             Log.e(_tag, 'live gift emit failed for $receiverId', e);
+          }
+        }
+
+        // Room-wide comment broadcast carrying the gift payload — mirrors
+        // the audio room's commentAudio emit. Some backends do not fan out
+        // liveUserGift/normalUserGift/gift to every socket, but `comment`
+        // events DO reach all viewers — this guarantees the animation +
+        // gift comment play on every screen, not just the receiver's.
+        if (widget.type == 'live' && receiverIds.isNotEmpty) {
+          try {
+            final firstSeat =
+                widget.seats
+                    .where((s) => s.userId == receiverIds.first)
+                    .firstOrNull;
+            SocketService.instance.emit(Const.eventComment, {
+              'comment': '',
+              'type': 'gift',
+              'isGift': true,
+              'liveStreamingId': widget.liveStreamingId ?? '',
+              'liveUserId': roomHostId,
+              'userId': session.userId,
+              'name': session.userName,
+              'image': senderImage,
+              'userName': session.userName,
+              'userImage': senderImage,
+              'senderUserId': session.userId,
+              'senderId': session.userId,
+              'senderName': session.userName,
+              'senderImage': senderImage,
+              'giftId': _selectedGift!.id ?? '',
+              'giftName': _selectedGift!.name ?? 'Gift',
+              'giftImage': _selectedGift!.image ?? '',
+              'svgaImage': _selectedGift!.svgaImage ?? '',
+              'giftType': giftType,
+              'gift': giftJsonString,
+              'count': _count,
+              'giftCount': _count,
+              'coin': _selectedGift!.coin * _count,
+              'totalCoins': totalCost.toInt(),
+              'receiverUserId': receiverIds.first,
+              'receiverUserName': firstSeat?.name ?? 'Host',
+              'receiverImage': VideoUtil.getFullImageUrl(
+                firstSeat?.image ?? '',
+              ),
+              'receiverUserIds': receiverIds,
+              'timeStamp': timeStamp,
+              'isVIP': senderUser?.isVIP ?? false,
+              'avatarFrame':
+                  senderUser?.avatarFrameImage ??
+                  senderUser?.vipDetails?.profileFrameUrl ??
+                  '',
+              if (senderUser?.vipDetails != null)
+                'vipDetails': senderUser!.vipDetails!.toJson(),
+              'user': {
+                'userId': session.userId,
+                'name': session.userName,
+                'image': session.userImage,
+                'isVIP': senderUser?.isVIP ?? false,
+                'isVip': senderUser?.isVIP ?? false,
+              },
+              if (giftCategoryId != null) 'category': giftCategoryId,
+              if (giftCategoryName != null) 'categoryName': giftCategoryName,
+            });
+          } catch (e) {
+            Log.e(_tag, 'gift comment broadcast failed', e);
           }
         }
       }
@@ -730,6 +910,7 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
         giftType: giftType,
         count: _count,
         totalCoins: totalCost.toInt(),
+        isLucky: isLuckyGift,
       );
       if (!mounted) return;
       Navigator.pop(context);
@@ -850,6 +1031,9 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
     final isExpBoostEnabled =
         session.getUser()?.vipDetails?.isExpBoostEnabled ?? false;
     final senderImage = VideoUtil.getFullImageUrl(session.userImage);
+    final isLuckyGift = _isLuckyCategoryGift(_selectedGift!);
+    final giftCategoryId = _giftCategoryId(_selectedGift!);
+    final giftCategoryName = _giftCategoryName(_selectedGift!);
     final giftJsonString = jsonEncode({
       '_id': _selectedGift!.id ?? '',
       'name': _selectedGift!.name ?? 'Gift',
@@ -858,6 +1042,9 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
       'type': giftType,
       'coin': _selectedGift!.coin,
       'count': 1,
+      'category': giftCategoryId,
+      'categoryName': giftCategoryName,
+      if (isLuckyGift) 'isLucky': true,
     });
     final roomHostId = widget.hostId ?? widget.receiverId ?? '';
     final timeStamp = DateTime.now().millisecondsSinceEpoch;
@@ -873,7 +1060,11 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
       receiverIds: recipients.toList(),
       isAll: _selectAll,
       timeStamp: timeStamp,
+      isLucky: isLuckyGift,
     );
+
+    GiftBottomSheet.lastLuckyPayload = null;
+    GiftBottomSheet.lastLuckyEvent = null;
 
     for (final receiverId in recipients) {
       try {
@@ -925,6 +1116,9 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
           'giftId': _selectedGift!.id ?? '',
           'hostId': roomHostId,
           'timeStamp': timeStamp,
+          // See _sendGift — `isLucky` stays inside the `gift` JSON only.
+          if (giftCategoryId != null) 'category': giftCategoryId,
+          if (giftCategoryName != null) 'categoryName': giftCategoryName,
           if (isExpBoostEnabled) 'isExpBoostEnabled': true,
         };
         SocketService.instance.emit(eventName, giftData);
@@ -934,8 +1128,75 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
             'sourceEvent': eventName,
           });
         }
+        if (isLuckyGift) {
+          // Keep the last payload so the room can offer the native combo
+          // re-send button (showComboButton) for this gift.
+          GiftBottomSheet.lastLuckyPayload = Map<String, dynamic>.from(
+            giftData,
+          );
+          GiftBottomSheet.lastLuckyEvent = eventName;
+        }
       } catch (e) {
         Log.e(_tag, 'rapid gift emit failed', e);
+      }
+    }
+
+    // Room-wide comment broadcast carrying the gift payload (see _sendGift —
+    // `comment` reaches every socket even when gift events are not fanned out).
+    if (widget.type == 'live' && recipients.isNotEmpty) {
+      try {
+        final ridList = recipients.toList();
+        final firstSeat =
+            widget.seats.where((s) => s.userId == ridList.first).firstOrNull;
+        SocketService.instance.emit(Const.eventComment, {
+          'comment': '',
+          'type': 'gift',
+          'isGift': true,
+          'liveStreamingId': widget.liveStreamingId ?? '',
+          'liveUserId': roomHostId,
+          'userId': session.userId,
+          'name': session.userName,
+          'image': senderImage,
+          'userName': session.userName,
+          'userImage': senderImage,
+          'senderUserId': session.userId,
+          'senderId': session.userId,
+          'senderName': session.userName,
+          'senderImage': senderImage,
+          'giftId': _selectedGift!.id ?? '',
+          'giftName': _selectedGift!.name ?? 'Gift',
+          'giftImage': _selectedGift!.image ?? '',
+          'svgaImage': _selectedGift!.svgaImage ?? '',
+          'giftType': giftType,
+          'gift': giftJsonString,
+          'count': 1,
+          'giftCount': 1,
+          'coin': _selectedGift!.coin,
+          'totalCoins': totalCost.toInt(),
+          'receiverUserId': ridList.first,
+          'receiverUserName': firstSeat?.name ?? 'Host',
+          'receiverImage': VideoUtil.getFullImageUrl(firstSeat?.image ?? ''),
+          'receiverUserIds': ridList,
+          'timeStamp': timeStamp,
+          'isVIP': session.getUser()?.isVIP ?? false,
+          'avatarFrame':
+              session.getUser()?.avatarFrameImage ??
+              session.getUser()?.vipDetails?.profileFrameUrl ??
+              '',
+          if (session.getUser()?.vipDetails != null)
+            'vipDetails': session.getUser()!.vipDetails!.toJson(),
+          'user': {
+            'userId': session.userId,
+            'name': session.userName,
+            'image': session.userImage,
+            'isVIP': session.getUser()?.isVIP ?? false,
+            'isVip': session.getUser()?.isVIP ?? false,
+          },
+          if (giftCategoryId != null) 'category': giftCategoryId,
+          if (giftCategoryName != null) 'categoryName': giftCategoryName,
+        });
+      } catch (e) {
+        Log.e(_tag, 'rapid gift comment broadcast failed', e);
       }
     }
 
@@ -957,6 +1218,7 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
       giftType: giftType,
       count: 1,
       totalCoins: totalCost.toInt(),
+      isLucky: isLuckyGift,
     );
 
     setState(() {});
@@ -1330,7 +1592,12 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
 
   Widget _buildGiftGrid() {
     if (_loading && _gifts.isEmpty) {
-      return const SizedBox.shrink();
+      return const Center(
+        child: CircularProgressIndicator(
+          strokeWidth: 2,
+          color: Color(0xFFFFD700),
+        ),
+      );
     }
     if (_gifts.isEmpty) {
       return const Center(

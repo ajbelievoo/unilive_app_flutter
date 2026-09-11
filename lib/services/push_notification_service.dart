@@ -7,6 +7,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart' show Color, WidgetsBinding;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../constants/const.dart';
 import '../models/audio_room_root.dart';
@@ -72,6 +73,16 @@ bool _initialized = false;
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   Log.d('PushNotification', 'background message: ${message.messageId}');
 
+  // If the payload carries a `notification` block, the FCM SDK / system tray
+  // already displays it in background & killed state (the default channel and
+  // icon are configured in AndroidManifest for exactly this). Showing our own
+  // local notification here too would make every push appear TWICE.
+  if (message.notification != null) {
+    Log.d('PushNotification',
+        'notification payload — system tray displays it, skipping local show');
+    return;
+  }
+
   // Initialise the plugin in this background isolate.
   const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
   const iosInit = DarwinInitializationSettings();
@@ -91,6 +102,65 @@ Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
   // Show the notification (same logic as foreground handler).
   await _showNotificationForMessage(message);
+}
+
+// ---------------------------------------------------------------------------
+//  Duplicate notification suppression
+// ---------------------------------------------------------------------------
+
+/// SharedPreferences key holding recently-shown notification signatures.
+const String _kNotifDedupeKey = 'notif_dedupe_v1';
+
+/// How long an identical notification (same type + title + body) is suppressed.
+const int _kNotifDedupeWindowMs = 2 * 60 * 1000; // 2 minutes
+
+/// Level-up pushes get a much longer window — a host only levels up once, so
+/// the same "level increased to Lv.X" push is never legit twice in a day.
+const int _kLevelUpDedupeWindowMs = 24 * 60 * 60 * 1000; // 24 hours
+
+/// Returns true when an identical notification was already shown inside the
+/// dedupe window. The signature map is persisted in SharedPreferences so this
+/// also works inside the background FCM isolate.
+Future<bool> _isDuplicateNotification(String signature) async {
+  try {
+    final now = DateTime.now().millisecondsSinceEpoch;
+    final type = signature.split('|').first;
+    final windowMs = type == Const.notificationLevelUp
+        ? _kLevelUpDedupeWindowMs
+        : _kNotifDedupeWindowMs;
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getString(_kNotifDedupeKey);
+    final Map<String, dynamic> map =
+        raw != null && raw.isNotEmpty
+            ? (jsonDecode(raw) as Map).cast<String, dynamic>()
+            : <String, dynamic>{};
+
+    // Prune entries older than their own window (24h covers all).
+    map.removeWhere(
+      (_, v) => now - (v is int ? v : int.tryParse('$v') ?? 0) >
+          _kLevelUpDedupeWindowMs,
+    );
+
+    if (map.containsKey(signature) &&
+        now - (map[signature] is int
+                ? map[signature] as int
+                : int.tryParse('${map[signature]}') ?? 0) <
+            windowMs) {
+      await prefs.setString(_kNotifDedupeKey, jsonEncode(map));
+      return true;
+    }
+
+    map[signature] = now;
+    // Keep the map bounded.
+    while (map.length > 50) {
+      map.remove(map.keys.first);
+    }
+    await prefs.setString(_kNotifDedupeKey, jsonEncode(map));
+    return false;
+  } catch (e) {
+    Log.w('PushNotification', 'dedupe check failed: $e');
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -158,6 +228,19 @@ Future<void> _showNotificationForMessage(RemoteMessage message) async {
 
   // If there is nothing to display, bail out.
   if (title.isEmpty && body.isEmpty) return;
+
+  // ---- Suppress duplicate notifications ----
+  // The backend sometimes fires the same push multiple times in a row
+  // (e.g. "Host Level Up!"). Identical type+title+body combos shown inside
+  // the dedupe window are skipped so the user only sees them once.
+  // Chat and call notifications are never suppressed — two identical chat
+  // texts can be real messages, and calls must always ring.
+  final signature = '$type|$title|$body';
+  if (type != Const.notificationChat &&
+      await _isDuplicateNotification(signature)) {
+    Log.d('PushNotification', 'duplicate notification suppressed: $title');
+    return;
+  }
 
   // ---- Check user's notification setting ----
   // (In background isolate, SessionManager may not be available — that's OK,
@@ -238,8 +321,11 @@ Future<void> _showNotificationForMessage(RemoteMessage message) async {
     ),
   );
 
+  // Stable id from the content signature — a repeated identical notification
+  // (outside the dedupe window) updates the same shade entry instead of
+  // stacking a new one.
   await _localNotifications.show(
-    notification.hashCode,
+    signature.hashCode,
     title,
     body,
     details,
@@ -343,6 +429,13 @@ void _cancelIncomingCallNotification() {
 //
 class PushNotificationService {
   PushNotificationService._();
+
+  /// Public API to check whether an identical notification has already been
+  /// shown inside the dedupe window. The in-app banner uses this so that
+  /// foreground FCM messages (gifts, level-ups, etc.) are not displayed
+  /// repeatedly while the system tray notification is already deduped.
+  static Future<bool> isDuplicateNotification(String signature) =>
+      _isDuplicateNotification(signature);
 
   /// Whether the Flutter app is currently in the foreground.
   /// Mirrors native `MainApplication.isAppOpen` — used to skip CALL FCM

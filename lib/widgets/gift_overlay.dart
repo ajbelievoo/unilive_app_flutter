@@ -123,7 +123,7 @@ class _GiftOverlayState extends State<GiftOverlay>
     _comboTimer?.cancel();
     _slideController.dispose();
     _scaleController.dispose();
-    widget.controller.detach();
+    widget.controller.detach(_onGiftReceived);
     super.dispose();
   }
 
@@ -559,12 +559,33 @@ class _VideoGiftState extends State<_VideoGift> {
 /// Controller that feeds gift events from socket into the overlay.
 class GiftQueueController {
   void Function(GiftEvent)? _callback;
+  final List<GiftEvent> _pending = [];
 
-  void attach(void Function(GiftEvent) callback) => _callback = callback;
-  void detach() => _callback = null;
+  void attach(void Function(GiftEvent) callback) {
+    _callback = callback;
+    if (_pending.isEmpty) return;
+    final pending = List<GiftEvent>.from(_pending);
+    _pending.clear();
+    for (final event in pending) {
+      callback(event);
+    }
+  }
+
+  void detach([void Function(GiftEvent)? callback]) {
+    if (callback == null || identical(_callback, callback)) _callback = null;
+  }
 
   /// Called when a gift socket event is received.
-  void addGift(GiftEvent event) => _callback?.call(event);
+  void addGift(GiftEvent event) {
+    final callback = _callback;
+    if (callback != null) {
+      callback(event);
+    } else {
+      _pending.add(event);
+      if (_pending.length > 20) _pending.removeAt(0);
+      Log.w('GiftQueue', 'overlay not attached; queued ${event.giftName}');
+    }
+  }
 
   /// Returns true if [event] is a "priority" gift that should skip the
   /// display queue (big gifts / SVGA / video / high coin value). These
@@ -578,11 +599,7 @@ class GiftQueueController {
   }
 
   /// Returns true if the URL points to an SVGA asset.
-  static bool isSvga(String? url) {
-    if (url == null || url.isEmpty) return false;
-    final lower = url.toLowerCase();
-    return lower.contains('.svga') || lower.contains('/svga');
-  }
+  static bool isSvga(String? url) => SvgaHelper.isSvgaUrl(url);
 
   /// Returns true if the URL points to a video asset.
   static bool isVideo(String? url) {
@@ -680,52 +697,56 @@ class GiftQueueController {
           value('reaction')?.toString() ??
           '';
 
-      // Pick the best animation URL: prefer an explicit svga/video field,
-      // but fall back to the main gift image if it looks like an animation.
+      int giftType = toInt(value('giftType') ?? nested['type']);
       String animationUrl = rawSvgaImage;
-      if (animationUrl.isEmpty && (isSvga(rawGiftImage) || isVideo(rawGiftImage))) {
+      if (animationUrl.isEmpty &&
+          (giftType == 2 ||
+              giftType == 3 ||
+              isSvga(rawGiftImage) ||
+              isVideo(rawGiftImage))) {
         animationUrl = rawGiftImage;
       }
 
-      // Safe static image for comments/small overlays. If the raw giftImage
-      // is an animation, try to derive a .png sibling or use a thumbImage field.
+      final thumb =
+          value('thumbImage')?.toString() ??
+          value('thumbnail')?.toString() ??
+          value('thumb')?.toString() ??
+          value('icon')?.toString() ??
+          '';
+      final rasterPattern = RegExp(
+        r'\.(png|jpe?g|gif|webp|bmp)(\?|$)',
+        caseSensitive: false,
+      );
       String safeImage = '';
-      if (!isSvga(rawGiftImage) && !isVideo(rawGiftImage)) {
+      if (thumb.isNotEmpty && rasterPattern.hasMatch(thumb)) {
+        safeImage = thumb;
+      } else if (rawGiftImage.isNotEmpty &&
+          rasterPattern.hasMatch(rawGiftImage)) {
         safeImage = rawGiftImage;
-      } else {
-        final thumb = value('thumbImage')?.toString() ?? value('thumb')?.toString() ?? '';
-        if (!isSvga(thumb) && !isVideo(thumb) && thumb.isNotEmpty) {
-          safeImage = thumb;
-        } else {
-          final derived = rawGiftImage.replaceAll(
-            RegExp(r'\.(svga|mp4|mov|webm)$', caseSensitive: false),
-            '.png',
-          );
-          if (derived != rawGiftImage) safeImage = derived;
-        }
+      } else if (giftType != 2 &&
+          giftType != 3 &&
+          !isSvga(rawGiftImage) &&
+          !isVideo(rawGiftImage)) {
+        safeImage = rawGiftImage;
       }
 
       final giftImage = VideoUtil.getFullImageUrl(safeImage);
-      final svgaUrl = VideoUtil.getFullSvgaUrl(animationUrl);
+      final animationAssetUrl = VideoUtil.getFullSvgaUrl(animationUrl);
 
-      Log.d(
-        'GiftQueue',
-        'Parsed gift: rawGiftImage=$rawGiftImage, rawSvgaImage=$rawSvgaImage, '
-        'giftImage=$giftImage, svgaUrl=$svgaUrl',
-      );
-
-      int giftType = toInt(value('giftType') ?? nested['type']);
-      // Asset format is authoritative. Some backend records use type=3 for
-      // SVGA even though the Flutter renderer uses 2=SVGA and 3=video.
-      // Checking the URL first prevents an SVGA file from being sent to the
-      // MP4 player and silently rendering a blank full-screen overlay.
-      if (isSvga(svgaUrl) || isSvga(animationUrl)) {
+      if (isSvga(animationUrl)) {
         giftType = 2;
-      } else if (isVideo(svgaUrl) || isVideo(animationUrl)) {
+      } else if (isVideo(animationUrl)) {
         giftType = 3;
       } else if (giftType == 0) {
         giftType = 1;
       }
+
+      Log.d(
+        'GiftQueue',
+        'Parsed gift: giftType=$giftType, rawGiftImage=$rawGiftImage, '
+        'rawAnimation=$rawSvgaImage, giftImage=$giftImage, '
+        'animationUrl=$animationAssetUrl',
+      );
 
       final coin = toInt(value('coin') ?? map['giftCoin']);
       final count = toInt(value('count') ?? map['giftCount'], 1);
@@ -737,7 +758,7 @@ class GiftQueueController {
             value('name')?.toString() ??
             'Gift',
         giftImage: giftImage,
-        svgaImage: svgaUrl,
+        svgaImage: animationAssetUrl,
         giftType: giftType,
         coin: coin,
         senderName:
@@ -765,9 +786,16 @@ class GiftQueueController {
               '',
         ),
         count: count,
-        timeStamp: map['timeStamp'] as int?,
+        timeStamp: () {
+          final t = map['timeStamp'];
+          if (t is num) return t.toInt();
+          return int.tryParse(t?.toString() ?? '');
+        }(),
         isLucky: map['isLucky'] == true,
-        luckyCoins: (map['luckyCoins'] as num?)?.toInt() ?? 0,
+        luckyCoins:
+            map['luckyCoins'] is num
+                ? (map['luckyCoins'] as num).toInt()
+                : int.tryParse(map['luckyCoins']?.toString() ?? '') ?? 0,
         isBigGift: map['isBigGift'] == true || nested['isBigGift'] == true,
         message: map['message']?.toString(),
         senderFamilyName:

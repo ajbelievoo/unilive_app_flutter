@@ -55,6 +55,7 @@ class Const {
   static const String doNotDisturb = 'doNotDisturb';
   static const String isNotification = 'isNotification';
   static const String referralCode = 'referralCode';
+  static const String hostRequestSubmitted = 'hostRequestSubmitted';
 
   // ---- Misc ---------------------------------------------------------------
   static const String female = 'Female';
@@ -176,6 +177,11 @@ class Const {
   static const String eventLiveUserGift = 'liveUserGift';
   static const String eventNormalUserGift = 'normalUserGift';
   static const String luckyGift = 'winLuckyGift';
+
+  /// Room-wide broadcast emitted by the backend when someone wins a Lucky
+  /// gift draw (native `onLuckyGiftBroadcast`). Payload is typically
+  /// `{ message: "X won lucky gift N Diamonds", data: { image: url } }`.
+  static const String eventLuckyGiftBroadcast = 'luckyGift';
   static const String eventAddView = 'addView';
   static const String eventLessView = 'lessView';
   static const String eventView = 'view';
@@ -233,6 +239,9 @@ class Const {
   static const String eventRequestRoomTheme = 'requestRoomTheme';
   static const String eventRoomTime = 'roomTime';
   static const String eventRequestRoomTime = 'requestRoomTime';
+  /// Periodic host live-time heartbeat used by some backends. Kept separate
+  /// from `roomTime` so both event names are supported.
+  static const String eventLiveTimeSync = 'liveTimeSync';
   static const String eventUpdateSeatCount = 'seatUpdate';
   static const String eventUpdateBlockedlist = 'updateBlockedList';
   static const String eventAllSeatLock = 'allSeatLock';

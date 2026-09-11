@@ -4,11 +4,7 @@ import 'json_annotation_helper.dart';
 ///
 /// Wraps the global app configuration returned by the `/setting` endpoint.
 class SettingRoot {
-  SettingRoot({
-    this.status = false,
-    this.message,
-    this.setting,
-  });
+  SettingRoot({this.status = false, this.message, this.setting});
 
   final bool status;
   final String? message;
@@ -18,9 +14,12 @@ class SettingRoot {
     return SettingRoot(
       status: parseBool(json['status']),
       message: parseString(json['message']),
-      setting: json['setting'] != null || json['data'] != null
-          ? Setting.fromJson((json['setting'] ?? json['data']) as Map<String, dynamic>)
-          : null,
+      setting:
+          json['setting'] != null || json['data'] != null
+              ? Setting.fromJson(
+                (json['setting'] ?? json['data']) as Map<String, dynamic>,
+              )
+              : null,
     );
   }
 }
@@ -76,6 +75,9 @@ class Setting {
     this.chatCharge = 0,
     this.createdAt,
     this.updatedAt,
+    // ---- PK battle timing (Other settings tab) ----
+    this.pkEndTime = 300,
+    this.pkPunishmentEndTime = 60,
   });
 
   final String? id;
@@ -113,32 +115,51 @@ class Setting {
   // ---- Economy fields (FLUTTER_ECONOMY_ADS_CALL_REFERENCE.md �8) ----
   /// Beans per diamond gift (default 1). Backend converts diamonds ? beans.
   final int diamondToRcoin;
+
   /// Beans needed for 1 diamond conversion (default 40).
   final int rCoinForDiamond;
+
   /// Beans for $1/?1 cashout (default 82000). Do NOT hardcode � fetch at runtime.
   final int rCoinForCashOut;
+
   /// Min user beans to cashout (default 400).
   final int minRcoinForCashOut;
+
   /// Min agency beans to cashout (default 1000000).
   final int minRcoinForCashOutAgency;
+
   /// Min beans to convert to diamond (default 0).
   final int minRcoinForConvertToDiamond;
+
   /// % of call diamonds host gets as beans (default 50).
   final int callReceiverPercent;
+
   /// Male call charge in diamonds/min (default 3000).
   final int maleCallCharge;
+
   /// Female call charge in diamonds/min (default 3000).
   final int femaleCallCharge;
+
   /// Female random call rate in diamonds/min (default 5000).
   final int femaleRandomCallRate;
+
   /// Male random call rate in diamonds/min (default 5000).
   final int maleRandomCallRate;
+
   /// Both random call rate in diamonds/min (default 5000).
   final int bothRandomCallRate;
+
   /// Chat charge in diamonds (default 0).
   final int chatCharge;
   final String? createdAt;
   final String? updatedAt;
+
+  // ---- PK battle timing (Other settings tab) ----
+  /// PK round duration in seconds from admin setting (e.g. 60). Default 300.
+  final int pkEndTime;
+
+  /// PK punishment duration in seconds from admin setting (e.g. 60). Default 60.
+  final int pkPunishmentEndTime;
 
   factory Setting.fromJson(Map<String, dynamic> json) {
     return Setting(
@@ -156,9 +177,12 @@ class Setting {
       helpSupport: parseString(json['helpSupport']),
       faq: parseString(json['faq']),
       refundPolicy: parseString(json['refundPolicy']),
-      advertisement: json['advertisement'] != null
-          ? Advertisement.fromJson(json['advertisement'] as Map<String, dynamic>)
-          : null,
+      advertisement:
+          json['advertisement'] != null
+              ? Advertisement.fromJson(
+                json['advertisement'] as Map<String, dynamic>,
+              )
+              : null,
       minWithdrawalCoin: parseInt(json['minWithdrawalCoin']),
       maxWithdrawalCoin: parseInt(json['maxWithdrawalCoin']),
       coinSellerCommission: parseInt(json['coinSellerCommission']),
@@ -177,21 +201,76 @@ class Setting {
       maxAdPerDay: parseInt(json['maxAdPerDay'], 5),
       referralBonus: parseInt(json['referralBonus'], 200),
       // ---- Economy fields ----
-      diamondToRcoin: parseInt(json['diamondToRcoin'] ?? json['diamond_to_rcoin'], 1),
-      rCoinForDiamond: parseInt(json['rCoinForDiamond'] ?? json['rcoin_for_diamond'], 40),
-      rCoinForCashOut: parseInt(json['rCoinForCashOut'] ?? json['rcoin_for_cashout'], 82000),
-      minRcoinForCashOut: parseInt(json['minRcoinForCashOut'] ?? json['min_rcoin_for_cashout'], 400),
-      minRcoinForCashOutAgency: parseInt(json['minRcoinForCashOutAgency'] ?? json['min_rcoin_for_cashout_agency'], 1000000),
-      minRcoinForConvertToDiamond: parseInt(json['minRcoinForConvertToDiamond'] ?? json['min_rcoin_for_convert_to_diamond'], 0),
-      callReceiverPercent: parseInt(json['callReceiverPercent'] ?? json['call_receiver_percent'], 50),
-      maleCallCharge: parseInt(json['maleCallCharge'] ?? json['male_call_charge'], 3000),
-      femaleCallCharge: parseInt(json['femaleCallCharge'] ?? json['female_call_charge'], 3000),
-      femaleRandomCallRate: parseInt(json['femaleRandomCallRate'] ?? json['female_random_call_rate'], 5000),
-      maleRandomCallRate: parseInt(json['maleRandomCallRate'] ?? json['male_random_call_rate'], 5000),
-      bothRandomCallRate: parseInt(json['bothRandomCallRate'] ?? json['both_random_call_rate'], 5000),
+      diamondToRcoin: parseInt(
+        json['diamondToRcoin'] ?? json['diamond_to_rcoin'],
+        1,
+      ),
+      rCoinForDiamond: parseInt(
+        json['rCoinForDiamond'] ?? json['rcoin_for_diamond'],
+        40,
+      ),
+      rCoinForCashOut: parseInt(
+        json['rCoinForCashOut'] ?? json['rcoin_for_cashout'],
+        82000,
+      ),
+      minRcoinForCashOut: parseInt(
+        json['minRcoinForCashOut'] ?? json['min_rcoin_for_cashout'],
+        400,
+      ),
+      minRcoinForCashOutAgency: parseInt(
+        json['minRcoinForCashOutAgency'] ??
+            json['min_rcoin_for_cashout_agency'],
+        1000000,
+      ),
+      minRcoinForConvertToDiamond: parseInt(
+        json['minRcoinForConvertToDiamond'] ??
+            json['min_rcoin_for_convert_to_diamond'],
+        0,
+      ),
+      callReceiverPercent: parseInt(
+        json['callReceiverPercent'] ?? json['call_receiver_percent'],
+        50,
+      ),
+      maleCallCharge: parseInt(
+        json['maleCallCharge'] ?? json['male_call_charge'],
+        3000,
+      ),
+      femaleCallCharge: parseInt(
+        json['femaleCallCharge'] ?? json['female_call_charge'],
+        3000,
+      ),
+      femaleRandomCallRate: parseInt(
+        json['femaleRandomCallRate'] ?? json['female_random_call_rate'],
+        5000,
+      ),
+      maleRandomCallRate: parseInt(
+        json['maleRandomCallRate'] ?? json['male_random_call_rate'],
+        5000,
+      ),
+      bothRandomCallRate: parseInt(
+        json['bothRandomCallRate'] ?? json['both_random_call_rate'],
+        5000,
+      ),
       chatCharge: parseInt(json['chatCharge'] ?? json['chat_charge'], 0),
       createdAt: parseString(json['createdAt']),
       updatedAt: parseString(json['updatedAt']),
+      // ---- PK battle timing ----
+      pkEndTime: parseInt(
+        json['pkEndTime'] ??
+            json['pkEndTimeSeconds'] ??
+            json['pkTime'] ??
+            json['pkDuration'] ??
+            300,
+        300,
+      ),
+      pkPunishmentEndTime: parseInt(
+        json['pkPunishmentEndTime'] ??
+            json['pkPunishmentEndTimeSeconds'] ??
+            json['punishmentEndTime'] ??
+            json['pkPunishmentDuration'] ??
+            60,
+        60,
+      ),
     );
   }
 
@@ -204,54 +283,56 @@ class Setting {
   }
 
   Map<String, dynamic> toJson() => {
-        '_id': id,
-        'appName': appName,
-        'appVersion': appVersion,
-        'iosAppVersion': iosAppVersion,
-        'maintenanceMode': maintenanceMode,
-        'maintenanceMessage': maintenanceMessage,
-        'isAppActive': isAppActive,
-        'termsCondition': termsCondition,
-        'privacyPolicy': privacyPolicy,
-        'aboutUs': aboutUs,
-        'contactUs': contactUs,
-        'helpSupport': helpSupport,
-        'faq': faq,
-        'refundPolicy': refundPolicy,
-        'advertisement': advertisement?.toJson(),
-        'minWithdrawalCoin': minWithdrawalCoin,
-        'maxWithdrawalCoin': maxWithdrawalCoin,
-        'coinSellerCommission': coinSellerCommission,
-        'hostCommission': hostCommission,
-        'agencyCommission': agencyCommission,
-        'minRechargeCoin': minRechargeCoin,
-        'maxRechargeCoin': maxRechargeCoin,
-        'currency': currency,
-        'currencySymbol': currencySymbol,
-        'randomCallPrice': randomCallPrice,
-        'agoraKey': agoraKey,
-        'agoraCertificate': agoraCertificate,
-        'vipSupportNumber': vipSupportNumber,
-        'whatsapp': whatsapp,
-        'games': games,
-        'maxAdPerDay': maxAdPerDay,
-        'referralBonus': referralBonus,
-        'diamondToRcoin': diamondToRcoin,
-        'rCoinForDiamond': rCoinForDiamond,
-        'rCoinForCashOut': rCoinForCashOut,
-        'minRcoinForCashOut': minRcoinForCashOut,
-        'minRcoinForCashOutAgency': minRcoinForCashOutAgency,
-        'minRcoinForConvertToDiamond': minRcoinForConvertToDiamond,
-        'callReceiverPercent': callReceiverPercent,
-        'maleCallCharge': maleCallCharge,
-        'femaleCallCharge': femaleCallCharge,
-        'femaleRandomCallRate': femaleRandomCallRate,
-        'maleRandomCallRate': maleRandomCallRate,
-        'bothRandomCallRate': bothRandomCallRate,
-        'chatCharge': chatCharge,
-        'createdAt': createdAt,
-        'updatedAt': updatedAt,
-      };
+    '_id': id,
+    'appName': appName,
+    'appVersion': appVersion,
+    'iosAppVersion': iosAppVersion,
+    'maintenanceMode': maintenanceMode,
+    'maintenanceMessage': maintenanceMessage,
+    'isAppActive': isAppActive,
+    'termsCondition': termsCondition,
+    'privacyPolicy': privacyPolicy,
+    'aboutUs': aboutUs,
+    'contactUs': contactUs,
+    'helpSupport': helpSupport,
+    'faq': faq,
+    'refundPolicy': refundPolicy,
+    'advertisement': advertisement?.toJson(),
+    'minWithdrawalCoin': minWithdrawalCoin,
+    'maxWithdrawalCoin': maxWithdrawalCoin,
+    'coinSellerCommission': coinSellerCommission,
+    'hostCommission': hostCommission,
+    'agencyCommission': agencyCommission,
+    'minRechargeCoin': minRechargeCoin,
+    'maxRechargeCoin': maxRechargeCoin,
+    'currency': currency,
+    'currencySymbol': currencySymbol,
+    'randomCallPrice': randomCallPrice,
+    'agoraKey': agoraKey,
+    'agoraCertificate': agoraCertificate,
+    'vipSupportNumber': vipSupportNumber,
+    'whatsapp': whatsapp,
+    'games': games,
+    'maxAdPerDay': maxAdPerDay,
+    'referralBonus': referralBonus,
+    'diamondToRcoin': diamondToRcoin,
+    'rCoinForDiamond': rCoinForDiamond,
+    'rCoinForCashOut': rCoinForCashOut,
+    'minRcoinForCashOut': minRcoinForCashOut,
+    'minRcoinForCashOutAgency': minRcoinForCashOutAgency,
+    'minRcoinForConvertToDiamond': minRcoinForConvertToDiamond,
+    'callReceiverPercent': callReceiverPercent,
+    'maleCallCharge': maleCallCharge,
+    'femaleCallCharge': femaleCallCharge,
+    'femaleRandomCallRate': femaleRandomCallRate,
+    'maleRandomCallRate': maleRandomCallRate,
+    'bothRandomCallRate': bothRandomCallRate,
+    'chatCharge': chatCharge,
+    'createdAt': createdAt,
+    'updatedAt': updatedAt,
+    'pkEndTime': pkEndTime,
+    'pkPunishmentEndTime': pkPunishmentEndTime,
+  };
 }
 
 /// Advertisement configuration returned as part of [Setting].
@@ -290,14 +371,13 @@ class Advertisement {
   }
 
   Map<String, dynamic> toJson() => {
-        '_id': id,
-        'show': show,
-        'banner': banner,
-        'interstitial': interstitial,
-        'native': native,
-        'reward': reward,
-        'createdAt': createdAt,
-        'updatedAt': updatedAt,
-      };
+    '_id': id,
+    'show': show,
+    'banner': banner,
+    'interstitial': interstitial,
+    'native': native,
+    'reward': reward,
+    'createdAt': createdAt,
+    'updatedAt': updatedAt,
+  };
 }
-

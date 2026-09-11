@@ -8,6 +8,8 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import 'ai_feature_guard.dart';
+
 /// Model for a single menu action.
 class MenuItem {
   const MenuItem({
@@ -15,6 +17,7 @@ class MenuItem {
     required this.label,
     this.gradient,
     this.glowColor,
+    this.featureKey,
     required this.onTap,
   });
 
@@ -22,6 +25,11 @@ class MenuItem {
   final String label;
   final Gradient? gradient;
   final Color? glowColor;
+
+  /// Optional AI feature key. When set, the card is wrapped with
+  /// [AIFeatureGuard] so it is hidden when disabled and shown with a lock
+  /// badge when the current user does not pass the access gate.
+  final String? featureKey;
   final VoidCallback onTap;
 }
 
@@ -150,7 +158,17 @@ class _HostMenuSheet extends StatelessWidget {
                         childAspectRatio: 0.82,
                       ),
                       itemCount: items.length,
-                      itemBuilder: (_, i) => _MenuCard(item: items[i]),
+                      itemBuilder: (_, i) {
+                        final item = items[i];
+                        final card = _MenuCard(item: item);
+                        if (item.featureKey != null) {
+                          return AIFeatureGuard(
+                            featureKey: item.featureKey!,
+                            child: card,
+                          );
+                        }
+                        return card;
+                      },
                     ),
                   ),
                 ),

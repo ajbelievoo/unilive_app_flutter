@@ -8,6 +8,7 @@ import '../constants/const.dart';
 import '../routes/navigation_keys.dart';
 import '../services/fcm_service.dart';
 import '../services/lucky_bag_history_service.dart';
+import '../services/push_notification_service.dart';
 import '../services/socket_service.dart';
 import '../theme/app_theme.dart';
 import '../utils/log.dart';
@@ -56,13 +57,40 @@ class _InAppNotificationBannerState extends State<InAppNotificationBanner> {
     );
   }
 
-  void _onMessage(message) {
+  Future<void> _onMessage(message) async {
+    if (!mounted) return;
+
     final notification = message.notification;
-    if (notification == null || !mounted) return;
-    final title = notification.title ?? '';
-    final body = notification.body ?? '';
-    if (title.isEmpty && body.isEmpty) return;
     final rawData = message.data;
+    final data =
+        rawData is Map ? Map<String, dynamic>.from(rawData) : const <String, dynamic>{};
+
+    // Compute display title/body the same way the system-tray handler does,
+    // so a notification payload and a data-only payload are both covered.
+    final title = notification?.title ?? data['title'] as String? ?? '';
+    final body = notification?.body ??
+        data['body'] as String? ??
+        data['message'] as String? ??
+        '';
+    if (title.isEmpty && body.isEmpty) return;
+
+    final type = (data['type'] as String? ?? '').toUpperCase();
+
+    // Suppress repeated identical FCM messages (e.g. the backend re-sending
+    // the same "Gift Received" push). The system-tray handler already dedupes
+    // these with the same signature; the in-app banner must share that state
+    // so the same push does not reappear as an overlay banner.
+    final signature = '$type|$title|$body';
+    if (type != Const.notificationChat && type != Const.notificationCall) {
+      if (await PushNotificationService.isDuplicateNotification(signature)) {
+        Log.d('InAppNotificationBanner',
+            'duplicate FCM banner suppressed: $title / $body');
+        return;
+      }
+    }
+
+    if (!mounted) return;
+
     if (rawData == null) {
       _showBanner(title: title, body: body, imageUrl: null, data: const {});
       return;
@@ -70,8 +98,8 @@ class _InAppNotificationBannerState extends State<InAppNotificationBanner> {
     _showBanner(
       title: title,
       body: body,
-      imageUrl: rawData['image'] as String?,
-      data: rawData is Map ? Map<String, dynamic>.from(rawData) : const {},
+      imageUrl: data['image'] as String?,
+      data: data,
     );
   }
 

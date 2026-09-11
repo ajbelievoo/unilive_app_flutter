@@ -33,8 +33,8 @@ class AudioRoomProvider extends ChangeNotifier {
   String? _welcomeMessage;
   String? get welcomeMessage => _welcomeMessage;
 
+  bool _loading = false;
   bool get loading => _loading;
-  final bool _loading = false;
 
   final _seatController = StreamController<List<SeatItem>>.broadcast();
   Stream<List<SeatItem>> get seatStream => _seatController.stream;
@@ -45,18 +45,26 @@ class AudioRoomProvider extends ChangeNotifier {
     _roomUser = user;
     _roomName = user?.roomName;
     _welcomeMessage = user?.roomWelcome;
+    _seatCount = user?.seatCount ?? 9;
     _initSeats();
+    notifyListeners();
+  }
+
+  void setLoading(bool value) {
+    _loading = value;
     notifyListeners();
   }
 
   void _initSeats() {
     _seats.clear();
-    for (int i = 0; i < _seatCount; i++) {
+    // Top owner seat (position -1) plus grid seats 0..seatCount-2.
+    _seats.add(SeatItem(position: -1, role: 'host'));
+    for (int i = 0; i < _seatCount - 1; i++) {
       _seats.add(SeatItem(position: i));
     }
     if (_roomUser != null) {
       _seats[0] = SeatItem(
-        position: 0,
+        position: -1,
         userId: _roomUser!.id,
         name: _roomUser!.name,
         image: _roomUser!.image,

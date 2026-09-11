@@ -59,7 +59,6 @@ import 'package:flutter/foundation.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/ai_feature_model.dart';
 import '../models/host_compliance_models.dart';
 import '../providers/ai_feature_manager.dart';
 import '../services/api_service.dart';
@@ -248,11 +247,6 @@ class HostPresenceGuardService {
     HostPresenceTerminateCallback? onTerminate,
     VoidCallback? onGiftsBlocked,
   }) async {
-    if (!ai.isFeatureEnabled(AIFeatureKeys.hostComplianceGuard)) {
-      Log.w(_tag, 'host presence guard disabled by AI config — not starting');
-      return;
-    }
-    if (_running) return;
     _userId = userId;
     _liveStreamingId = liveStreamingId;
     _cameraController = cameraController;
@@ -285,11 +279,6 @@ class HostPresenceGuardService {
     HostPresenceTerminateCallback? onTerminate,
     VoidCallback? onGiftsBlocked,
   }) async {
-    if (!ai.isFeatureEnabled(AIFeatureKeys.hostComplianceGuard)) {
-      Log.w(_tag, 'host presence guard disabled by AI config — not starting');
-      return;
-    }
-    if (_running) return;
     _userId = userId;
     _liveStreamingId = liveStreamingId;
     _isCameraOn = isCameraOn;
@@ -554,6 +543,7 @@ class HostPresenceGuardService {
       return;
     }
 
+    if (_isExempted?.call() == true) return;
     _updateViolation(reason, stateElapsed);
   }
 

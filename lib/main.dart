@@ -3,6 +3,7 @@ import 'dart:io' show Platform;
 
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:in_app_update/in_app_update.dart';
 
@@ -168,6 +169,10 @@ class _BeliveAppState extends State<_BeliveApp>
           await InAppUpdate.completeFlexibleUpdate();
         }
       }
+    } on PlatformException catch (e) {
+      final message = e.message ?? '';
+      if (e.code == 'TASK_FAILURE' && message.contains('-10')) return;
+      debugPrint('[InAppUpdate] check failed: $e');
     } catch (e) {
       debugPrint('[InAppUpdate] check failed: $e');
     }

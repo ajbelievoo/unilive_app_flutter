@@ -93,16 +93,21 @@ class AudioQualityService {
     }
   }
 
-  /// Start foreground service — keeps audio running in background.
-  static Future<void> startForegroundService() async {
+  /// Start foreground service — keeps audio/video running in background.
+  /// Pass [title]/[text] to customize the notification (e.g. "Live Stream").
+  static Future<void> startForegroundService({
+    String? title,
+    String? text,
+  }) async {
     try {
       FlutterForegroundTask.init(
         androidNotificationOptions: AndroidNotificationOptions(
-          channelId: 'audio_room_foreground',
-          channelName: 'Audio Room',
-          channelDescription: 'Audio room is running in background',
+          channelId: 'live_foreground',
+          channelName: 'Live Stream',
+          channelDescription: 'Live stream is running in background',
           priority: NotificationPriority.LOW,
           channelImportance: NotificationChannelImportance.LOW,
+          visibility: NotificationVisibility.VISIBILITY_PUBLIC,
         ),
         iosNotificationOptions: const IOSNotificationOptions(
           showNotification: true,
@@ -112,13 +117,15 @@ class AudioQualityService {
           eventAction: ForegroundTaskEventAction.nothing(),
           allowWakeLock: true,
           allowWifiLock: true,
+          autoRunOnBoot: false,
+          autoRunOnMyPackageReplaced: false,
         ),
       );
       await FlutterForegroundTask.startService(
-        notificationTitle: 'Audio Room',
-        notificationText: 'Audio room is active in background',
+        notificationTitle: title ?? 'Live Stream',
+        notificationText: text ?? 'Live stream is active in background',
       );
-      Log.d(_tag, 'Foreground service started');
+      Log.d(_tag, 'Foreground service started: ${title ?? 'Live Stream'}');
     } catch (e) {
       Log.e(_tag, 'Failed to start foreground service', e);
     }

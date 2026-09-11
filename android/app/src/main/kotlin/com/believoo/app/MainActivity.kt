@@ -1,19 +1,26 @@
 package com.believoo.app
 
+import android.app.PictureInPictureParams
+import android.content.res.Configuration
 import android.content.res.Resources
 import android.os.Build
 import android.os.Bundle
 import android.util.Log
+import android.util.Rational
 import android.view.Window
 import android.view.WindowManager
 import androidx.core.view.WindowCompat
 import io.flutter.embedding.android.FlutterActivity
+import io.flutter.embedding.android.RenderMode
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity() {
     private val DEBUG_CHANNEL = "com.believoo.app/debug"
     private val SYSTEM_CHANNEL = "com.believoo.app/system"
+    private val LIVE_PIP_CHANNEL = "com.believoo.app/live_pip"
+    private var autoPipEnabled = false
+    private var livePipChannel: MethodChannel? = null
 
     override fun onCreate(savedInstanceState: android.os.Bundle?) {
         super.onCreate(savedInstanceState)
@@ -21,10 +28,41 @@ class MainActivity : FlutterActivity() {
         applyInitialColors()
     }
 
+    override fun getRenderMode(): RenderMode = RenderMode.texture
+
     override fun onResume() {
         super.onResume()
         // Re-apply insets only so Dart-set colors are not overwritten.
         applyWindowInsets()
+    }
+
+    override fun onPictureInPictureModeChanged(
+        isInPictureInPictureMode: Boolean,
+        newConfig: Configuration
+    ) {
+        super.onPictureInPictureModeChanged(isInPictureInPictureMode, newConfig)
+        livePipChannel?.invokeMethod(
+            "pipModeChanged",
+            mapOf("isInPipMode" to isInPictureInPictureMode)
+        )
+    }
+
+    override fun onUserLeaveHint() {
+        if (autoPipEnabled) enterPipMode()
+        super.onUserLeaveHint()
+    }
+
+    private fun enterPipMode(): Boolean {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O || isInPictureInPictureMode) return false
+        return try {
+            val params = PictureInPictureParams.Builder()
+                .setAspectRatio(Rational(9, 16))
+                .build()
+            enterPictureInPictureMode(params)
+        } catch (e: Exception) {
+            Log.w("BELIVE_NATIVE", "Unable to enter PiP: $e")
+            false
+        }
     }
 
     /// Reads the Android framework resource that tells us which navigation
@@ -115,6 +153,21 @@ class MainActivity : FlutterActivity() {
 
         val messenger = flutterEngine.dartExecutor.binaryMessenger
 
+        livePipChannel = MethodChannel(messenger, LIVE_PIP_CHANNEL).also { channel ->
+            channel.setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "setAutoPip" -> {
+                        autoPipEnabled = call.argument<Boolean>("enabled") ?: false
+                        result.success(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                    }
+                    "isInPipMode" -> result.success(
+                        Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && isInPictureInPictureMode
+                    )
+                    else -> result.notImplemented()
+                }
+            }
+        }
+
         MethodChannel(messenger, DEBUG_CHANNEL).setMethodCallHandler { call, result ->
             when (call.method) {
                 "log" -> {
@@ -133,6 +186,15 @@ class MainActivity : FlutterActivity() {
                         }
                     }
                     result.success(null)
+                }
+                "setAutoPip" -> {
+                    autoPipEnabled = call.argument<Boolean>("enabled") ?: false
+                    result.success(Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                }
+                "setPipMode" -> {
+                    val enabled = call.argument<Boolean>("enabled") ?: false
+                    autoPipEnabled = enabled
+                    result.success(if (enabled) enterPipMode() else true)
                 }
                 else -> result.notImplemented()
             }

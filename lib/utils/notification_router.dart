@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
@@ -33,9 +35,32 @@ class NotificationRouter {
     Map<String, dynamic>? extraData,
   }) {
     final type = (actionType ?? '').toLowerCase();
-    final payload = actionData ?? '';
+    var payload = actionData ?? '';
     final ctx = rootNavigatorKey.currentContext ?? context;
     final router = GoRouter.of(ctx);
+
+    // FCM / socket payloads often nest the real fields inside a
+    // JSON-encoded `data` string (e.g. {"userId":"...","topic":"..."}).
+    // Decode it so the cases below receive a real id instead of the raw
+    // JSON blob — otherwise ChatScreen gets the whole JSON as otherUserId.
+    final merged = Map<String, dynamic>.of(extraData ?? const {});
+    var inner = _tryDecodeJsonMap(payload) ??
+        _tryDecodeJsonMap(merged['data']);
+    if (inner != null) {
+      merged.addAll(inner);
+      payload = inner['liveStreamingId'] as String? ??
+          inner['userId'] as String? ??
+          inner['_id'] as String? ??
+          inner['id'] as String? ??
+          merged['actionData'] as String? ??
+          '';
+    }
+    if (payload.isEmpty) {
+      payload = merged['actionData'] as String? ??
+          merged['userId'] as String? ??
+          '';
+    }
+    extraData = merged;
 
     Log.d(_tag, 'navigate type=$type payload=$payload extraData=$extraData');
 
@@ -50,11 +75,15 @@ class NotificationRouter {
         final chatExtra = <String, dynamic>{'otherUserId': payload};
         // If the FCM payload includes a topic, pass it through so ChatScreen
         // can resume the existing thread without calling createChatTopic.
-        if (extraData != null) {
-          final topic = extraData['topic'] as String? ?? extraData['chatTopic'] as String?;
-          if (topic != null && topic.isNotEmpty) {
-            chatExtra['topic'] = topic;
-          }
+        final topic = extraData['topic'] as String? ??
+            extraData['chatTopic'] as String?;
+        if (topic != null && topic.isNotEmpty) {
+          chatExtra['topic'] = topic;
+        }
+        final otherName = extraData['name'] as String? ??
+            extraData['username'] as String?;
+        if (otherName != null && otherName.isNotEmpty) {
+          chatExtra['otherUserName'] = otherName;
         }
         router.pushNamed(AppRoutes.chatDetail, extra: chatExtra);
         break;
@@ -161,14 +190,26 @@ class NotificationRouter {
       case 'call':
         // Call notifications are handled by the call service; if extra call
         // data is present we route to the incoming call screen.
-        final callData = extraData ?? <String, dynamic>{};
-        router.pushNamed(AppRoutes.incomingCall, extra: callData);
+        router.pushNamed(AppRoutes.incomingCall, extra: extraData);
         break;
       default:
         Log.w(_tag, 'unhandled notification type: $type — falling back to main');
         router.goNamed(AppRoutes.main);
         break;
     }
+  }
+
+  /// Decode [raw] into a `Map<String, dynamic>` when it is a JSON object
+  /// string or already a map; returns null otherwise.
+  static Map<String, dynamic>? _tryDecodeJsonMap(dynamic raw) {
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is String && raw.trimLeft().startsWith('{')) {
+      try {
+        final decoded = jsonDecode(raw);
+        if (decoded is Map<String, dynamic>) return decoded;
+      } catch (_) {}
+    }
+    return null;
   }
 
   static void _toast(String msg) {

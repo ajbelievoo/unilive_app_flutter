@@ -14,7 +14,8 @@ import 'package:flutter/material.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:video_thumbnail/video_thumbnail.dart';
 import 'package:belive/utils/log.dart';
-import 'package:belive/widgets/preloader.dart';
+
+import 'big_gift_overlay.dart';
 
 class VideoGiftThumbnail extends StatefulWidget {
   const VideoGiftThumbnail({
@@ -22,11 +23,13 @@ class VideoGiftThumbnail extends StatefulWidget {
     required this.videoUrl,
     this.width = 80,
     this.height = 80,
+    this.forceVideo = false,
   });
 
   final String videoUrl;
   final double width;
   final double height;
+  final bool forceVideo;
 
   @override
   State<VideoGiftThumbnail> createState() => _VideoGiftThumbnailState();
@@ -43,7 +46,7 @@ class _VideoGiftThumbnailState extends State<VideoGiftThumbnail> {
   void initState() {
     super.initState();
     final trimmed = widget.videoUrl.trim();
-    final isVideo = _isVideoUrl(trimmed);
+    final isVideo = widget.forceVideo || _isVideoUrl(trimmed);
     if (trimmed.isEmpty || !isVideo) {
       _loading = false;
     } else {
@@ -86,8 +89,9 @@ class _VideoGiftThumbnailState extends State<VideoGiftThumbnail> {
       } else {
         // Extract the first frame at 0ms. Use JPEG for smaller file size
         // and lower memory pressure in the gift grid.
+        final videoFile = await GiftMediaCache.getVideoFile(widget.videoUrl);
         path = await VideoThumbnail.thumbnailFile(
-          video: widget.videoUrl,
+          video: videoFile?.path ?? widget.videoUrl,
           thumbnailPath: outFile.path,
           imageFormat: ImageFormat.JPEG,
           timeMs: 0,
@@ -116,21 +120,7 @@ class _VideoGiftThumbnailState extends State<VideoGiftThumbnail> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return Container(
-        width: widget.width,
-        height: widget.height,
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: const Center(
-          child: SizedBox(
-            width: 14,
-            height: 14,
-            child: Preloader(strokeWidth: 1.5, color: Colors.white54),
-          ),
-        ),
-      );
+      return SizedBox(width: widget.width, height: widget.height);
     }
 
     if (_thumbnailPath != null && File(_thumbnailPath!).existsSync()) {

@@ -39,6 +39,7 @@ class _HostRequestScreenState extends State<HostRequestScreen> {
 
   String? _photoPath;
   bool _submitting = false;
+  bool _isRedirecting = false;
 
   @override
   void initState() {
@@ -47,6 +48,12 @@ class _HostRequestScreenState extends State<HostRequestScreen> {
     final user = session.getUser();
     _nameCtrl.text = user?.username ?? '';
     _bioCtrl.text = user?.bio ?? '';
+    if (session.userId.isNotEmpty && session.hostRequestSubmitted) {
+      _isRedirecting = true;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) context.goNamed(AppRoutes.hostRequestStatus);
+      });
+    }
   }
 
   @override
@@ -118,6 +125,7 @@ class _HostRequestScreenState extends State<HostRequestScreen> {
 
       if (res.status) {
         Fluttertoast.showToast(msg: 'Host Request Sent');
+        session.hostRequestSubmitted = true;
         if (mounted) context.pushNamed(AppRoutes.hostRequestStatus);
       } else {
         Fluttertoast.showToast(msg: res.message ?? 'Failed to submit');
@@ -125,7 +133,11 @@ class _HostRequestScreenState extends State<HostRequestScreen> {
     } on DioException catch (e) {
       final data = e.response?.data;
       final msg = data is Map ? parseString(data['message']) : null;
-      Fluttertoast.showToast(msg: msg ?? e.message ?? 'Try Again Later');
+      final isServerError = e.response?.statusCode == 500;
+      Log.e(_tag, 'DioException ${e.response?.statusCode}', e);
+      Fluttertoast.showToast(
+        msg: msg ?? (isServerError ? 'Server error, please try again later' : e.message ?? 'Try Again Later'),
+      );
     } catch (e, s) {
       Log.e(_tag, 'submit failed', e, s);
       Fluttertoast.showToast(msg: 'Try Again Later');
@@ -136,6 +148,11 @@ class _HostRequestScreenState extends State<HostRequestScreen> {
 
   @override
   Widget build(BuildContext context) {
+    if (_isRedirecting) {
+      return const Scaffold(
+        body: Center(child: Preloader(color: Colors.white)),
+      );
+    }
     return Scaffold(
       appBar: AppBar(
         title: const Text('Host Request'),

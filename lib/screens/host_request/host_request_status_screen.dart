@@ -46,29 +46,42 @@ class _HostRequestStatusScreenState extends State<HostRequestStatusScreen> {
     });
     try {
       final session = context.read<SessionManager>();
-      final data = await ApiService.getHostRequests(agencyId: session.userId);
-      if (data['status'] == true || data['data'] != null) {
-        final req = data['data'] as Map<String, dynamic>?;
-        if (req != null) {
-          _status = req['status']?.toString() ?? 'pending';
-          _name = req['name']?.toString();
-          _mobile = req['mobileNumber']?.toString();
-          _bio = req['bio']?.toString();
-          _liveType = req['liveType']?.toString();
-          _createdAt = req['createdAt']?.toString();
-          _rejectionReason = req['rejectionReason']?.toString();
-        } else {
-          _status = null;
-        }
+      final data = await ApiService.getMyHostRequest(userId: session.userId);
+      final req = _extractRequest(data);
+      if (req != null) {
+        _status = req['status']?.toString() ?? 'pending';
+        _name = req['name']?.toString();
+        _mobile = req['mobileNumber']?.toString();
+        _bio = req['bio']?.toString();
+        _liveType = req['liveType']?.toString();
+        _createdAt = req['createdAt']?.toString();
+        _rejectionReason = req['rejectionReason']?.toString();
       } else {
         _status = null;
       }
+      final canReapply = _status == null || _status == 'rejected';
+      session.hostRequestSubmitted = !canReapply;
     } catch (e, s) {
       Log.e(_tag, 'load failed', e, s);
       _error = 'Failed to load status.';
     } finally {
       if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Map<String, dynamic>? _extractRequest(Map<String, dynamic> data) {
+    final raw = data['data'];
+    if (raw == null) return null;
+    if (raw is Map<String, dynamic>) return raw;
+    if (raw is List && raw.isNotEmpty) {
+      for (final item in raw) {
+        if (item is Map<String, dynamic> && item['status']?.toString() != 'rejected') {
+          return item;
+        }
+      }
+      return raw.first is Map<String, dynamic> ? raw.first as Map<String, dynamic> : null;
+    }
+    return null;
   }
 
   @override
@@ -102,7 +115,7 @@ class _HostRequestStatusScreenState extends State<HostRequestStatusScreen> {
             Container(
               width: 90,
               height: 90,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 gradient: AppTheme.purpleGradient,
                 shape: BoxShape.circle,
                 boxShadow: AppTheme.primaryShadow,
@@ -119,7 +132,10 @@ class _HostRequestStatusScreenState extends State<HostRequestStatusScreen> {
             GradientButton(
               label: 'Apply Now',
               icon: Icons.send,
-              onPressed: () => context.pushNamed(AppRoutes.hostRequest),
+              onPressed: () {
+                context.read<SessionManager>().hostRequestSubmitted = false;
+                context.pushNamed(AppRoutes.hostRequest);
+              },
               width: 200,
               height: 48,
             ),
@@ -162,7 +178,10 @@ class _HostRequestStatusScreenState extends State<HostRequestStatusScreen> {
           GradientButton(
             label: 'Apply Again',
             icon: Icons.refresh,
-            onPressed: () => context.pushNamed(AppRoutes.hostRequest),
+            onPressed: () {
+              context.read<SessionManager>().hostRequestSubmitted = false;
+              context.pushNamed(AppRoutes.hostRequest);
+            },
           ),
       ],
     );

@@ -1324,6 +1324,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
         int giftType = 0,
         required int count,
         required int totalCoins,
+        bool isLucky = false,
       }) {
         // Refresh the local balance after sending a gift (caller pays).
         if (widget.callByMe && !_isFreeCall && mounted) {

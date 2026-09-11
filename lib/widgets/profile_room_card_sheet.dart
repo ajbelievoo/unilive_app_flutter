@@ -234,13 +234,16 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
       );
       if (!response.status &&
           response.message?.toLowerCase().contains('success') != true) {
-        Fluttertoast.showToast(msg: response.message ?? 'Kick out failed');
-        return;
+        Log.w(
+          _tag,
+          'kickAudioRoomUser API rejected: ${response.message} — '
+          'proceeding with socket kick anyway',
+        );
       }
     } catch (e) {
       Log.e(_tag, 'kickAudioRoomUser failed', e);
-      Fluttertoast.showToast(msg: 'Kick out failed');
-      return;
+      // Best-effort: the socket events below actually remove the user even
+      // when the REST endpoint is missing/fails.
     }
 
     final kickPayload = {
@@ -439,11 +442,15 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
     // VIP room card: prefer the profile API's VIP card, then the seat's own
     // room card (parsed from the seat socket payload), then profile
     // backgrounds. Ports native UserProfileBottomSheet VIP card fallbacks.
+    // Normal (non-VIP) users must keep the plain white card — profile
+    // background images belong to the profile page, not the room card.
     final roomCardUrl =
-        user?.vipDetails?.effectiveRoomCardUrl ??
-        seat.roomCardUrl ??
-        user?.profileBackgroundImage ??
-        user?.vipBackgroundImage;
+        isVIP
+            ? (user?.vipDetails?.effectiveRoomCardUrl ??
+                seat.roomCardUrl ??
+                user?.profileBackgroundImage ??
+                user?.vipBackgroundImage)
+            : null;
     final isSvgaRoomCard = SvgaHelper.isSvgaUrl(roomCardUrl);
     final resolvedRoomCardUrl =
         isSvgaRoomCard
@@ -813,7 +820,10 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
   Widget _buildActions(SeatItem seat) {
     final session = context.read<SessionManager>();
     final myUserId = session.userId;
-    final isMe = seat.userId == myUserId;
+    // Host viewing their own host seat counts as "me" — the seat may carry a
+    // different id (liveUserId vs userId) which would hide self actions.
+    final isMe =
+        seat.userId == myUserId || (widget.isHostView && seat.isHost);
     final isTargetHost = seat.isHost;
     final isTargetAdmin = seat.isAdmin;
     final amIHost = widget.isHostView;
@@ -1050,22 +1060,22 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
     return GestureDetector(
       onTap: action.onTap,
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 10),
+        padding: const EdgeInsets.symmetric(vertical: 7),
         decoration: BoxDecoration(
           color: const Color(0xFFF6F5FB),
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(10),
           border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(action.icon, color: action.color, size: 24),
-            const SizedBox(height: 5),
+            Icon(action.icon, color: action.color, size: 19),
+            const SizedBox(height: 3),
             Text(
               action.label,
               style: TextStyle(
                 color: action.color.withValues(alpha: 0.95),
-                fontSize: 10,
+                fontSize: 9,
                 fontWeight: FontWeight.w600,
               ),
               maxLines: 1,
@@ -1079,7 +1089,9 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
 
   Widget _buildBottomButtons(SeatItem seat) {
     final session = context.read<SessionManager>();
-    final isMe = seat.userId == session.userId;
+    final isMe =
+        seat.userId == session.userId ||
+        (widget.isHostView && seat.isHost);
 
     // Self view: no bottom buttons (Masti Live behaviour)
     if (isMe) {
@@ -1099,22 +1111,22 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
                   widget.onLeaveSeat!();
                 },
                 child: Container(
-                  height: 44,
+                  height: 38,
                   decoration: BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: BorderRadius.circular(19),
                     border: Border.all(color: Colors.red, width: 1.5),
                   ),
                   child: const Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(Icons.logout, color: Colors.red, size: 18),
+                      Icon(Icons.logout, color: Colors.red, size: 16),
                       SizedBox(width: 6),
                       Text(
                         'Leave',
                         style: TextStyle(
                           color: Colors.red,
-                          fontSize: 15,
+                          fontSize: 13,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -1135,23 +1147,23 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
                   widget.onToggleMic!();
                 },
                 child: Container(
-                  height: 44,
+                  height: 38,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
                       colors: [Color(0xFF7E3FF2), Color(0xFF00BFA5)],
                     ),
-                    borderRadius: BorderRadius.circular(22),
+                    borderRadius: BorderRadius.circular(19),
                   ),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      Icon(_micIconForSelf(), color: Colors.white, size: 18),
+                      Icon(_micIconForSelf(), color: Colors.white, size: 16),
                       const SizedBox(width: 6),
                       Text(
                         _micLabelForSelf(),
                         style: const TextStyle(
                           color: Colors.white,
-                          fontSize: 15,
+                          fontSize: 13,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -1171,10 +1183,10 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
           child: GestureDetector(
             onTap: _followLoading ? null : _toggleFollow,
             child: Container(
-              height: 44,
+              height: 38,
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(19),
                 border: Border.all(color: const Color(0xFF00E5FF), width: 1.5),
               ),
               child: Row(
@@ -1183,14 +1195,14 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
                   Icon(
                     _isFollow ? Icons.check : Icons.add,
                     color: const Color(0xFF00E5FF),
-                    size: 18,
+                    size: 16,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     _isFollow ? 'Following' : 'Follow',
                     style: const TextStyle(
                       color: Color(0xFF00E5FF),
-                      fontSize: 15,
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
@@ -1207,23 +1219,23 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
               widget.onGift();
             },
             child: Container(
-              height: 44,
+              height: 38,
               decoration: BoxDecoration(
                 gradient: const LinearGradient(
                   colors: [Color(0xFF00BFA5), Color(0xFF00E676)],
                 ),
-                borderRadius: BorderRadius.circular(22),
+                borderRadius: BorderRadius.circular(19),
               ),
               child: const Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  ImageIcon(const AssetImage("assets/gift/official_gift.png"), color: Colors.white, size: 18),
+                  ImageIcon(AssetImage("assets/gift/official_gift.png"), color: Colors.white, size: 16),
                   SizedBox(width: 6),
                   Text(
                     'Send Gifts',
                     style: TextStyle(
                       color: Colors.white,
-                      fontSize: 15,
+                      fontSize: 13,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

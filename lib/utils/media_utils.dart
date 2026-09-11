@@ -153,8 +153,12 @@ class SvgaHelper {
 
   static bool isSvgaUrl(String? url) {
     if (url == null || url.trim().isEmpty) return false;
-    final lower = url.trim().toLowerCase();
-    return lower.contains('.svga') || lower.contains('/svga');
+    final lower = url.trim().toLowerCase().split('?').first;
+    if (RegExp(r'\.(png|jpe?g|gif|webp|bmp|svg|mp4|mov|webm|mkv|3gp)$')
+        .hasMatch(lower)) {
+      return false;
+    }
+    return lower.endsWith('.svga') || lower.contains('/svga/');
   }
 }
 

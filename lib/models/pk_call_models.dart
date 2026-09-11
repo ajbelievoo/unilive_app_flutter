@@ -28,8 +28,14 @@ class PkCallData {
     this.id,
     this.hostId,
     this.guestId,
+    this.host1Id,
+    this.host2Id,
+    this.host1LiveId,
+    this.host2LiveId,
     this.hostScore = 0,
     this.guestScore = 0,
+    this.host1Score = 0,
+    this.host2Score = 0,
     this.status,
     this.startTime,
     this.endTime,
@@ -41,8 +47,14 @@ class PkCallData {
   final String? id;
   final String? hostId;
   final String? guestId;
+  final String? host1Id;
+  final String? host2Id;
+  final String? host1LiveId;
+  final String? host2LiveId;
   final int hostScore;
   final int guestScore;
+  final int host1Score;
+  final int host2Score;
   final String? status;
   final String? startTime;
   final String? endTime;
@@ -54,8 +66,18 @@ class PkCallData {
     id: parseString(json['_id'] ?? json['id']),
     hostId: parseString(json['hostId'] ?? json['host1Id']),
     guestId: parseString(json['guestId'] ?? json['host2Id']),
-    hostScore: parseInt(json['hostScore'], 0),
-    guestScore: parseInt(json['guestScore'], 0),
+    host1Id: parseString(json['host1Id'] ?? json['hostId']),
+    host2Id: parseString(json['host2Id'] ?? json['guestId']),
+    host1LiveId: parseString(
+      json['host1LiveId'] ?? json['host1LiveStreamingId'],
+    ),
+    host2LiveId: parseString(
+      json['host2LiveId'] ?? json['host2LiveStreamingId'],
+    ),
+    hostScore: parseInt(json['hostScore'] ?? json['host1Score'], 0),
+    guestScore: parseInt(json['guestScore'] ?? json['host2Score'], 0),
+    host1Score: parseInt(json['host1Score'] ?? json['hostScore'], 0),
+    host2Score: parseInt(json['host2Score'] ?? json['guestScore'], 0),
     status: parseString(json['status']),
     startTime: parseString(json['startTime']),
     endTime: parseString(json['endTime']),
@@ -67,6 +89,28 @@ class PkCallData {
           : json,
     ),
   );
+
+  Map<String, dynamic> toJson() => {
+    '_id': id,
+    'id': id,
+    'hostId': hostId,
+    'host1Id': host1Id ?? hostId,
+    'guestId': guestId,
+    'host2Id': host2Id ?? guestId,
+    'host1LiveId': host1LiveId,
+    'host2LiveId': host2LiveId,
+    'hostScore': hostScore,
+    'guestScore': guestScore,
+    'host1Score': host1Score,
+    'host2Score': host2Score,
+    'status': status,
+    'startTime': startTime,
+    'endTime': endTime,
+    'winnerId': winnerId,
+    'duration': duration,
+    'durationSeconds': duration,
+    'pkConfig': config?.toJson(),
+  };
 }
 
 /// Ported from native `PkAudioLiveUserRoot.java` — PK battle inner classes.
@@ -110,6 +154,16 @@ class PkHostDetails {
     uniqueId: parseString(json['uniqueId']),
     isVIP: parseBool(json['isVIP'] ?? json['isVip'] ?? json['vip']),
   );
+
+  Map<String, dynamic> toJson() => {
+    'image': image,
+    'avatarFrameImage': avatarFrameImage,
+    'country': country,
+    'rCoin': rCoin,
+    'name': name,
+    'uniqueId': uniqueId,
+    'isVIP': isVIP,
+  };
 }
 
 class PkConfig {
@@ -152,7 +206,9 @@ class PkConfig {
     this.punishmentTask,
   });
 
-  final String? pkId;
+  // Mutable so the live screen can fill it in when the backend pkId arrives
+  // in a later pkAnswer/pkStart payload.
+  String? pkId;
   final String? host1Id;
   final String? host2Id;
   final String? host1LiveId;
@@ -190,7 +246,15 @@ class PkConfig {
   String? punishmentTask;
 
   factory PkConfig.fromJson(Map<String, dynamic> json) => PkConfig(
-    pkId: parseString(json['pkId'] ?? json['_id'] ?? json['id']),
+    pkId: parseString(
+      json['pkId'] ??
+          (json['pkIdentity'] is Map
+              ? (json['pkIdentity'] as Map)['pkId'] ??
+                  (json['pkIdentity'] as Map)['_id']
+              : null) ??
+          json['_id'] ??
+          json['id'],
+    ),
     host1Id: parseString(
       json['host1Id'] ?? json['requesterId'] ?? json['fromUserId'],
     ),
@@ -250,6 +314,49 @@ class PkConfig {
     showStartButton: parseBool(json['showStartButton']),
     punishmentTask: parseString(json['punishmentTask']),
   );
+
+  Map<String, dynamic> toJson() => {
+    'pkId': pkId,
+    'host1Id': host1Id,
+    'host2Id': host2Id,
+    'host1LiveId': host1LiveId,
+    'host2LiveId': host2LiveId,
+    'host1Name': host1Name,
+    'host2Name': host2Name,
+    'host1Image': host1Image,
+    'host2Image': host2Image,
+    'host1Channel': host1Channel,
+    'host2Channel': host2Channel,
+    'host1AgoraUID': host1AgoraUID,
+    'host2AgoraUID': host2AgoraUID,
+    'host1AgoraId': host1AgoraUID,
+    'host2AgoraId': host2AgoraUID,
+    'host1Token': host1Token,
+    'host2Token': host2Token,
+    'host1SrcToken': host1SrcToken,
+    'host2SrcToken': host2SrcToken,
+    'host1RelayDestToken': host1RelayDestToken,
+    'host2RelayDestToken': host2RelayDestToken,
+    'host1Details': host1Details?.toJson(),
+    'host2Details': host2Details?.toJson(),
+    'localRank': localRank,
+    'remoteRank': remoteRank,
+    'isWinner': isWinner,
+    'durationSeconds': durationSeconds,
+    'duration': durationSeconds,
+    'topGifters': topGifters.map((g) => g.toJson()).toList(),
+    'punishmentRound': punishmentRound,
+    'isPunishmentActive': isPunishmentActive,
+    'canRematch': canRematch,
+    'pkRoundCount': pkRoundCount,
+    'PK_ROUND_COUNT': pkRoundCount,
+    'punishmentDurationSeconds': punishmentDurationSeconds,
+    'pkPunishmentEndTime': pkPunishmentEndTime,
+    'isDisconnect': isDisconnect,
+    'pkAutoStartBlocked': pkAutoStartBlocked,
+    'showStartButton': showStartButton,
+    'punishmentTask': punishmentTask,
+  };
 }
 
 class PkPunishment {
@@ -295,6 +402,14 @@ class PkGifter {
     coin: coin,
     amount: amount ?? this.amount,
   );
+
+  Map<String, dynamic> toJson() => {
+    'userId': userId,
+    'name': name,
+    'image': image,
+    'coin': coin,
+    'amount': amount,
+  };
 }
 
 /// PK round result — ported from native `PkRoundResult`.
