@@ -63,6 +63,8 @@ class AudioRoomComment {
     this.isSeatRequest = false,
     this.seatRequestUserId,
     this.seatRequestPosition,
+    this.isCallInvite = false,
+    this.callInviteForUserId,
   });
 
   final String? name;
@@ -113,6 +115,11 @@ class AudioRoomComment {
   final bool isSeatRequest;
   final String? seatRequestUserId;
   final int? seatRequestPosition;
+
+  /// Host → viewer call invite comment (video live). [callInviteForUserId] is
+  /// the invited viewer's user id — only their client shows the Accept button.
+  final bool isCallInvite;
+  final String? callInviteForUserId;
 }
 
 /// Renders a single [AudioRoomComment] as a Bigo-style chat bubble.
@@ -125,6 +132,7 @@ class AudioRoomCommentBubble extends StatelessWidget {
     this.iAmAdmin = false,
     this.onTapUser,
     this.onAcceptSeatRequest,
+    this.onAcceptCallInvite,
     this.onCopy,
     this.onLongPressName,
   });
@@ -135,6 +143,7 @@ class AudioRoomCommentBubble extends StatelessWidget {
   final bool iAmAdmin;
   final VoidCallback? onTapUser;
   final VoidCallback? onAcceptSeatRequest;
+  final VoidCallback? onAcceptCallInvite;
   final VoidCallback? onCopy;
   final VoidCallback? onLongPressName;
 
@@ -154,6 +163,9 @@ class AudioRoomCommentBubble extends StatelessWidget {
     }
     if (c.isSeatRequest) {
       return _seatRequestBubble(c);
+    }
+    if (c.isCallInvite) {
+      return _callInviteBubble(c);
     }
     if (c.isSystem) {
       return _systemBubble(c);
@@ -610,6 +622,95 @@ class AudioRoomCommentBubble extends StatelessWidget {
                         const SizedBox(width: 8),
                         GestureDetector(
                           onTap: onAcceptSeatRequest,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              gradient: const LinearGradient(
+                                colors: [Color(0xFF34C759), Color(0xFF30D158)],
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: const Text(
+                              'Accept',
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // -------------------------------------------------------------------------
+  // Call invite bubble (video live) — Accept button only for the invited user
+  // -------------------------------------------------------------------------
+  Widget _callInviteBubble(AudioRoomComment c) {
+    final isForMe =
+        c.callInviteForUserId != null && c.callInviteForUserId == myUserId;
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _avatar(c),
+          const SizedBox(width: 7),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _identityHeader(c),
+                if (_hasImageBadges(c)) ...[
+                  const SizedBox(height: 3),
+                  _imageBadges(c),
+                ],
+                const SizedBox(height: 3),
+                Container(
+                  constraints: const BoxConstraints(
+                    minWidth: 80,
+                    minHeight: 36,
+                    maxWidth: 240,
+                  ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: 8,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF17141F).withValues(alpha: 0.78),
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Flexible(
+                        child: Text(
+                          isForMe
+                              ? 'invited you to join the call'
+                              : 'sent a call invite',
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 11,
+                          ),
+                        ),
+                      ),
+                      if (isForMe && onAcceptCallInvite != null) ...[
+                        const SizedBox(width: 8),
+                        GestureDetector(
+                          onTap: onAcceptCallInvite,
                           child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 12,

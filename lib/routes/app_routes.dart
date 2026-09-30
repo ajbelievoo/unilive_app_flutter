@@ -488,8 +488,12 @@ class AppRoutes {
       }),
       _named(audioRoom, (state) {
         final extra = state.extra as Map<String, dynamic>? ?? {};
+        final roomUser = extra['roomUser'] as AudioRoomUser?;
+        // audioRoom route sometimes gets restored without extra (process death,
+        // notification cold start, deep links). Return to main instead of crashing.
+        if (roomUser == null) return const MainScreen();
         return AudioRoomScreen(
-          roomUser: extra['roomUser'] as AudioRoomUser,
+          roomUser: roomUser,
           isHost: extra['isHost'] as bool? ?? false,
           fromChat: extra['fromChat'] as bool? ?? false,
         );
@@ -499,11 +503,14 @@ class AppRoutes {
       _named(hostDashboard, (_) => const HostDashboardScreen()),
       _named(pkBattle, (state) {
         final extra = state.extra as Map<String, dynamic>? ?? {};
+        final config = extra['config'] as PkConfig?;
+        if (config == null) return const MainScreen();
         return PkBattleScreen(
-          config: extra['config'] as PkConfig,
+          config: config,
           isHost1: extra['isHost1'] as bool? ?? false,
           isHost: extra['isHost'] as bool? ?? false,
           existingEngine: extra['engine'] as RtcEngine?,
+          room: extra['room'] as live_user.LiveUser?,
         );
       }),
       _named(liveSummary, (state) {
@@ -548,14 +555,17 @@ class AppRoutes {
       _named(call, (_) => const CallHistoryScreen()),
       _named(activeCall, (state) {
         final extra = state.extra as Map<String, dynamic>? ?? {};
+        final data = extra['data'] as IncomingCallData?;
+        if (data == null) return const MainScreen();
         return ActiveCallScreen(
-          data: extra['data'] as IncomingCallData,
+          data: data,
           isAudioCall: extra['isAudioCall'] as bool? ?? false,
           callByMe: extra['callByMe'] as bool? ?? false,
         );
       }),
       _named(incomingCall, (state) {
         final extra = state.extra as Map<String, dynamic>? ?? {};
+        if (extra.isEmpty) return const MainScreen();
         return IncomingCallScreen(callData: IncomingCallData.fromJson(extra));
       }),
       _named(audioCall, (state) {

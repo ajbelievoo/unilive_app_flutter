@@ -52,6 +52,49 @@ void main() {
       );
     });
 
+    test('stale expected uid does not push the real host to the guest strip',
+        () {
+      // Host re-lived on the same channel with a rotated agoraUID — the
+      // viewer's entry payload still carries the old uid, so the arriving
+      // broadcaster must claim the empty host slot instead of a Guest tile.
+      expect(
+        resolveLiveVideoParticipant(
+          isRoomHost: false,
+          remoteUid: 732241,
+          expectedHostUid: 710495,
+          currentHostUid: null,
+          knownCoHostUids: const {},
+        ),
+        LiveVideoParticipantRole.host,
+      );
+    });
+
+    test('unknown broadcaster while host slot occupied stays a co-host', () {
+      expect(
+        resolveLiveVideoParticipant(
+          isRoomHost: false,
+          remoteUid: 202,
+          expectedHostUid: 101,
+          currentHostUid: 101,
+          knownCoHostUids: const {},
+        ),
+        LiveVideoParticipantRole.coHost,
+      );
+    });
+
+    test('known co-host uid never takes the empty host slot', () {
+      expect(
+        resolveLiveVideoParticipant(
+          isRoomHost: false,
+          remoteUid: 202,
+          expectedHostUid: 101,
+          currentHostUid: null,
+          knownCoHostUids: const {202},
+        ),
+        LiveVideoParticipantRole.coHost,
+      );
+    });
+
     test('PK opponent never enters the co-host strip', () {
       expect(
         resolveLiveVideoParticipant(

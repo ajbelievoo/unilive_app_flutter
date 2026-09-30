@@ -1,7 +1,7 @@
 name: belive
 description: "Unilive - Live Streaming & Social App"
 publish_to: 'none'
-version: 1.0.7+75
+version: 1.1.0+2087
 
 environment:
   sdk: ^3.7.0
@@ -32,6 +32,7 @@ dependencies:
   firebase_core: ^3.15.2
   firebase_auth: ^5.7.0
   firebase_messaging: ^15.2.10
+  firebase_crashlytics: ^4.3.10
 
   # Auth
   google_sign_in: ^6.3.0
@@ -86,7 +87,7 @@ dependencies:
   agora_token_generator: ^1.0.0
 
   # Utilities
-  intl: ^0.19.0
+  intl: ^0.20.3
 
   # SVGA animations — svgaplayer_3 is the maintained fork of the archived
   # svgaplayer_flutter package and fixes transparent-background / alpha issues.

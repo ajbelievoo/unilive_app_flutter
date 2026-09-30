@@ -19,6 +19,7 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../../constants/const.dart';
+import '../../models/live_user_root.dart' as live_user;
 import '../../models/pk_call_models.dart';
 import '../../services/api_service.dart';
 import '../../services/session_manager.dart';
@@ -49,12 +50,19 @@ class PkBattleScreen extends StatefulWidget {
     required this.isHost1,
     this.isHost = false,
     this.existingEngine,
+    this.room,
   });
 
   final PkConfig config;
   final bool isHost1;
   final bool isHost;
   final RtcEngine? existingEngine;
+
+  /// The room the viewer tapped to get here. The backend's `pkConfig` stored
+  /// on the live record often omits the Agora channel/uid fields, so for the
+  /// audience this object's `channel`/`agoraUID` are the authoritative values
+  /// for the host they are watching.
+  final live_user.LiveUser? room;
 
   @override
   State<PkBattleScreen> createState() => _PkBattleScreenState();
@@ -127,8 +135,32 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
   Function? _cancelLiveUserGiftSub;
   Function? _cancelCommentSub;
 
+  // --- Audience video binding ---
+  /// Channel this device actually joined (resolved from the room payload for
+  /// viewers, from pkConfig for hosts).
+  String _joinedChannel = '';
+  int _leftVideoUid = 0;
+  int _rightVideoUid = 0;
+  final LinkedHashSet<int> _remoteVideoUids = LinkedHashSet<int>();
+  bool _viewerJoinEmitted = false;
+
   // --- Current PK config (updated on rematch) ---
   late PkConfig _config;
+
+  /// The channel this device joins/watches. For hosts it is their own channel
+  /// from pkConfig. For viewers it is the tapped host's channel — `room` data
+  /// is authoritative because late-join `pkConfig` payloads can omit
+  /// host1Channel/host2Channel.
+  String? get _myChannel {
+    final configChannel =
+        widget.isHost1 ? _config.host1Channel : _config.host2Channel;
+    if (widget.isHost) return configChannel;
+    final roomChannel = widget.room?.channel;
+    if (roomChannel?.isNotEmpty == true) return roomChannel;
+    return (configChannel?.isNotEmpty == true ? configChannel : null) ??
+        widget.room?.userId ??
+        widget.room?.liveRoomId;
+  }
 
   @override
   void initState() {
@@ -178,6 +210,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
     _cancelNormalGiftSub?.call();
     _cancelLiveUserGiftSub?.call();
     _cancelCommentSub?.call();
+    _emitViewerRoomLeave();
     _leaveAndRelease();
     super.dispose();
   }
@@ -200,6 +233,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
         _engineInitialized = true;
         await _engine.enableVideo();
         await _engine.enableDualStreamMode(enabled: true);
+        _joinedChannel = _myChannel ?? '';
         if (widget.isHost) {
           await _engine.setClientRole(
             role: ClientRoleType.clientRoleBroadcaster,
@@ -225,6 +259,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
               autoSubscribeVideo: true,
             ),
           );
+          _resolveViewerVideoUids();
         }
       } else {
         if (widget.isHost) {
@@ -248,8 +283,8 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
         );
         await _engine.enableDualStreamMode(enabled: true);
 
-        final myChannel =
-            widget.isHost1 ? _config.host1Channel : _config.host2Channel;
+        final myChannel = _myChannel;
+        _joinedChannel = myChannel ?? '';
         if (widget.isHost) {
           final myToken =
               widget.isHost1 ? _config.host1Token : _config.host2Token;
@@ -290,6 +325,13 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
             ),
             uid: 0,
           );
+          Log.d(
+            _tag,
+            'audience joined channel=$myChannel roomUid=${widget.room?.agoraUID} '
+            'cfgUids=${_config.host1AgoraUID}/${_config.host2AgoraUID}',
+          );
+          _resolveViewerVideoUids();
+          _emitViewerRoomJoin();
         }
       }
 
@@ -306,9 +348,25 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       onJoinChannelSuccess:
           (conn, elapsed) => Log.d(_tag, 'joined ${conn.channelId}'),
       onUserJoined: (conn, uid, elapsed) => Log.d(_tag, 'remote joined: $uid'),
-      onUserOffline:
-          (conn, uid, reason) =>
-              Log.d(_tag, 'remote offline: $uid reason=$reason'),
+      onUserOffline: (conn, uid, reason) {
+        Log.d(_tag, 'remote offline: $uid reason=$reason');
+        if (!widget.isHost && _remoteVideoUids.remove(uid)) {
+          _resolveViewerVideoUids();
+        }
+      },
+      // Audience: the only publishers in a PK channel are the watched host
+      // and the relayed opponent. Track whoever actually publishes video so
+      // tiles bind even when pkConfig omits the hosts' agora uids.
+      onRemoteVideoStateChanged: (conn, uid, state, reason, elapsed) {
+        if (widget.isHost || !mounted) return;
+        if (state == RemoteVideoState.remoteVideoStateStarting ||
+            state == RemoteVideoState.remoteVideoStateDecoding) {
+          if (_remoteVideoUids.add(uid)) _resolveViewerVideoUids();
+        } else if (state == RemoteVideoState.remoteVideoStateStopped ||
+            state == RemoteVideoState.remoteVideoStateFailed) {
+          if (_remoteVideoUids.remove(uid)) _resolveViewerVideoUids();
+        }
+      },
       onError: (err, msg) => Log.e(_tag, 'agora error $err: $msg'),
       onChannelMediaRelayStateChanged: (state, code) {
         Log.d(_tag, 'media relay state=$state, code=$code');
@@ -316,6 +374,145 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
     );
     _eventHandler = handler;
     _engine.registerEventHandler(handler);
+  }
+
+  int _firstDiscoveredUid({int exclude = 0}) {
+    for (final uid in _remoteVideoUids) {
+      if (uid != exclude) return uid;
+    }
+    return 0;
+  }
+
+  /// Audience: decide which remote uid renders on each side. `pkConfig` on a
+  /// late-join room payload often lacks the hosts' agora uids (and the room's
+  /// `agoraUID` can be stale), so the publishers actually seen in the channel
+  /// are authoritative. In a PK channel the only two publishers are the
+  /// watched host and the opponent injected by media relay.
+  void _resolveViewerVideoUids() {
+    if (widget.isHost || !mounted) return;
+    final cfgLeft =
+        widget.isHost1 ? _config.host1AgoraUID : _config.host2AgoraUID;
+    final cfgRight =
+        widget.isHost1 ? _config.host2AgoraUID : _config.host1AgoraUID;
+    final roomUid = widget.room?.agoraUID ?? 0;
+
+    var left = roomUid > 0 ? roomUid : cfgLeft;
+    var right = cfgRight;
+
+    if (left <= 0) left = _firstDiscoveredUid(exclude: right);
+    if (right <= 0 || right == left) {
+      right = _firstDiscoveredUid(exclude: left);
+    }
+    // Stale-uid reconcile: once both publishers are visible, any configured
+    // uid that never appeared is outdated — rebind to the live one.
+    if (_remoteVideoUids.length >= 2) {
+      if (left > 0 && !_remoteVideoUids.contains(left)) {
+        final alt = _firstDiscoveredUid(exclude: right);
+        if (alt > 0) left = alt;
+      }
+      if (right > 0 && !_remoteVideoUids.contains(right)) {
+        final alt = _firstDiscoveredUid(exclude: left);
+        if (alt > 0) right = alt;
+      }
+    }
+
+    if (left != _leftVideoUid || right != _rightVideoUid) {
+      setState(() {
+        _leftVideoUid = left;
+        _rightVideoUid = right;
+      });
+    }
+  }
+
+  /// Audience: register presence on the watched room's socket so the backend
+  /// counts the viewer and routes this room's comments/gifts, then join the
+  /// opponent's room so the other side's PK events reach us too. Mirrors the
+  /// addView/view/liveRoomConnect emits LiveRoomScreen uses.
+  void _emitViewerRoomJoin() {
+    if (widget.isHost || _viewerJoinEmitted) return;
+    try {
+      final session = SessionManager.instance;
+      if (session == null) return;
+      _viewerJoinEmitted = true;
+      final user = session.getUser();
+      final liveId =
+          widget.room?.liveRoomId ??
+          (widget.isHost1 ? _config.host1LiveId : _config.host2LiveId) ??
+          '';
+      if (liveId.isEmpty) return;
+      final hostMongoId = widget.room?.id ?? '';
+      final hostUserId =
+          widget.room?.liveUserId ??
+          (widget.isHost1 ? _config.host1Id : _config.host2Id) ??
+          '';
+
+      SocketService.instance.emit(Const.eventAddView, {
+        'liveStreamingId': liveId,
+        'liveUserMongoId': hostMongoId,
+        'userId': session.userId,
+        'isVIP': user?.isVIP ?? false,
+        'image': session.userImage,
+        'name': session.userName,
+        'userName': session.userName,
+        'gender': user?.gender ?? '',
+        'country': user?.country ?? '',
+        'avatarFrame':
+            user?.avatarFrameImage ?? user?.vipDetails?.profileFrameUrl ?? '',
+        'isHost': false,
+        'level': user?.level?.toJson() ?? {'name': '1'},
+        'levelName': user?.level?.name ?? '1',
+        'Invisible': false,
+        'liveType': 'video',
+        'isVipProtected': user?.isVipProtected ?? false,
+        'vipBadgeUrl': user?.vipDetails?.levelBadgeUrl ?? '',
+        'entrySvga':
+            user?.vipDetails?.entranceAnimationUrl ?? user?.svgaImage ?? '',
+        if (user?.vipDetails != null) 'vipDetails': user!.vipDetails!.toJson(),
+      });
+
+      SocketService.instance.emit(Const.eventView, {
+        'liveStreamingId': liveId,
+        'roomId': liveId,
+        'liveRoom': liveId,
+        'liveUserMongoId': hostMongoId,
+        'liveUserId': hostUserId,
+        'userId': session.userId,
+        'requestFullList': true,
+      });
+
+      final oppLiveId =
+          widget.isHost1 ? _config.host2LiveId : _config.host1LiveId;
+      final oppUserId = widget.isHost1 ? _config.host2Id : _config.host1Id;
+      if (oppLiveId?.isNotEmpty == true && oppUserId?.isNotEmpty == true) {
+        SocketService.instance.emit(Const.eventLiveRoomConnect, {
+          'liveStreamingId': oppLiveId,
+          'liveUserId': oppUserId,
+          'userId': session.userId,
+          'name': session.userName,
+          'image': session.userImage,
+          'liveType': 'video',
+        });
+      }
+      Log.d(_tag, 'audience room join emitted for $liveId');
+    } catch (e) {
+      Log.d(_tag, 'viewer room join emit failed: $e');
+    }
+  }
+
+  void _emitViewerRoomLeave() {
+    if (!_viewerJoinEmitted) return;
+    _viewerJoinEmitted = false;
+    try {
+      final liveId =
+          widget.room?.liveRoomId ??
+          (widget.isHost1 ? _config.host1LiveId : _config.host2LiveId) ??
+          '';
+      if (liveId.isEmpty) return;
+      SocketService.instance.emit(Const.eventLessView, {
+        'liveStreamingId': liveId,
+        'userId': SessionManager.instance?.userId ?? '',
+      });
+    } catch (_) {}
   }
 
   Future<void> _startMediaRelay() async {
@@ -479,6 +676,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       _isPunishmentRound = false;
       _isPkStart = true;
       setState(() => _secondsRemaining = config.durationSeconds);
+      _resolveViewerVideoUids();
       _startCountdown();
     });
 
@@ -611,6 +809,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
           _secondsRemaining = _battleDuration;
           _isPunishmentRound = false;
         });
+        _resolveViewerVideoUids();
         _startCountdown();
       }
     });
@@ -633,6 +832,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
           _secondsRemaining = _battleDuration;
           _isPunishmentRound = false;
         });
+        _resolveViewerVideoUids();
         _startCountdown();
       }
     });
@@ -722,10 +922,17 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       },
     );
 
-    // PK Comments
+    // PK Comments — the socket is global, so drop comments that belong to a
+    // different room instead of leaking unrelated chat into the battle.
     _cancelCommentSub = SocketService.instance.on(Const.eventComment, (data) {
       final map = data is Map ? Map<String, dynamic>.from(data) : null;
       if (map == null) return;
+      final commentRoomId = map['liveStreamingId']?.toString() ?? '';
+      if (commentRoomId.isNotEmpty &&
+          commentRoomId != _config.host1LiveId &&
+          commentRoomId != _config.host2LiveId) {
+        return;
+      }
       final comment = PkComment.fromJson(map);
       _comments.add(comment);
       while (_comments.length > _maxComments) {
@@ -1274,6 +1481,14 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
             ? (_config.host1Name ?? _config.host1Details?.name)
             : (_config.host2Name ?? _config.host2Details?.name);
     if (name?.trim().isNotEmpty == true) return name!.trim();
+    // The tapped room's name/image backs the watched host's side when the
+    // pkConfig payload didn't carry it.
+    if (host1 == widget.isHost1) {
+      final roomName = widget.room?.name;
+      if (roomName != null && roomName.trim().isNotEmpty) {
+        return roomName.trim();
+      }
+    }
     final id = host1 ? _config.host1Id : _config.host2Id;
     if (id?.isNotEmpty == true) {
       return 'Host ${id!.length > 6 ? id.substring(id.length - 6) : id}';
@@ -1281,10 +1496,15 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
     return host1 ? 'Host 1' : 'Host 2';
   }
 
-  String? _hostDisplayImage(bool host1) =>
-      host1
-          ? (_config.host1Image ?? _config.host1Details?.image)
-          : (_config.host2Image ?? _config.host2Details?.image);
+  String? _hostDisplayImage(bool host1) {
+    final image =
+        host1
+            ? (_config.host1Image ?? _config.host1Details?.image)
+            : (_config.host2Image ?? _config.host2Details?.image);
+    if (image?.isNotEmpty == true) return image;
+    if (host1 == widget.isHost1) return widget.room?.image;
+    return image;
+  }
 
   String get _leftHostName => _hostDisplayName(widget.isHost1);
   String get _rightHostName => _hostDisplayName(!widget.isHost1);
@@ -1449,12 +1669,21 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
   Widget _buildSplitVideo() {
     // With media relay, the opponent's video is relayed into OUR channel,
     // so we render it using our own channel + the opponent's UID.
-    final myChannel =
+    // Audience: use the channel we actually joined plus the uids resolved
+    // from the room payload / discovered remote publishers — late-join
+    // pkConfig payloads regularly omit host1Channel/host1AgoraUID.
+    final configChannel =
         widget.isHost1 ? _config.host1Channel : _config.host2Channel;
+    final myChannel =
+        _joinedChannel.isNotEmpty ? _joinedChannel : (configChannel ?? '');
     final localUid =
-        widget.isHost1 ? _config.host1AgoraUID : _config.host2AgoraUID;
+        widget.isHost
+            ? (widget.isHost1 ? _config.host1AgoraUID : _config.host2AgoraUID)
+            : _leftVideoUid;
     final otherUid =
-        widget.isHost1 ? _config.host2AgoraUID : _config.host1AgoraUID;
+        widget.isHost
+            ? (widget.isHost1 ? _config.host2AgoraUID : _config.host1AgoraUID)
+            : _rightVideoUid;
 
     // Host1 perspective: local on left, remote on right
     // Host2 perspective: local on left (mirrored), remote on right
@@ -1473,7 +1702,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
                 uid: localUid,
                 name: localName,
                 image: localImage,
-                channel: myChannel ?? '',
+                channel: myChannel,
                 isLocal: widget.isHost,
                 isLeft: true,
               ),
@@ -1484,7 +1713,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
                 uid: otherUid,
                 name: remoteName,
                 image: remoteImage,
-                channel: myChannel ?? '',
+                channel: myChannel,
                 isLocal: false,
                 isLeft: false,
               ),

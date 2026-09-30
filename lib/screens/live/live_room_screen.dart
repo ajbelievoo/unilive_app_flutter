@@ -116,6 +116,7 @@ import '../../widgets/virtual_avatar_widget.dart';
 import '../../widgets/host_menu_sheet.dart';
 import '../../widgets/draw_and_guess_widget.dart';
 import '../../widgets/voice_emoji_widget.dart';
+import '../../widgets/marquee_text.dart';
 import '../../services/ar_face_sticker_service.dart';
 import '../../services/screen_share_service.dart';
 import '../../services/live_clip_service.dart';
@@ -555,6 +556,12 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   // Audience-side state for the live host's camera-off fallback.
   bool _remoteHostCameraOff = false;
   int? _remoteUid;
+
+  /// Best-known host agora uid — seeded from the entry payload, refreshed by
+  /// room-state broadcasts (`dummy`, `view`). The entry payload can be stale
+  /// when the host re-lives on the same channel with a rotated uid, so it is
+  /// treated as a hint, not the truth.
+  int _expectedHostAgoraUid = 0;
   bool _isFollowing = false;
   String? _hostUniqueId;
   // Network quality: 0=excellent, 1=good, 2=fair, 3=poor, 4=bad, 5=very bad, 6=down
@@ -630,6 +637,15 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   Function? _cancelFollowSub;
   StreamSubscription<void>? _reconnectSub;
   final _viewers = <ViewerEntry>[];
+  final _recentlyRemovedViewers = <String, DateTime>{};
+  /// Every known id for the host. The backend roster can carry the host
+  /// under their User `_id` while `widget.liveUser.userId` is the liveUserId
+  /// field — a single equality check misses and the host ends up counted as
+  /// a viewer. Seeded from the liveUser doc + getUser + own session.
+  final Set<String> _hostIds = {};
+  /// Users chat-muted by host/admin in this room — their comments/photos are
+  /// dropped locally, and if it includes my own id I cannot send chat.
+  final Set<String> _chatMutedUsers = {};
   Timer? _viewerRefreshTimer;
   Function? _cancelViewSub;
   bool _routeActive = true;
@@ -701,6 +717,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   Function? _cancelAddViewSub;
   Function? _cancelLessViewSub;
   Function? _cancelCpRoomEntrySub;
+  Function? _cancelDummySub;
   Function? _cancelCoHostJoinSub;
   Function? _cancelCoHostLeaveSub;
   Function? _cancelCoHostMuteSub;
@@ -708,6 +725,24 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   // Co-host state for multi-guest live.
   final _coHosts = <Map<String, dynamic>>[];
   final _joinRequests = <Map<String, dynamic>>[];
+
+  /// Bumped whenever a co-host video tile is added or removed. Adding or
+  /// removing an Android SurfaceView platform-view can freeze or black out
+  /// the main video view on some devices — the same recovery a manual
+  /// camera off/on performs (it removes and recreates the AgoraVideoView).
+  /// Rebuilding the main view under a new key forces the SDK to rebind a
+  /// fresh surface, so the live never stays stuck after a guest joins.
+  int _videoSurfaceEpoch = 0;
+
+  /// Name/image cache keyed by userId — the backend's addParticipates
+  /// broadcast does not always carry the guest's name, so tiles would
+  /// otherwise fall back to the generic "Guest" label.
+  final _coHostProfileCache = <String, Map<String, String?>>{};
+  final _coHostProfileFetching = <String>{};
+
+  /// agoraUid → userId so guest tiles created from a bare remote-uid event
+  /// can still resolve the seat occupant's name.
+  final _coHostUidToUserId = <int, String>{};
 
   /// Request userIds the host has already been alerted about (toast/popup),
   /// so a refreshed request list doesn't re-alert for the same user.
@@ -917,6 +952,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     SystemUiService.instance.applyForLive();
     SystemChrome.setPreferredOrientations([DeviceOrientation.portraitUp]);
     _viewerCount = max(0, widget.liveUser.view - 1);
+    _hostIds
+      ..add(widget.liveUser.userId ?? '')
+      ..add(widget.liveUser.id ?? '')
+      ..remove('');
+    if (widget.isHost) {
+      final selfId = context.read<SessionManager>().userId;
+      if (selfId.isNotEmpty) _hostIds.add(selfId);
+    }
     _giftStatsController
       ..setHostEarnings(widget.liveUser.coin)
       ..attach(() {
@@ -935,6 +978,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     _liveTimeTimer = Timer.periodic(const Duration(seconds: 60), (_) {
       _syncLiveTime();
     });
+    _expectedHostAgoraUid = widget.liveUser.agoraUID;
     // Agora-only streaming engine.
     _initAgora();
     _listenSocketEvents();
@@ -966,6 +1010,12 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     _loadLuckyBanners();
   }
 
+  /// True when [id] is any known id of the room host — the roster can carry
+  /// the host under their User `_id` while `widget.liveUser.userId` is the
+  /// liveUserId field, so a single equality check misses.
+  bool _isHostId(String? id) =>
+      id != null && id.isNotEmpty && _hostIds.contains(id);
+
   Future<void> _loadHostUniqueId() async {
     final hostUserId = widget.liveUser.userId ?? '';
     if (hostUserId.isEmpty) return;
@@ -979,6 +1029,10 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     if (_hostUniqueId?.isNotEmpty == true) return;
     try {
       final response = await ApiService.getUser({'userId': hostUserId});
+      final fetchedHostMongoId = response.user?.id;
+      if (fetchedHostMongoId?.isNotEmpty == true) {
+        _hostIds.add(fetchedHostMongoId!);
+      }
       final uniqueId = response.user?.uniqueId;
       if (response.status && uniqueId?.isNotEmpty == true && mounted) {
         setState(() => _hostUniqueId = uniqueId);
@@ -1455,6 +1509,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     _cancelViewSub?.call();
     _cancelCpRoomEntrySub?.call();
     _cancelLessViewSub?.call();
+    _cancelDummySub?.call();
     _cancelCoHostJoinSub?.call();
     _cancelCoHostLeaveSub?.call();
     _cancelCoHostMuteSub?.call();
@@ -1661,15 +1716,20 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
 
       // Refresh viewer list when app returns to foreground so stale
       // counts and avatars don't stay visible after users left.
-      final liveId = widget.liveUser.liveRoomId;
-      if (liveId != null && liveId.isNotEmpty) {
-        SocketService.instance.emit(Const.eventView, {
-          'liveStreamingId': liveId,
-          'liveUserId': widget.liveUser.userId,
-          'userId': context.read<SessionManager>().userId,
-          'requestFullList': true,
-        });
+      final payload = _viewRequestPayload();
+      if (payload != null) {
+        SocketService.instance.emit(Const.eventView, payload);
       }
+
+      // Restart foreground service when the app is visible again so the live
+      // session keeps running while the user backgrounds the app.
+      AudioQualityService.startForegroundService(
+        title: widget.isHost ? 'Live Stream' : 'Watching Live',
+        text:
+            widget.isHost
+                ? 'You are live streaming in background'
+                : 'Watching live stream in background',
+      );
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       // Keep the published camera and microphone active while Android PiP or
@@ -1812,7 +1872,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             final role = resolveLiveVideoParticipant(
               isRoomHost: widget.isHost,
               remoteUid: remoteUid,
-              expectedHostUid: widget.liveUser.agoraUID,
+              expectedHostUid: _expectedHostAgoraUid,
               currentHostUid: _remoteUid,
               knownCoHostUids: knownCoHostUids,
               pkOpponentUid: _pkRemoteAgoraUid,
@@ -1820,8 +1880,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             if (role == LiveVideoParticipantRole.host) {
               setState(() {
                 _hostOffline = false;
-                _remoteUid = remoteUid;
-                _createRemoteController(remoteUid);
+                _promoteToHost(remoteUid);
               });
             } else if (role == LiveVideoParticipantRole.coHost &&
                 !_coHostControllers.containsKey(remoteUid)) {
@@ -1851,13 +1910,19 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
               return;
             }
 
-            if (remoteUid == widget.liveUser.agoraUID ||
+            if (remoteUid == _expectedHostAgoraUid ||
                 remoteUid == _remoteUid) {
               setState(() {
                 _remoteUid = null;
                 _remoteController = null;
+                _remoteAgoraView = null;
               });
-              Fluttertoast.showToast(msg: 'Host went offline');
+              // Promote a parked broadcaster before telling the user the host
+              // left — a rotated host uid must not flash "Host went offline".
+              _reconcileHostVideo();
+              if (_remoteUid == null) {
+                Fluttertoast.showToast(msg: 'Host went offline');
+              }
             }
 
             // Remove co-host controller if present.
@@ -1866,6 +1931,8 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                 _coHostControllers.remove(remoteUid);
                 _coHosts.removeWhere((h) => _coHostAgoraUid(h) == remoteUid);
               });
+              _coHostUidToUserId.remove(remoteUid);
+              _refreshMainVideoSurface();
             }
           },
           // When a remote user turns their camera off, the backend does not
@@ -2074,11 +2141,12 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           useAndroidSurfaceView: false,
         );
         _localAgoraView = AgoraVideoView(
+          key: ValueKey('local_e$_videoSurfaceEpoch'),
           controller: _localController!,
           onAgoraVideoViewCreated: _onAgoraVideoViewCreated,
         );
       } else {
-        final hostAgoraUid = widget.liveUser.agoraUID;
+        final hostAgoraUid = _expectedHostAgoraUid;
         Log.i(_tag, 'audience: expected host uid=$hostAgoraUid');
         // Do not pre-create the remote controller for the expected host UID.
         // If the host is offline or their UID changed, the AgoraVideoView would
@@ -2406,6 +2474,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             hostId,
             liveId,
             seconds: _durationSeconds,
+            liveType: 'video',
           ).catchError((e) {
             Log.e(_tag, 'updateLiveTime heartbeat failed', e);
             return RestResponse(status: false);
@@ -2419,6 +2488,8 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
               widget.liveUser.liveRoomId ?? widget.liveUser.id ?? '',
           'liveUserId': widget.liveUser.userId ?? '',
           'userId': SessionManager.instance?.userId ?? '',
+          'liveType': 'video',
+          'roomType': 'video',
           'watchSeconds': _durationSeconds,
           'elapsedSeconds': _durationSeconds,
           'seconds': _durationSeconds,
@@ -2460,7 +2531,11 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     final earnings = _giftStatsController.hostEarnings;
     final earDelta = earnings - _lastCachedEarnings;
     if (earDelta > 0) {
-      HostLiveCache.addEarnings(userId: hostId, coins: earDelta);
+      HostLiveCache.addEarnings(
+        userId: hostId,
+        coins: earDelta,
+        liveType: 'video',
+      );
       _lastCachedEarnings = earnings;
     }
   }
@@ -2579,7 +2654,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         'familyBadgeUrl',
         'levelBadgeUrl',
         'level',
-        'hostLevel',
+        // 'hostLevel' intentionally excluded — host level is never shown.
         'vipDetails',
       ]) {
         collect(source[key]);
@@ -2682,7 +2757,6 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   }) {
     final currentLiveId =
         widget.liveUser.liveRoomId ?? widget.liveUser.id ?? '';
-    final currentHostId = widget.liveUser.userId ?? '';
     final roomIds =
         [
           map['liveStreamingId'],
@@ -2699,7 +2773,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           if (includeUserId) map['userId'],
         ].map((v) => v?.toString() ?? '').where((v) => v.isNotEmpty).toSet();
     if (roomIds.isNotEmpty && roomIds.contains(currentLiveId)) return true;
-    if (hostIds.isNotEmpty && hostIds.contains(currentHostId)) return true;
+    if (hostIds.isNotEmpty && hostIds.any(_hostIds.contains)) return true;
     return roomIds.isEmpty && hostIds.isEmpty;
   }
 
@@ -2835,7 +2909,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         if (type == 'cohostMute' ||
             type == 'cohostUnmute' ||
             type == 'micMute') {
-          if (targetUserId == myUserId && !widget.isHost && _isJoined) {
+          if (_isSelfId(targetUserId) && !widget.isHost && _isJoined) {
             // The desired state is encoded in the type itself so it survives
             // even if the backend strips unknown comment fields.
             final muted = parseBool(
@@ -2844,7 +2918,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             setState(() {
               _micEnabled = !muted;
               for (final h in _coHosts) {
-                if (h['userId'] == myUserId) h['isMute'] = muted;
+                if (_isSelfId(h['userId']?.toString())) h['isMute'] = muted;
               }
             });
             unawaited(
@@ -2856,20 +2930,52 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           return;
         }
 
-        if ((type == 'callInvite' || type == 'invite') &&
-            targetUserId == myUserId &&
-            !widget.isHost) {
-          final hostName = map['hostName']?.toString() ?? 'Host';
-          _showCallInviteDialog(hostName, Map<String, dynamic>.from(map));
+        // Host call invite — render a chat bubble for everyone. The invited
+        // viewer gets an Accept button under it (bubble gates on
+        // callInviteForUserId == myUserId); every invite adds a fresh comment
+        // so the host can invite any number of times.
+        if (type == 'callInvite' || type == 'invite') {
+          setState(
+            () => _comments.add(
+              _LiveComment(
+                name: userName,
+                text: commentText,
+                userId: senderId,
+                isSystem: true,
+                isCallInvite: true,
+                callInviteForUserId: targetUserId,
+                userImage: VideoUtil.getFullImageUrl(userImage),
+                frameUrl: userFrame,
+                isVIP: isVIP,
+                vipStyle: VipPrivilegeHelper.chatStyleFromPayload(
+                  Map<String, dynamic>.from(map),
+                ),
+              ),
+            ),
+          );
+          _clientCommentCount++;
+          _scrollToBottom();
           return;
         }
 
-        // Check for call acceptance for THIS viewer
+        // Check for call acceptance for THIS viewer. The pending-request
+        // guard is required — the host's "<name> Request accepted" comment
+        // is broadcast to every viewer, and matching the payload's own name
+        // field (userName) made it true on every device: all viewers used
+        // to auto-join the call. Join only when we actually asked to join
+        // AND the comment targets us (explicit target, comment authored
+        // with our userId, or the text starts with OUR name).
+        final myName =
+            context.read<AuthProvider>().user?.name ??
+            context.read<SessionManager>().userName;
+        final pendingJoin = _myJoinRequestSent || _myCallInviteAccepted;
         if ((type == 'callAccept' ||
                 commentText.toLowerCase().contains('request accepted')) &&
-            (targetUserId == myUserId ||
-                senderId == myUserId ||
-                commentText.startsWith(userName)) &&
+            pendingJoin &&
+            (_isSelfId(targetUserId) ||
+                _isSelfId(senderId) ||
+                (myName.isNotEmpty &&
+                    commentText.startsWith('$myName '))) &&
             !widget.isHost) {
           final coHostEntry = {
             'userId': myUserId,
@@ -2881,8 +2987,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             'isMute': false,
             'isCameraOff': false,
           };
+          _linkCoHostUid(coHostEntry, _myAgoraUid);
           setState(() {
-            _coHosts.removeWhere((h) => h['userId'] == myUserId);
+            _coHosts.removeWhere((h) => _isSelfId(h['userId']?.toString()));
             _coHosts.add(coHostEntry);
           });
           if (!_isJoined) {
@@ -2900,6 +3007,10 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             type != 'seatRequest')
           return;
 
+        // Chat-muted viewer — drop everything they send (comments, join/left
+        // lines, seat requests). Mirrors the audio room _bannedChatUsers.
+        if (senderId.isNotEmpty && _chatMutedUsers.contains(senderId)) return;
+
         final vipLevel = parseInt(
           map['vipLevel'] ??
               userMap['vipLevel'] ??
@@ -2913,10 +3024,13 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
               map['level'],
         );
         final isAdmin = userMap['isAdmin'] == true || map['isAdmin'] == true;
-        final isHostUser =
-            senderId.isNotEmpty &&
-            (widget.liveUser.userId?.isNotEmpty == true) &&
-            senderId == widget.liveUser.userId;
+        final payloadSaysHost =
+            userMap['isHost'] == true || map['isHost'] == true;
+        // Once any payload explicitly flags a sender as the host, record the
+        // id — the roster can carry the host under a different id convention
+        // than liveUser.userId.
+        if (payloadSaysHost && senderId.isNotEmpty) _hostIds.add(senderId);
+        final isHostUser = _isHostId(senderId);
         final isAgency = userMap['isAgency'] == true || map['isAgency'] == true;
         final isBd = userMap['isBd'] == true || map['isBd'] == true;
         final country = parseString(userMap['country'] ?? map['country']);
@@ -3155,8 +3269,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           // Register the joiner in the viewer list — some backends do not
           // relay addView/view to every socket, but join comments DO reach
           // the whole room, so this keeps the eye-count + online list right.
-          final joinHostId = widget.liveUser.userId;
-          if (senderId.isNotEmpty && senderId != joinHostId) {
+          if (senderId.isNotEmpty && !_isHostId(senderId)) {
             setState(() {
               _viewers.removeWhere((e) => e.userId == senderId);
               _viewers.add(
@@ -3177,6 +3290,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                   isAdmin: isAdmin,
                 ),
               );
+              _recentlyRemovedViewers.remove(senderId);
               _viewerCount = _viewers.length;
             });
           }
@@ -3239,12 +3353,12 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             type == 'leave' ||
             type == 'exit';
         if (isLeft) {
-          final leaveHostId = widget.liveUser.userId;
-          if (senderId.isNotEmpty && senderId != leaveHostId) {
+          if (senderId.isNotEmpty && !_isHostId(senderId)) {
             setState(() {
               _viewers.removeWhere((e) => e.userId == senderId);
               _viewerCount = _viewers.length;
             });
+            _markViewerRemoved(senderId);
           }
           if (_effectSettings.showEnterRoomMessage) {
             setState(
@@ -3365,7 +3479,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     _cancelGiftSub = socket.on(Const.eventGift, (data) {
       if (!_routeActive) return;
       try {
-        final map = data is Map ? Map<String, dynamic>.from(data) : null;
+        final map = _socketMap(data);
         if (map == null) return;
         // === GIFT DATA AUDIT — log raw JSON so backend giftType/svgaImage/isBigGift can be verified ===
         Log.d(_tag, 'GIFT_AUDIT eventGift raw: $map');
@@ -3393,9 +3507,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
               map['svgaImage']?.toString() ?? '',
               giftType: parseInt(map['giftType'], 0),
             );
-        final senderImage = VideoUtil.getFullImageUrl(
-          map['senderImage']?.toString() ?? map['userImage']?.toString() ?? '',
-        );
+        final senderImage =
+            (parsedGift?.senderImage.isNotEmpty == true)
+                ? parsedGift!.senderImage
+                : VideoUtil.getFullImageUrl(
+                  map['senderImage']?.toString() ??
+                      map['userImage']?.toString() ??
+                      '',
+                );
         final count = (map['count'] as num?)?.toInt() ?? 1;
         final coin = (map['coin'] as num?)?.toInt() ?? 0;
         final totalCoins = coin * count;
@@ -3534,7 +3653,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       if (!_routeActive) return;
       // === GIFT DATA AUDIT ===
       Log.d(_tag, 'GIFT_AUDIT eventLiveUserGift raw: $data');
-      final map = data is Map ? Map<String, dynamic>.from(data) : null;
+      final map = _socketMap(data);
       // Skip host's own gift echo — host already sees the animation locally
       // from the onGiftSent callback. Prevents duplicate animations.
       final senderId =
@@ -3549,11 +3668,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         // Add gift comment to chat list (Bigo/Chamet-style — other viewers
         // should see "Host sent a gift" in the chat, same as normalUserGift).
         final giftImage = event.giftImage;
-        final senderImage = VideoUtil.getFullImageUrl(
-          map?['senderImage']?.toString() ??
-              map?['userImage']?.toString() ??
-              '',
-        );
+        final senderImage =
+            event.senderImage.isNotEmpty
+                ? event.senderImage
+                : VideoUtil.getFullImageUrl(
+                  map?['senderImage']?.toString() ??
+                      map?['userImage']?.toString() ??
+                      '',
+                );
         final hostGiftFamilyName = parseString(
           map?['familyName'] ??
               (map?['user'] is Map
@@ -3643,7 +3765,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     _cancelNormalUserGiftSub = socket.on(Const.eventNormalUserGift, (data) {
       if (!_routeActive) return;
       try {
-        final map = data is Map ? Map<String, dynamic>.from(data) : null;
+        final map = _socketMap(data);
         if (map == null) return;
         // === GIFT DATA AUDIT ===
         Log.d(_tag, 'GIFT_AUDIT eventNormalUserGift raw: $map');
@@ -3675,9 +3797,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
               map['svgaImage']?.toString() ?? '',
               giftType: parseInt(map['giftType'], 0),
             );
-        final senderImage = VideoUtil.getFullImageUrl(
-          map['senderImage']?.toString() ?? map['userImage']?.toString() ?? '',
-        );
+        final senderImage =
+            (parsedGift?.senderImage.isNotEmpty == true)
+                ? parsedGift!.senderImage
+                : VideoUtil.getFullImageUrl(
+                  map['senderImage']?.toString() ??
+                      map['userImage']?.toString() ??
+                      '',
+                );
         final count = (map['count'] as num?)?.toInt() ?? 1;
         final coin = (map['coin'] as num?)?.toInt() ?? 0;
         final totalCoins = coin * count;
@@ -3888,7 +4015,11 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             ),
           );
           _scrollToBottom();
-          if (coins > 0 && map['userId']?.toString() == session.userId) {
+          // Client-generated draws already credited the win in the gift
+          // sheet — skip the credit + toast on the echoed event.
+          if (coins > 0 &&
+              map['userId']?.toString() == session.userId &&
+              map['clientDraw'] != true) {
             Fluttertoast.showToast(msg: 'You won $coins diamonds');
             _creditLuckyWin(coins);
           }
@@ -3978,12 +4109,22 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     });
     _cancelAddViewSub = socket.on(Const.eventAddView, (data) {
       try {
-        final map = data is Map ? Map<String, dynamic>.from(data) : null;
-        final hostId = widget.liveUser.userId;
+        final map = _socketMap(data);
         if (map != null) {
+          // Newer backends inject the authoritative host id (hostId/
+          // hostUserId/liveUserId) — harvest it for _isHostId checks.
+          for (final k in const ['hostId', 'hostUserId', 'liveUserId']) {
+            final hid = map[k]?.toString();
+            if (hid != null && hid.isNotEmpty) _hostIds.add(hid);
+          }
           final v = ViewerEntry.fromJson(map);
-          if (v.userId == null || v.userId!.isEmpty || v.userId == hostId)
+          if (_isHostId(v.userId) || v.isHost) {
+            // Host's own view entry — keep the expected host uid fresh so a
+            // rotated uid never strands the host in the guest strip.
+            _updateExpectedHostUid(_coHostAgoraUid(map));
             return;
+          }
+          if (v.userId == null || v.userId!.isEmpty) return;
           final isNew = !_viewers.any((e) => e.userId == v.userId);
           if (isNew && _effectSettings.showEnterRoomEffect) {
             // Entry for every new viewer (overlay dedupes if the join
@@ -3998,6 +4139,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           setState(() {
             _viewers.removeWhere((e) => e.userId == v.userId);
             _viewers.add(v);
+            _recentlyRemovedViewers.remove(v.userId);
             _viewerCount = _viewers.length;
           });
         } else {
@@ -4010,29 +4152,41 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     _cancelLessViewSub = socket.on(Const.eventLessView, (data) {
       try {
         String? userId;
-        if (data is Map) {
-          final map = Map<String, dynamic>.from(data);
+        final map = _socketMap(data);
+        if (map != null) {
+          final userMap = map['user'];
           userId =
               map['userId']?.toString() ??
               map['_id']?.toString() ??
               map['id']?.toString() ??
-              map['viewerId']?.toString();
+              map['viewerId']?.toString() ??
+              (userMap is Map
+                  ? (userMap['userId'] ?? userMap['_id'] ?? userMap['id'])
+                      ?.toString()
+                  : null);
         } else if (data is String || data is num) {
           userId = data.toString();
+        } else if (data is List) {
+          for (final e in data) {
+            if (e is String || e is num) {
+              userId = e.toString();
+              break;
+            }
+          }
         }
-        final hostId = widget.liveUser.userId;
-        if (userId != null && userId.isNotEmpty && userId != hostId) {
+        if (userId != null && userId.isNotEmpty && !_isHostId(userId)) {
           setState(() {
             _viewers.removeWhere((v) => v.userId == userId);
             _viewerCount = _viewers.length;
           });
+          _markViewerRemoved(userId);
         } else if ((userId ?? '').isEmpty) {
           // Backend sent a count-only signal; decrement viewer count.
           setState(
             () => _viewerCount = _viewerCount > 0 ? _viewerCount - 1 : 0,
           );
         }
-        // If userId == hostId, ignore — host should never be counted as a viewer.
+        // If userId is the host, ignore — host is never counted as a viewer.
       } catch (_) {
         setState(() => _viewerCount = _viewerCount > 0 ? _viewerCount - 1 : 0);
       }
@@ -4053,58 +4207,94 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     });
     _cancelViewSub = socket.on(Const.eventView, (data) {
       if (!_routeActive) return;
-      Log.d(
-        _tag,
-        'view event received: ${data.runtimeType} ${data is List ? "list of ${data.length}" : data}',
-      );
+      Log.d(_tag, 'view event raw: $data');
       try {
-        List<dynamic>? rawList;
+        // `view` payloads carrying a list are authoritative room snapshots —
+        // rebuild from them so viewers who left disappear (ports native
+        // onView + the audio-room _parseViewerList). The server emits up to
+        // two args — viewer array + entry-effect map — which the socket
+        // client packs into `[arg0, arg1]`, so lists are flattened
+        // recursively before parsing. Single-object payloads are per-user
+        // deltas applied via isAdd.
+        var isFullList = false;
+        dynamic viewData = data;
+        List<dynamic> extraArgs = const [];
         if (data is List) {
-          rawList = data;
-        } else if (data is Map) {
-          // Backend often wraps the list in a map.
-          final nested =
-              data['viewers'] ??
-              data['data'] ??
-              data['list'] ??
-              data['users'] ??
-              data['online'] ??
-              data['view'] ??
-              data['items'];
-          if (nested is List) {
-            rawList = nested;
-          } else if (nested is Map || nested is String || nested is num) {
-            rawList = [nested];
-          } else if (data.values.any((v) => v is Map)) {
-            rawList = data.values.whereType<Map>().toList();
-          } else {
-            rawList = [data];
+          // The socket client packs a multi-arg server emit into one List:
+          // arg0 = viewer array, arg1 = optional entry-effect / leave-marker
+          // map (see native onView data[0]/data[1]). Only that shape is an
+          // authoritative roster — a bare List of maps can also be a
+          // per-join (viewer, effect) emit, which must be applied as a
+          // delta or every join broadcast would wipe the roster to ~1.
+          if (data.isEmpty || data.first is List) {
+            isFullList = true;
+            viewData = data.isEmpty ? const [] : data.first;
+            extraArgs = data.isEmpty ? const [] : data.sublist(1);
           }
-
-          // Count-only payload fallback.
-          if (rawList.isEmpty) {
-            final count = parseInt(
-              data['viewerCount'] ??
-                  data['count'] ??
-                  data['total'] ??
-                  data['view'] ??
-                  data['viewersCount'],
-              -1,
-            );
-            if (count >= 0 && mounted) {
-              setState(() => _viewerCount = count);
-            }
+        } else if (data is Map) {
+          // Drop payloads that explicitly belong to another room.
+          if (!_payloadBelongsToCurrentLive(Map<String, dynamic>.from(data))) {
             return;
           }
-        } else if (data is String || data is num) {
-          rawList = [data];
+          // Backend often wraps the list in a map.
+          isFullList =
+              (data['viewers'] ??
+                      data['data'] ??
+                      data['list'] ??
+                      data['users'] ??
+                      data['online'] ??
+                      data['view'] ??
+                      data['items'])
+                  is List;
         }
 
-        if (rawList == null || rawList.isEmpty) return;
-        final hostId = widget.liveUser.userId;
+        final rawList = _flattenViewPayload(viewData);
+        // Harvest the authoritative host id the backend echoes in arg1
+        // (hostId/hostUserId/liveUserId) so host entries can be excluded
+        // from the viewer count on every device — no fetch needed.
+        for (final m in extraArgs.whereType<Map>()) {
+          for (final k in const ['hostId', 'hostUserId', 'liveUserId']) {
+            final hid = m[k]?.toString();
+            if (hid != null && hid.isNotEmpty) _hostIds.add(hid);
+          }
+        }
+        // Harvest the host's current agora uid from the authoritative
+        // snapshot — refreshes _expectedHostAgoraUid when the host re-lives
+        // on the same channel with a rotated uid.
+        for (final raw in rawList.whereType<Map>()) {
+          if (_isHostId(raw['userId']?.toString())) {
+            _updateExpectedHostUid(
+              _coHostAgoraUid(Map<String, dynamic>.from(raw)),
+            );
+          }
+        }
+        // Leave markers (arg1 on leave emits, or flagged maps inside the
+        // array) carry isLeave/isLeft — pull them out of the viewer set and
+        // apply them as removals.
+        final leaverIds = <String>{};
+        for (final m in [
+          ...rawList.whereType<Map>(),
+          ...extraArgs.whereType<Map>(),
+        ]) {
+          if (m['isLeave'] == true || m['isLeft'] == true) {
+            final id =
+                m['userId']?.toString() ?? m['viewerId']?.toString() ?? '';
+            if (id.isNotEmpty && !_isHostId(id)) leaverIds.add(id);
+          }
+        }
+        if (leaverIds.isNotEmpty && mounted) {
+          setState(() {
+            _viewers.removeWhere((v) => leaverIds.contains(v.userId));
+            _viewerCount = _viewers.length;
+          });
+          for (final lid in leaverIds) {
+            _markViewerRemoved(lid);
+          }
+        }
         final entries =
             rawList
                 .whereType<Map>()
+                .where((m) => m['isLeave'] != true && m['isLeft'] != true)
                 .map((e) {
                   try {
                     return ViewerEntry.fromJson(Map<String, dynamic>.from(e));
@@ -4113,30 +4303,90 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                   }
                 })
                 .whereType<ViewerEntry>()
+                .where((v) => (v.userId ?? '').isNotEmpty)
                 .toList();
-        if (hostId?.isNotEmpty == true &&
-            entries.isNotEmpty &&
-            !entries.any((v) => v.userId == hostId)) {
-          Log.d(_tag, 'ignored viewer snapshot for another live room');
+        if (entries.isEmpty) {
+          // The backend's video-live roster reply can come back empty even
+          // while viewers are inside, so an empty parse is NEVER allowed to
+          // wipe the list (audio-room parity) — real departures arrive via
+          // lessView / leave comments / viewerKicked / isLeave markers.
+          // Only a count field is honoured when present.
+          if (data is Map) {
+            final count = parseInt(
+              data['viewerCount'] ??
+                  data['count'] ??
+                  data['total'] ??
+                  data['view'] ??
+                  data['viewersCount'],
+              -1,
+            );
+            if (count >= 0 && count >= _viewers.length && mounted) {
+              setState(() => _viewerCount = count);
+            }
+          }
           return;
         }
+        // The host is never a viewer and invisible users stay hidden. In a
+        // full snapshot an entry's presence already means "in the room" —
+        // `isAdd` only matters for per-user delta emits (some backends mark
+        // snapshot rows isAdd:false, which previously zeroed the list).
         final parsed =
             entries
-                .where((v) => v.userId != hostId && v.isAdd && !v.invisible)
+                .where(
+                  (v) =>
+                      !_isHostId(v.userId) &&
+                      !v.isHost &&
+                      !v.invisible &&
+                      (isFullList || v.isAdd),
+                )
                 .toList();
-        Log.d(_tag, 'parsed ${parsed.length} viewers');
+        Log.d(
+          _tag,
+          'parsed ${parsed.length} viewers (snapshot: $isFullList): '
+          '${parsed.map((v) => v.userId).toList()}',
+        );
         if (mounted) {
           setState(() {
-            final removedIds =
-                entries
-                    .where((v) => !v.isAdd)
-                    .map((v) => v.userId)
-                    .whereType<String>()
-                    .toSet();
-            _viewers.removeWhere((v) => removedIds.contains(v.userId));
-            for (final viewer in parsed) {
-              _viewers.removeWhere((v) => v.userId == viewer.userId);
-              _viewers.add(viewer);
+            if (isFullList) {
+              // Authoritative snapshot — clear + re-add so departed viewers
+              // disappear. Skip anyone removed in the last few seconds so a
+              // stale in-flight list can't resurrect them.
+              final unique = <String, ViewerEntry>{};
+              for (final viewer in parsed) {
+                final id = viewer.userId;
+                if (id != null && id.isNotEmpty && !_isRecentlyRemoved(id)) {
+                  unique[id] = viewer;
+                }
+              }
+              // Some backends omit the requesting socket's own user from the
+              // snapshot — keep the local self-entry so this device doesn't
+              // show one viewer less than the host's device.
+              if (!widget.isHost) {
+                final myId = context.read<SessionManager>().userId;
+                if (myId.isNotEmpty &&
+                    !unique.containsKey(myId) &&
+                    !_isRecentlyRemoved(myId)) {
+                  final mine =
+                      _viewers.where((e) => e.userId == myId).firstOrNull;
+                  if (mine != null) unique[myId] = mine;
+                }
+              }
+              _viewers
+                ..clear()
+                ..addAll(unique.values);
+            } else {
+              final removedIds =
+                  entries
+                      .where((v) => !v.isAdd && !_isHostId(v.userId))
+                      .map((v) => v.userId)
+                      .whereType<String>()
+                      .toSet();
+              _viewers.removeWhere((v) => removedIds.contains(v.userId));
+              for (final viewer in parsed) {
+                _recentlyRemovedViewers.remove(viewer.userId);
+                _viewers.removeWhere((v) => v.userId == viewer.userId);
+                _viewers.add(viewer);
+              }
             }
             _viewers.sort((a, b) {
               final aTop = a.isRoomOnlineListTopEnabled || a.isVIP;
@@ -4146,13 +4396,45 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             });
             _viewerCount = _viewers.length;
           });
+          // Native uses view arg1 for joiner entrance effects (entrySvga etc.)
+          // — feed it here too; the overlay dedupes against the join comment.
+          // Leave markers (isLeave) were already applied as removals above.
+          // arg1 may also be the requester's own keys echoed back (it carries
+          // requestFullList/liveStreamingId/userId) — only animate an entry
+          // when an actual effect asset is present, or every 5s poll reply
+          // would replay someone's entrance.
+          if (_effectSettings.showEnterRoomEffect) {
+            final myId = context.read<SessionManager>().userId;
+            for (final m in extraArgs.whereType<Map>()) {
+              if (m['isLeave'] == true || m['isLeft'] == true) continue;
+              final hasEffect =
+                  (m['entrySvga'] ??
+                          m['svgaImage'] ??
+                          m['svga'] ??
+                          m['entryEffect'] ??
+                          m['animationUrl'])
+                      ?.toString()
+                      .isNotEmpty ==
+                  true;
+              if (!hasEffect) continue;
+              final uid = m['userId']?.toString() ?? '';
+              if (uid.isEmpty || _isHostId(uid) || uid == myId) continue;
+              _vipEntryKey.currentState?.addEntry(
+                VipEntryData.fromSocketJson(Map<String, dynamic>.from(m)),
+              );
+            }
+          }
           // Vehicle entry effect for viewers joining with an equipped vehicle.
           // The welcome / join message is now shown in the comments list
           // (mirrors audio room "joined the room" chat bubble).
           if (_effectSettings.showVehicleEffect) {
-            for (final raw in rawList.whereType<Map>()) {
+            for (final raw in [
+              ...rawList.whereType<Map>(),
+              ...extraArgs.whereType<Map>(),
+            ]) {
               final vMap = Map<String, dynamic>.from(raw);
-              if (vMap['userId']?.toString() == hostId) continue;
+              if (vMap['requestFullList'] == true) continue;
+              if (_isHostId(vMap['userId']?.toString())) continue;
               final vName =
                   vMap['name']?.toString() ??
                   vMap['userName']?.toString() ??
@@ -4180,6 +4462,43 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         Log.e(_tag, 'view parse', e);
       }
     });
+
+    // Backend broadcasts the fresh room state via `dummy` (the singleLiveUser
+    // response) whenever someone joins — it carries the host's CURRENT
+    // agoraUID. Keep _expectedHostAgoraUid in sync so a stale entry payload
+    // can't strand the host's video in the guest strip after a re-live.
+    _cancelDummySub = socket.on(Const.eventDummy, (data) {
+      try {
+        final map = _socketMap(data);
+        if (map == null) return;
+        final roomLiveId =
+            (map['liveStreamingId'] ?? map['liveRoomId'] ?? map['_id'])
+                ?.toString();
+        final roomUserId =
+            map['userId'] is Map
+                ? (map['userId']['_id'] ?? map['userId']['id'])?.toString()
+                : (map['userId'] ?? map['liveUserId'])?.toString();
+        final myLiveId =
+            widget.liveUser.liveRoomId ?? widget.liveUser.id ?? '';
+        final sameRoom =
+            (roomLiveId != null &&
+                roomLiveId.isNotEmpty &&
+                roomLiveId == myLiveId) ||
+            _isHostId(roomUserId);
+        if (!sameRoom) return;
+        // The liveUser doc carries the host's User doc id under userId —
+        // capture every alias so roster filtering can exclude the host.
+        final nestedHostId =
+            map['userId'] is Map
+                ? (map['userId']['_id'] ?? map['userId']['id'])?.toString()
+                : null;
+        for (final hid in [roomUserId, nestedHostId, map['liveUserId']]) {
+          if (hid != null && hid.isNotEmpty) _hostIds.add(hid);
+        }
+        _updateExpectedHostUid(_coHostAgoraUid(map));
+      } catch (_) {}
+    });
+
     void onLiveEndEvent(dynamic data, {bool isAdmin = false}) {
       if (!_routeActive) return;
       try {
@@ -4591,20 +4910,16 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                 ?.toString();
         if (userId == null || userId.isEmpty) return;
         final isAccepted =
-            map['isAccept'] == true ||
-            map['isAccept'] == 1 ||
-            map['isAccepted'] == true ||
-            map['isAccepted'] == 1;
+            parseBool(map['isAccept']) || parseBool(map['isAccepted']);
         if (!isAccepted) {
           Log.d(_tag, 'Co-host join ignored (not accepted): userId=$userId');
           return;
         }
-        final session = context.read<SessionManager>();
+        final isSelfJoin = _isSelfId(userId);
         final parsedAgoraUid = _coHostAgoraUid(map);
-        final agoraUid =
-            userId == session.userId ? _myAgoraUid : parsedAgoraUid;
+        final agoraUid = isSelfJoin ? _myAgoraUid : parsedAgoraUid;
         if (userId == widget.liveUser.userId ||
-            (agoraUid > 0 && agoraUid == widget.liveUser.agoraUID)) {
+            (agoraUid > 0 && agoraUid == _expectedHostAgoraUid)) {
           Log.w(
             _tag,
             'Ignoring host/colliding UID in co-host event: userId=$userId uid=$agoraUid',
@@ -4631,6 +4946,20 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
               map['isVideoMute'] ??
               map['videoMuted'],
         );
+        _linkCoHostUid(map, agoraUid);
+        // Cache whatever identity fields the payload did carry so orphan
+        // tiles and later re-joins can reuse them (merged — a payload
+        // carrying only one field must not erase the other).
+        final cachedBase = _coHostProfileCache[userId];
+        final nm = map['name']?.toString();
+        final im = map['image']?.toString();
+        if ((nm?.isNotEmpty ?? false) || (im?.isNotEmpty ?? false)) {
+          _coHostProfileCache[userId] = {
+            'name': (nm?.isNotEmpty ?? false) ? nm : cachedBase?['name'],
+            'image': (im?.isNotEmpty ?? false) ? im : cachedBase?['image'],
+          };
+        }
+        _ensureCoHostIdentity(map);
 
         Log.d(
           _tag,
@@ -4639,7 +4968,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
 
         // Prevent auto-join: only add the current user to the call grid if
         // they explicitly sent a join request or accepted a host invite.
-        final isSelf = userId == session.userId;
+        final isSelf = isSelfJoin;
         if (isSelf && !_myJoinRequestSent && !_myCallInviteAccepted) {
           Log.w(
             _tag,
@@ -4654,10 +4983,17 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         });
 
         // Create remote controller for OTHER co-hosts only. The local user
-        // already gets their own controller from _startBroadcast.
-        if (agoraUid > 0 && !isSelf) {
+        // already gets their own controller from _startBroadcast. Skip if
+        // one exists — re-creating the platform view causes needless
+        // surface churn (the freeze this screen recovers from elsewhere).
+        if (agoraUid > 0 &&
+            !isSelf &&
+            !_coHostControllers.containsKey(agoraUid)) {
           _createCoHostController(agoraUid);
         }
+        // A co-host entry may confirm that the uid on the main view was
+        // never the host — let reconciliation swap them if needed.
+        _reconcileHostVideo();
 
         // If this is the current user being accepted, switch to broadcaster.
         if (isSelf && !_isJoined) {
@@ -4676,16 +5012,24 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         if (map == null) return;
         final userId = map['userId']?.toString();
         final agoraUid = _coHostAgoraUid(Map<String, dynamic>.from(map));
-        final session = context.read<SessionManager>();
         setState(() => _coHosts.removeWhere((h) => h['userId'] == userId));
         // Remove co-host video controller.
         if (agoraUid > 0) {
-          _coHostControllers.remove(agoraUid);
+          _removeCoHostController(agoraUid);
+        }
+        if (userId != null && userId.isNotEmpty) {
+          _coHostUidToUserId.removeWhere((_, v) => v == userId);
         }
         // If this is the current user being removed, switch back to audience.
-        if (userId == session.userId && _isJoined) {
-          _isJoined = false;
-          _stopBroadcast();
+        // When not joined yet, this is a request REJECTION — clear the
+        // pending flag so a later "Request accepted" comment can't auto-join
+        // us off a stale state.
+        if (_isSelfId(userId)) {
+          _myJoinRequestSent = false;
+          if (_isJoined) {
+            _isJoined = false;
+            _stopBroadcast();
+          }
         }
       } catch (e) {
         Log.e(_tag, 'coHost leave parse', e);
@@ -4703,18 +5047,21 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         final rawMute = map['isMute'] ?? map['mute'];
         if (rawMute == null) return;
         final muted = parseBool(rawMute);
-        final session = context.read<SessionManager>();
+        final isSelf = _isSelfId(userId);
         setState(() {
           for (final h in _coHosts) {
-            if (h['userId'] == userId) h['isMute'] = muted;
+            if (h['userId'] == userId ||
+                (isSelf && _isSelfId(h['userId']?.toString()))) {
+              h['isMute'] = muted;
+            }
           }
           // Reflect a remote mute on our own mic button as well.
-          if (userId == session.userId) _micEnabled = !muted;
+          if (isSelf) _micEnabled = !muted;
         });
         // When the host mutes the local user remotely, updating the badge
         // alone is not enough — actually cut the published audio on this
         // device, otherwise the mic keeps transmitting.
-        if (userId == session.userId && _isJoined && !widget.isHost) {
+        if (isSelf && _isJoined && !widget.isHost) {
           unawaited(
             _setLocalMicMuted(muted).catchError((Object e) {
               Log.e(_tag, 'remote mic mute apply failed', e);
@@ -4765,6 +5112,24 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                 .whereType<Map>()
                 .map((e) => Map<String, dynamic>.from(e))
                 .toList();
+
+        // Join requests carry userId + agoraUid + name — keep them linked so
+        // a guest's tile can be labelled even if addParticipates drops them.
+        for (final r in parsed) {
+          final rid = r['userId']?.toString();
+          if (rid != null && rid.isNotEmpty) {
+            _linkCoHostUid(r, _coHostAgoraUid(r));
+            final rn = r['name']?.toString();
+            final ri = (r['image'] ?? r['userImage'] ?? r['avatar'])?.toString();
+            if ((rn?.isNotEmpty ?? false) || (ri?.isNotEmpty ?? false)) {
+              final base = _coHostProfileCache[rid];
+              _coHostProfileCache[rid] = {
+                'name': (rn?.isNotEmpty ?? false) ? rn : base?['name'],
+                'image': (ri?.isNotEmpty ?? false) ? ri : base?['image'],
+              };
+            }
+          }
+        }
 
         Log.d(_tag, 'Received join requests: ${parsed.length}');
 
@@ -4817,8 +5182,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                     : null);
         if (map == null) return;
         final targetUserId = map['userId']?.toString();
-        final session = context.read<SessionManager>();
-        if (targetUserId == session.userId) {
+        if (_isSelfId(targetUserId)) {
           final hostName = map['hostName']?.toString() ?? 'Host';
           _showCallInviteDialog(hostName, map);
         }
@@ -5282,11 +5646,26 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     // Viewer kicked — host/admin kicked this viewer from the room.
     _cancelViewerKickedSub = socket.on(Const.eventViewerKicked, (data) {
       try {
-        final map = data is Map ? data : null;
+        final map = _socketMap(data);
         if (map == null) return;
         final kickedUserId =
-            map['userId']?.toString() ?? map['viewerId']?.toString() ?? '';
+            map['userId']?.toString() ??
+            map['viewerId']?.toString() ??
+            map['viewerUserId']?.toString() ??
+            map['targetUserId']?.toString() ??
+            '';
         final myUserId = context.read<SessionManager>().userId;
+        // Drop the kicked user from everyone's viewer list — the event is
+        // broadcast room-wide, not just to the kicked viewer.
+        if (kickedUserId.isNotEmpty &&
+            kickedUserId != myUserId &&
+            kickedUserId != widget.liveUser.userId) {
+          setState(() {
+            _viewers.removeWhere((v) => v.userId == kickedUserId);
+            _viewerCount = _viewers.length;
+          });
+          _markViewerRemoved(kickedUserId);
+        }
         if (kickedUserId == myUserId) {
           Fluttertoast.showToast(msg: 'You have been removed from the room');
           _leaveRoom();
@@ -5294,20 +5673,40 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       } catch (_) {}
     });
 
-    // Viewer muted — host/admin muted this viewer's mic/cam.
+    // Viewer muted — host/admin muted this viewer's chat. Track the muted
+    // set so their comments are dropped room-wide (mirrors the audio room
+    // _bannedChatUsers). mute:3 / mute:true → muted; mute:0 / mute:false →
+    // unmuted.
     _cancelViewerMutedSub = socket.on(Const.eventViewerMuted, (data) {
       try {
-        final map = data is Map ? data : null;
+        final map = _socketMap(data);
         if (map == null) return;
         final mutedUserId =
-            map['userId']?.toString() ?? map['viewerId']?.toString() ?? '';
-        final isMuted = map['mute'] == true || map['isMuted'] == true;
+            map['userId']?.toString() ??
+            map['viewerId']?.toString() ??
+            map['viewerUserId']?.toString() ??
+            map['targetUserId']?.toString() ??
+            '';
+        if (mutedUserId.isEmpty) return;
+        final rawMute = map['mute'];
+        final isMuted =
+            rawMute == true || rawMute == 3 || map['isMuted'] == true;
+        final isUnmuted =
+            rawMute == false || rawMute == 0 || map['isMuted'] == false;
+        if (!isMuted && !isUnmuted) return;
+        setState(() {
+          if (isMuted) {
+            _chatMutedUsers.add(mutedUserId);
+          } else {
+            _chatMutedUsers.remove(mutedUserId);
+          }
+        });
         final myUserId = context.read<SessionManager>().userId;
         if (mutedUserId == myUserId) {
           Fluttertoast.showToast(
             msg:
                 isMuted
-                    ? 'You have been muted by host'
+                    ? 'You have been muted from chat by host'
                     : 'You have been unmuted by host',
           );
         }
@@ -5467,8 +5866,13 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         final map = data is Map ? data : null;
         if (map == null) return;
         final view = parseInt(map['view']);
-        if (view > 0 && mounted)
-          setState(() => _viewerCount = max(0, view - 1));
+        // Never let a rejoin ack drop the count below the viewers we
+        // already know are inside — some backends send a stale/low `view`.
+        if (view > 0 && mounted) {
+          setState(
+            () => _viewerCount = max(_viewers.length, max(0, view - 1)),
+          );
+        }
       } catch (_) {}
     });
 
@@ -5688,19 +6092,105 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     _startViewerRefreshTimer();
   }
 
-  /// Request the full online list immediately, then re-request every 15s.
-  /// Mirrors the audio-room refresh and fixes stale viewers left in the list.
-  void _startViewerRefreshTimer() {
-    _viewerRefreshTimer?.cancel();
-    final liveId = widget.liveUser.liveRoomId;
-    if (liveId == null || liveId.isEmpty) return;
+  /// Track that a viewer was just removed via a real-time event. Used to
+  /// suppress stale `view` snapshots that were already in-flight (ports the
+  /// audio-room `_markViewerRemoved`/`_isRecentlyRemoved` pair).
+  void _markViewerRemoved(String userId) {
+    _recentlyRemovedViewers[userId] = DateTime.now();
+    // Clean old entries so the map doesn't grow forever.
+    _recentlyRemovedViewers.removeWhere(
+      (_, t) => DateTime.now().difference(t).inSeconds > 5,
+    );
+  }
 
-    final payload = {
+  /// Returns true if this viewer was very recently removed from the list
+  /// (prevents a stale snapshot re-adding a user who just left/was kicked).
+  bool _isRecentlyRemoved(String userId) {
+    final removedAt = _recentlyRemovedViewers[userId];
+    if (removedAt == null) return false;
+    if (DateTime.now().difference(removedAt).inSeconds > 3) {
+      _recentlyRemovedViewers.remove(userId);
+      return false;
+    }
+    return true;
+  }
+
+  /// Recursively flattens a `view` socket payload into candidate viewer
+  /// items. The server emits the viewer array plus an optional second arg
+  /// (entry-effect map) which the socket client packs into one List, and the
+  /// array may also be wrapped under viewers/data/list/... keys in a Map.
+  List<dynamic> _flattenViewPayload(dynamic node) {
+    final out = <dynamic>[];
+    void walk(dynamic n) {
+      if (n is List) {
+        for (final e in n) {
+          walk(e);
+        }
+      } else if (n is Map) {
+        final map = Map<String, dynamic>.from(n);
+        final nested =
+            map['viewers'] ??
+            map['data'] ??
+            map['list'] ??
+            map['users'] ??
+            map['online'] ??
+            map['view'] ??
+            map['items'];
+        if (nested is List || nested is Map) {
+          walk(nested);
+        } else {
+          out.add(map);
+        }
+      } else if (n != null) {
+        out.add(n);
+      }
+    }
+
+    walk(node);
+    return out;
+  }
+
+  /// Extracts the primary Map from a socket payload — the client packs a
+  /// multi-arg server emit into a List of args, so take the first Map arg.
+  Map<String, dynamic>? _socketMap(dynamic data) {
+    if (data is Map) return Map<String, dynamic>.from(data);
+    if (data is List) {
+      for (final e in data) {
+        if (e is Map) return Map<String, dynamic>.from(e);
+      }
+    }
+    if (data is String && data.trimLeft().startsWith('{')) {
+      try {
+        return _socketMap(jsonDecode(data));
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  /// Builds the `view` request payload. Sends the same key set the audio
+  /// room does — the backend looks the roster up by roomId/liveRoom/
+  /// liveUserMongoId, and omitting them returns an empty list for video
+  /// rooms.
+  Map<String, dynamic>? _viewRequestPayload() {
+    final liveId = widget.liveUser.liveRoomId;
+    if (liveId == null || liveId.isEmpty) return null;
+    return {
       'liveStreamingId': liveId,
+      'roomId': liveId,
+      'liveRoom': liveId,
+      'liveUserMongoId': widget.liveUser.id ?? '',
       'liveUserId': widget.liveUser.userId,
       'userId': context.read<SessionManager>().userId,
       'requestFullList': true,
     };
+  }
+
+  /// Request the full online list immediately, then re-request every 15s.
+  /// Mirrors the audio-room refresh and fixes stale viewers left in the list.
+  void _startViewerRefreshTimer() {
+    _viewerRefreshTimer?.cancel();
+    final payload = _viewRequestPayload();
+    if (payload == null) return;
 
     SocketService.instance.emit(Const.eventView, payload);
     _viewerRefreshTimer = Timer.periodic(const Duration(seconds: 5), (t) {
@@ -5734,8 +6224,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     required String name,
     required String image,
   }) {
-    final hostId = widget.liveUser.userId ?? '';
-    if (!mounted || userId.isEmpty || userId == hostId) return;
+    if (!mounted || userId.isEmpty || _isHostId(userId)) return;
     final normalized =
         Map<String, dynamic>.from(payload)
           ..['userId'] = userId
@@ -5747,6 +6236,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     setState(() {
       _viewers.removeWhere((v) => v.userId == userId);
       _viewers.add(viewer);
+      _recentlyRemovedViewers.remove(userId);
       _viewers.sort((a, b) {
         final aTop = a.isRoomOnlineListTopEnabled || a.isVIP;
         final bTop = b.isRoomOnlineListTopEnabled || b.isVIP;
@@ -5901,6 +6391,10 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   Future<void> _sendComment() async {
     final text = _commentCtrl.text.trim();
     if (text.isEmpty) return;
+    if (_chatMutedUsers.contains(context.read<SessionManager>().userId)) {
+      Fluttertoast.showToast(msg: 'You are muted from chat in this live');
+      return;
+    }
     final containsExternalLink = RegExp(
       r'(https?://|www\.|(?:^|\s)[a-z0-9-]+\.(?:com|net|org|app|io|me|co|in|pk)(?:/|\s|$))',
       caseSensitive: false,
@@ -5948,7 +6442,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                 ? user!.vipBadgeUrl
                 : user?.vipDetails?.levelBadgeUrl,
             user?.level?.image,
-            user?.hostLevel?.image,
+            // Host level is intentionally excluded — hosts show the mic chip.
             ...?user?.tags.map((tag) => tag.image),
           ].whereType<String>().where((url) => url.isNotEmpty).toList(),
       tagLabels:
@@ -5981,6 +6475,10 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
 
   Future<void> _sendPhoto() async {
     final session = context.read<SessionManager>();
+    if (_chatMutedUsers.contains(session.userId)) {
+      Fluttertoast.showToast(msg: 'You are muted from chat in this live');
+      return;
+    }
     final user = context.read<AuthProvider>().user;
     final picker = ImagePicker();
     final picked = await picker.pickImage(
@@ -6160,6 +6658,185 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
 
   // ---- Multi-guest / co-host helpers ----
 
+  /// True when [id] refers to the locally logged-in user. Checks both the
+  /// Mongo `_id` (session.userId) and the public uniqueId — backends are not
+  /// consistent about which one they echo in call-join payloads.
+  bool _isSelfId(String? id) {
+    if (id == null || id.isEmpty) return false;
+    final session = context.read<SessionManager>();
+    if (id == session.userId || id == session.userUniqueId) return true;
+    final user = context.read<AuthProvider>().user;
+    return id == user?.id || id == user?.uniqueId;
+  }
+
+  /// Recreates the main video view (host's local preview or the remote host
+  /// view) after the co-host tile set changes. A newly added/removed
+  /// SurfaceView platform-view can leave the existing video surface frozen
+  /// or black until it is rebuilt — this performs automatically the same
+  /// recovery users previously did with a manual camera off/on toggle.
+  void _refreshMainVideoSurface() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      setState(() {
+        _videoSurfaceEpoch++;
+        _localAgoraView = null;
+        _remoteAgoraView = null;
+      });
+      // Host: also rebind the local preview — a guest's SurfaceView entering
+      // the tree can stall the camera preview render path. startPreview only
+      // rebinds the local renderer; the published stream is untouched.
+      if (widget.isHost &&
+          _cameraEnabled &&
+          _engineReady &&
+          widget.liveUser.broadcastType != 'screen') {
+        try {
+          _engine.startPreview();
+        } catch (_) {}
+      }
+    });
+  }
+
+  /// Fills in a co-host entry's missing name/image so the tile shows the
+  /// guest's real identity instead of "Guest". Sources, in order: pending
+  /// join requests (host side), the profile cache, then a one-time
+  /// getGuestProfile API fetch.
+  void _ensureCoHostIdentity(Map<String, dynamic> coHost) {
+    final nested = coHost['user'];
+    final nestedMap = nested is Map ? nested : const <String, dynamic>{};
+    var userId =
+        (coHost['userId'] ??
+                coHost['guestUserId'] ??
+                nestedMap['_id'] ??
+                nestedMap['userId'])
+            ?.toString() ??
+        '';
+    final entryUid = _coHostAgoraUid(coHost);
+
+    // No userId on the entry (orphan controller) — the pending join request
+    // carries the requester's own agoraUid, so match by uid to recover the
+    // identity before falling back to 'Guest'.
+    if (userId.isEmpty && entryUid > 0) {
+      userId = _coHostUidToUserId[entryUid] ?? '';
+      if (userId.isEmpty) {
+        for (final r in _joinRequests) {
+          if (_coHostAgoraUid(r) == entryUid) {
+            userId = r['userId']?.toString() ?? '';
+            break;
+          }
+        }
+      }
+      if (userId.isNotEmpty) {
+        coHost['userId'] = userId;
+        _coHostUidToUserId[entryUid] = userId;
+      }
+    }
+    if (userId.isEmpty) return;
+
+    final hasName =
+        (coHost['name'] ??
+                    coHost['userName'] ??
+                    coHost['username'] ??
+                    coHost['nickName'] ??
+                    coHost['userNickname'] ??
+                    nestedMap['name'] ??
+                    nestedMap['userName'] ??
+                    nestedMap['username'] ??
+                    nestedMap['nickName'])
+                ?.toString()
+                .isNotEmpty ==
+            true;
+    final hasImage =
+        (coHost['image'] ??
+                    coHost['userImage'] ??
+                    coHost['avatar'] ??
+                    nestedMap['image'] ??
+                    nestedMap['userImage'] ??
+                    nestedMap['avatar'])
+                ?.toString()
+                .isNotEmpty ==
+            true;
+    if (hasName && hasImage) return;
+
+    // Host side: the pending join request already carries name/image.
+    // Match by userId OR by the request's own agoraUid (the requester
+    // generates it in _sendJoinRequest).
+    for (final r in _joinRequests) {
+      final rid = r['userId']?.toString();
+      if (rid == userId || (entryUid > 0 && _coHostAgoraUid(r) == entryUid)) {
+        coHost['name'] ??= r['name'] ?? r['userName'] ?? r['username'];
+        coHost['image'] ??= r['image'] ?? r['userImage'] ?? r['avatar'];
+        coHost['avatarFrame'] ??= r['avatarFrame'] ?? r['frameUrl'];
+        if ((coHost['name']?.toString().isNotEmpty ?? false) &&
+            (coHost['image']?.toString().isNotEmpty ?? false)) {
+          return;
+        }
+        break;
+      }
+    }
+
+    void apply(Map<String, String?> info) {
+      var changed = false;
+      if (!hasName && (info['name']?.isNotEmpty ?? false)) {
+        coHost['name'] = info['name'];
+        changed = true;
+      }
+      if (!hasImage && (info['image']?.isNotEmpty ?? false)) {
+        coHost['image'] = info['image'];
+        changed = true;
+      }
+      // Orphan tiles are also hydrated from inside _buildCoHostGrid, so the
+      // rebuild must be deferred — a synchronous setState during build
+      // throws.
+      if (changed) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) setState(() {});
+        });
+      }
+    }
+
+    final cached = _coHostProfileCache[userId];
+    if (cached != null) {
+      apply(cached);
+      return;
+    }
+    if (_coHostProfileFetching.contains(userId)) return;
+    _coHostProfileFetching.add(userId);
+    ApiService.getGuestProfile(userId)
+        .then((res) {
+          final u = res.user;
+          // name can be blank on the backend — fall back to username, then
+          // the public uniqueId; anything real beats the 'Guest' fallback.
+          final resolvedName =
+              (u?.name?.isNotEmpty ?? false)
+                  ? u!.name
+                  : (u?.username?.isNotEmpty ?? false)
+                  ? u!.username
+                  : u?.uniqueId;
+          // Cache even misses so repeated builds don't refetch forever.
+          _coHostProfileCache[userId] =
+              u != null ? {'name': resolvedName, 'image': u.image} : const {};
+          if (u != null) apply(_coHostProfileCache[userId]!);
+        })
+        .catchError((Object e) {
+          Log.d(_tag, 'coHost profile fetch failed for $userId: $e');
+          _coHostProfileCache[userId] = const {};
+        })
+        .whenComplete(() => _coHostProfileFetching.remove(userId));
+  }
+
+  /// Remembers the agoraUid ↔ userId pairing whenever a payload carries
+  /// both, so orphan controllers can still resolve a name.
+  void _linkCoHostUid(Map<String, dynamic> map, int agoraUid) {
+    final userId =
+        (map['userId'] ??
+                map['guestUserId'] ??
+                (map['user'] is Map ? map['user']['_id'] : null))
+            ?.toString();
+    if (agoraUid > 0 && userId != null && userId.isNotEmpty) {
+      _coHostUidToUserId[agoraUid] = userId;
+    }
+  }
+
   int _coHostAgoraUid(Map<String, dynamic> coHost) {
     final nested = coHost['user'];
     final raw =
@@ -6175,6 +6852,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   }
 
   void _bindRemoteUidToPendingCoHost(int agoraUid) {
+    // Never stamp the host's uid onto a pending guest request — the request
+    // belongs to a real guest still waiting for their own uid.
+    if (agoraUid == _remoteUid || agoraUid == _expectedHostAgoraUid) return;
     if (_coHosts.any((coHost) => _coHostAgoraUid(coHost) == agoraUid)) return;
     final pendingIndex = _coHosts.indexWhere(
       (coHost) =>
@@ -6186,13 +6866,130 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     }
   }
 
+  /// Moves [uid] onto the main host view. Reuses an existing guest-tile
+  /// controller when the uid was misclassified earlier; the displaced
+  /// broadcaster (a real guest that grabbed the empty host slot) drops to
+  /// the guest strip so their video keeps rendering.
+  void _promoteToHost(int uid) {
+    final displacedUid = _remoteUid;
+    final displacedController = _remoteController;
+    final existing = _coHostControllers.remove(uid);
+    _remoteUid = uid;
+    _remoteController = existing;
+    _remoteAgoraView = null;
+    _remoteHostCameraOff = false;
+    if (_remoteController == null) {
+      _createRemoteController(uid);
+    } else {
+      _remoteAgoraView = AgoraVideoView(
+        key: ValueKey('remote_${uid}_e$_videoSurfaceEpoch'),
+        controller: _remoteController!,
+        onAgoraVideoViewCreated: _onAgoraVideoViewCreated,
+      );
+    }
+    // Unbind this uid from any pending join request it was stamped onto.
+    for (final h in _coHosts) {
+      if (_coHostAgoraUid(h) == uid) h['agoraUid'] = 0;
+    }
+    if (displacedUid != null &&
+        displacedUid != uid &&
+        displacedController != null) {
+      _coHostControllers[displacedUid] = displacedController;
+      _bindRemoteUidToPendingCoHost(displacedUid);
+    }
+  }
+
+  /// Moves the uid currently on the main view into the guest strip — used
+  /// when a socket-authoritative co-host entry claims that uid.
+  void _demoteHostToCoHost() {
+    final uid = _remoteUid;
+    if (uid == null) return;
+    final controller = _remoteController;
+    _remoteUid = null;
+    _remoteController = null;
+    _remoteAgoraView = null;
+    _remoteHostCameraOff = false;
+    if (controller != null) {
+      _coHostControllers[uid] = controller;
+      _bindRemoteUidToPendingCoHost(uid);
+    }
+  }
+
+  /// The only co-host controller with no backing `_coHosts` entry — an
+  /// unknown broadcaster. Guests always arrive via a socket event, so a
+  /// lone orphan is almost certainly the host after a uid rotation.
+  int? _soleOrphanCoHostUid() {
+    int? orphan;
+    for (final uid in _coHostControllers.keys) {
+      if (uid == _myAgoraUid) continue;
+      if (_coHosts.any((h) => _coHostAgoraUid(h) == uid)) continue;
+      if (orphan != null) return null;
+      orphan = uid;
+    }
+    return orphan;
+  }
+
+  /// Re-evaluates who occupies the main host view. Heals the "host renders
+  /// in the Guest tile" state — runs whenever the expected host uid is
+  /// refreshed, a remote user leaves, or co-host membership changes.
+  void _reconcileHostVideo() {
+    if (!mounted || widget.isHost) return;
+    var changed = false;
+
+    // A socket-authoritative guest entry claims the uid currently on the
+    // main view — it was never the host; move it to the guest strip.
+    if (_remoteUid != null &&
+        _remoteUid != _expectedHostAgoraUid &&
+        _coHosts.any(
+          (h) =>
+              _coHostAgoraUid(h) == _remoteUid &&
+              h['userId']?.toString() != widget.liveUser.userId,
+        )) {
+      _demoteHostToCoHost();
+      changed = true;
+    }
+
+    // The confirmed host uid is parked in the guest strip → promote it.
+    if (_expectedHostAgoraUid > 0 &&
+        _remoteUid != _expectedHostAgoraUid &&
+        _coHostControllers.containsKey(_expectedHostAgoraUid)) {
+      _promoteToHost(_expectedHostAgoraUid);
+      changed = true;
+    }
+
+    // Host slot still empty → promote the confirmed uid if parked, else the
+    // single orphan broadcaster (the host after a uid rotation).
+    if (_remoteUid == null) {
+      final orphan = _soleOrphanCoHostUid();
+      final candidate =
+          _coHostControllers.containsKey(_expectedHostAgoraUid)
+              ? _expectedHostAgoraUid
+              : orphan;
+      if (candidate != null) {
+        _promoteToHost(candidate);
+        changed = true;
+      }
+    }
+
+    if (changed) {
+      setState(() => _hostOffline = false);
+    }
+  }
+
+  /// Adopts a freshly learned host agora uid and re-seats video if needed.
+  void _updateExpectedHostUid(int uid) {
+    if (uid <= 0 || uid == _expectedHostAgoraUid) return;
+    _expectedHostAgoraUid = uid;
+    _reconcileHostVideo();
+  }
+
   /// Applies a remote camera on/off signal to the matching co-host tile (or
   /// the host's main view). Driven by onRemoteVideoStateChanged so the user's
   /// DP shows on every client whenever their video stops — independent of
   /// whether the backend relayed the cameraOffCallJoin socket event.
   void _applyRemoteCameraState(int remoteUid, bool cameraOff) {
     var changed = false;
-    if (remoteUid == _remoteUid || remoteUid == widget.liveUser.agoraUID) {
+    if (remoteUid == _remoteUid || remoteUid == _expectedHostAgoraUid) {
       if (_remoteHostCameraOff != cameraOff) {
         _remoteHostCameraOff = cameraOff;
         changed = true;
@@ -6277,6 +7074,16 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       useAndroidSurfaceView: true,
     );
     setState(() {});
+    // A new SurfaceView entering the tree can leave the main video surface
+    // frozen/black — rebuild it so the guest join never stalls the live.
+    _refreshMainVideoSurface();
+  }
+
+  void _removeCoHostController(int agoraUid) {
+    if (_coHostControllers.remove(agoraUid) != null) {
+      _coHostUidToUserId.remove(agoraUid);
+      _refreshMainVideoSurface();
+    }
   }
 
   void _createRemoteController(int agoraUid) {
@@ -6295,6 +7102,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       useAndroidSurfaceView: true,
     );
     _remoteAgoraView = AgoraVideoView(
+      key: ValueKey('remote_${agoraUid}_e$_videoSurfaceEpoch'),
       controller: _remoteController!,
       onAgoraVideoViewCreated: _onAgoraVideoViewCreated,
     );
@@ -6323,16 +7131,36 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         useFlutterTexture: false,
         useAndroidSurfaceView: true,
       );
+      // Our own SurfaceView tile entering the tree can freeze the remote
+      // host view on this device — rebuild it (same recovery as a camera
+      // off/on toggle).
+      _refreshMainVideoSurface();
 
       if (mounted) {
         setState(() {
-          // Fresh publish always starts unmuted on the front camera — reset
-          // the control flags so the icons never show a stale state left
-          // over from a previous call session.
-          _micEnabled = true;
+          // Fresh publish always starts on the front camera — reset the
+          // camera flags so the icons never show a stale state left over
+          // from a previous call session. _micEnabled is NOT reset:
+          // joinChannel re-publishes the mic track, so a mute applied
+          // before/during the rejoin (self-mute or host-mute) is re-applied
+          // below instead of being silently dropped.
           _isCameraOff = false;
           _frontCamera = true;
         });
+      }
+
+      if (!mounted) return;
+      final hostMutedSelf = _coHosts.any(
+        (h) =>
+            _isSelfId(h['userId']?.toString()) && parseBool(h['isMute']),
+      );
+      if (!_micEnabled || hostMutedSelf) {
+        if (mounted) setState(() => _micEnabled = false);
+        try {
+          await _setLocalMicMuted(true);
+        } catch (e) {
+          Log.e(_tag, 'mic re-mute after co-host join failed', e);
+        }
       }
       Fluttertoast.showToast(msg: 'You joined the call');
     } catch (e) {
@@ -6347,7 +7175,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       _myJoinRequestSent = false;
       _myCallInviteAccepted = false;
       await _engine.leaveChannel();
-      _coHostControllers.remove(_myAgoraUid);
+      _removeCoHostController(_myAgoraUid);
       // Rejoin as audience with uid=0 (the original audience uid).
       if (_uid case final uid?) {
         await _joinAgoraChannel(uid: uid, broadcaster: false);
@@ -6408,13 +7236,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     req['liveUserMongoId'] = widget.liveUser.id;
     req['liveStreamingId'] = widget.liveUser.liveRoomId;
     var acceptedAgoraUid = _coHostAgoraUid(req);
-    if (acceptedAgoraUid == widget.liveUser.agoraUID) {
+    if (acceptedAgoraUid == _expectedHostAgoraUid) {
       acceptedAgoraUid = 0;
       req['agoraUid'] = 0;
     }
 
     // Add the accepted co-host to local UI immediately so the host doesn't
     // have to wait for the socket echo.
+    _linkCoHostUid(req, acceptedAgoraUid);
     setState(() {
       _coHosts.removeWhere((h) => h['userId'] == req['userId']);
       _coHosts.add(Map<String, dynamic>.from(req));
@@ -6471,7 +7300,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     // which may never arrive.
     setState(() {
       _isJoined = false;
-      _coHosts.removeWhere((h) => h['userId'] == session.userId);
+      _coHosts.removeWhere((h) => _isSelfId(h['userId']?.toString()));
     });
     _stopBroadcast();
   }
@@ -6496,14 +7325,18 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       // Keep our own tile's mute badge in sync without waiting for the
       // socket echo.
       for (final coHost in _coHosts) {
-        if (coHost['userId']?.toString() == session.userId) {
+        if (_isSelfId(coHost['userId']?.toString())) {
           coHost['isMute'] = newMuted;
         }
       }
     });
+    FloatingLiveService.instance.isMuted.value = newMuted;
     SocketService.instance.emit(Const.eventMuteCallJoin, {
       'liveStreamingId': widget.liveUser.liveRoomId,
+      'liveUserId': widget.liveUser.userId,
+      'liveUserMongoId': widget.liveUser.id,
       'userId': session.userId,
+      'agoraUid': _myAgoraUid,
       'isMute': newMuted,
     });
   }
@@ -6535,7 +7368,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     setState(() {
       _isCameraOff = newCameraOff;
       for (final coHost in _coHosts) {
-        if (coHost['userId']?.toString() == session.userId) {
+        if (_isSelfId(coHost['userId']?.toString())) {
           coHost['isCameraOff'] = newCameraOff;
         }
       }
@@ -6841,7 +7674,10 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                     final newMuted = !isMuted;
                     SocketService.instance.emit(Const.eventMuteCallJoin, {
                       'liveStreamingId': widget.liveUser.liveRoomId,
+                      'liveUserId': widget.liveUser.userId,
+                      'liveUserMongoId': widget.liveUser.id,
                       'userId': userId,
+                      'agoraUid': coHost['agoraUid'],
                       'isMute': newMuted,
                     });
                     // The backend does not reliably relay muteCallJoin to the
@@ -6949,54 +7785,86 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           ),
     ).then((accept) async {
       if (!mounted) return;
-      if (accept == true) {
-        _myCallInviteAccepted = true;
-        final session = context.read<SessionManager>();
-        final user = context.read<AuthProvider>().user;
-        final coHostData = {
-          'userId': session.userId,
-          'liveStreamingId': widget.liveUser.liveRoomId,
-          'image': user?.image ?? session.userImage,
-          'name': user?.name ?? session.userName,
-          'country': user?.country ?? '',
-          'agoraUid': _myAgoraUid,
-          'liveUserMongoId': widget.liveUser.id,
-          'isMute': false,
-          'isRequested': false,
-          'isAccept': true,
-          'isInvited': true,
-          'type': 'user',
-          'isVIP': user?.isVIP ?? false,
-          'isCameraOff': false,
-        };
-
-        // Switch to broadcaster immediately so the local co-host video shows
-        // up without waiting for the backend socket echo.
-        if (!_isJoined) {
-          _isJoined = true;
-          await _startBroadcast();
-        }
-
-        if (mounted) {
-          setState(() {
-            _coHosts.removeWhere((h) => h['userId'] == session.userId);
-            _coHosts.add(Map<String, dynamic>.from(coHostData));
-          });
-          SocketService.instance.emit(
-            Const.eventAddParticipatesCallJoin,
-            coHostData,
-          );
-        }
-        Fluttertoast.showToast(msg: 'Joining the call...');
-      }
+      if (accept == true) await _acceptCallInvite();
     });
   }
 
-  void _inviteViewerToCall(ViewerEntry viewer) {
-    final userId = viewer.userId;
+  /// Invited viewer accepts the host's call invite — joins the co-host grid.
+  /// Shared by the invite dialog and the Accept button on invite comments.
+  Future<void> _acceptCallInvite() async {
+    _myCallInviteAccepted = true;
+    final session = context.read<SessionManager>();
+    final user = context.read<AuthProvider>().user;
+    final coHostData = {
+      'userId': session.userId,
+      'liveStreamingId': widget.liveUser.liveRoomId,
+      'image': user?.image ?? session.userImage,
+      'name': user?.name ?? session.userName,
+      'country': user?.country ?? '',
+      'agoraUid': _myAgoraUid,
+      'liveUserMongoId': widget.liveUser.id,
+      'isMute': false,
+      'isRequested': false,
+      'isAccept': true,
+      'isInvited': true,
+      'type': 'user',
+      'isVIP': user?.isVIP ?? false,
+      'isCameraOff': false,
+    };
+
+    // Switch to broadcaster immediately so the local co-host video shows
+    // up without waiting for the backend socket echo.
+    if (!_isJoined) {
+      _isJoined = true;
+      await _startBroadcast();
+    }
+
+    if (mounted) {
+      _linkCoHostUid(Map<String, dynamic>.from(coHostData), _myAgoraUid);
+      setState(() {
+        _coHosts.removeWhere((h) => _isSelfId(h['userId']?.toString()));
+        _coHosts.add(Map<String, dynamic>.from(coHostData));
+      });
+      SocketService.instance.emit(
+        Const.eventAddParticipatesCallJoin,
+        coHostData,
+      );
+    }
+    Fluttertoast.showToast(msg: 'Joining the call...');
+  }
+
+  /// Host/admin kicks a co-host back to the audience — emits
+  /// `lessParticipatesCallJoin` (same as the co-host options sheet) so every
+  /// client drops them from the grid and the removed guest stops publishing.
+  void _removeCoHostFromCall(String userId) {
+    if (userId.isEmpty) return;
+    final coHost =
+        _coHosts.where((h) => h['userId'] == userId).firstOrNull;
+    SocketService.instance.emit(Const.eventLessParticipatesCallJoin, {
+      'userId': userId,
+      'liveUserMongoId': widget.liveUser.id,
+      'liveStreamingId': widget.liveUser.liveRoomId,
+      'agoraUid': coHost?['agoraUid'],
+    });
+    setState(() {
+      _coHosts.removeWhere((h) => h['userId'] == userId);
+      _joinRequests.removeWhere((r) => r['userId'] == userId);
+      _notifiedRequestIds.remove(userId);
+    });
+    Fluttertoast.showToast(msg: 'Removed from call');
+  }
+
+  /// Invite a viewer onto the call — emits `eventInvite` (popup channel) +
+  /// a room comment with type 'callInvite' so the invited user gets an
+  /// Accept button in chat. No dedup — every invite sends a fresh comment.
+  void _inviteViewerToCall(String? userId, [String? name, String? image]) {
     if (userId == null || userId.isEmpty) return;
     if (_coHosts.length >= 9) {
       Fluttertoast.showToast(msg: 'Room is full (max 9 guests)');
+      return;
+    }
+    if (_coHosts.any((h) => h['userId'] == userId)) {
+      Fluttertoast.showToast(msg: 'User is already on the call');
       return;
     }
     // Bigo/Chamet-style: host emits `eventInvite` + room comment with type: 'callInvite'
@@ -7009,8 +7877,8 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       'userId': userId,
       'targetUserId': userId,
       'hostName': session.userName,
-      'name': viewer.name ?? '',
-      'image': viewer.image ?? '',
+      'name': name ?? '',
+      'image': image ?? '',
     });
     SocketService.instance.emit(Const.eventComment, {
       'comment': '${session.userName} is inviting you to join the call',
@@ -7023,7 +7891,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       'hostName': session.userName,
       'isSystem': true,
     });
-    Fluttertoast.showToast(msg: 'Invitation sent to ${viewer.name ?? 'user'}');
+    Fluttertoast.showToast(msg: 'Invitation sent to ${name ?? 'user'}');
   }
 
   /// Build a menu card for the redesigned live room menu. Pops the sheet
@@ -10061,7 +10929,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     if (leavingOpponentUid != null && leavingOpponentUid > 0) {
       _recentlyLeftPkUids.add(leavingOpponentUid);
       // Remove any co-host binding that may have been created for this UID.
-      _coHostControllers.remove(leavingOpponentUid);
+      _removeCoHostController(leavingOpponentUid);
       _coHosts.removeWhere((h) => _coHostAgoraUid(h) == leavingOpponentUid);
       _recentlyLeftPkClearTimer?.cancel();
       _recentlyLeftPkClearTimer = Timer(const Duration(seconds: 10), () {
@@ -10323,6 +11191,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           myUserId,
           liveId,
           seconds: _durationSeconds,
+          liveType: 'video',
         );
       } catch (e) {
         Log.e(_tag, 'final updateLiveTime failed', e);
@@ -10376,6 +11245,8 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         'liveUserMongoId': widget.liveUser.id,
         'liveUserDocId': widget.liveUser.id,
         'liveUser': widget.liveUser.id,
+        'liveType': 'video',
+        'roomType': 'video',
         'time': _durationSeconds,
         'duration': _durationSeconds,
         'elapsedSeconds': _durationSeconds,
@@ -10571,7 +11442,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         widget.liveUser.userImage ?? widget.liveUser.image ?? '',
       ),
       showLocalVideo: widget.isHost,
-      remoteUid: _remoteUid ?? widget.liveUser.agoraUID,
+      remoteUid: _remoteUid ?? _expectedHostAgoraUid,
       localUid: _uid ?? 0,
       muted: !_micEnabled,
       onMic: () => unawaited(_toggleMic()),
@@ -11310,6 +12181,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           child: SizedBox.expand(
             child:
                 _localAgoraView ??= AgoraVideoView(
+                  key: ValueKey('local_e$_videoSurfaceEpoch'),
                   controller: _localController!,
                   onAgoraVideoViewCreated: _onAgoraVideoViewCreated,
                 ),
@@ -11322,6 +12194,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         child: SizedBox.expand(
           child:
               _remoteAgoraView ??= AgoraVideoView(
+                key: ValueKey('remote_${_remoteUid}_e$_videoSurfaceEpoch'),
                 controller: _remoteController!,
                 onAgoraVideoViewCreated: _onAgoraVideoViewCreated,
               ),
@@ -11390,7 +12263,8 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       final userId = h['userId']?.toString();
       final agoraUid = _coHostAgoraUid(h);
       if (userId == widget.liveUser.userId ||
-          (agoraUid > 0 && agoraUid == widget.liveUser.agoraUID)) {
+          (agoraUid > 0 && agoraUid == _expectedHostAgoraUid) ||
+          (agoraUid > 0 && agoraUid == _remoteUid)) {
         continue;
       }
       if (agoraUid > 0 && _recentlyLeftPkUids.contains(agoraUid)) continue;
@@ -11400,11 +12274,29 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       }
     }
     for (final cUid in _coHostControllers.keys) {
-      if (cUid == widget.liveUser.agoraUID) continue;
+      if (cUid == _expectedHostAgoraUid || cUid == _remoteUid) continue;
       if (_recentlyLeftPkUids.contains(cUid)) continue;
       if (_pkRemoteAgoraUid != null && cUid == _pkRemoteAgoraUid) continue;
       if (!displayedCoHosts.any((h) => _coHostAgoraUid(h) == cUid)) {
-        displayedCoHosts.add({'agoraUid': cUid, 'name': 'Guest'});
+        // Orphan controller — the socket entry never arrived. Resolve the
+        // guest's userId via the uid map so the tile shows their real name
+        // (fetched profile fills name/image, falling back to 'Guest').
+        final entry = <String, dynamic>{'agoraUid': cUid};
+        final linkedUserId = _coHostUidToUserId[cUid];
+        if (linkedUserId != null) {
+          entry['userId'] = linkedUserId;
+          final cached = _coHostProfileCache[linkedUserId];
+          if (cached != null) {
+            if (cached['name']?.isNotEmpty == true) {
+              entry['name'] = cached['name'];
+            }
+            if (cached['image']?.isNotEmpty == true) {
+              entry['image'] = cached['image'];
+            }
+          }
+          _ensureCoHostIdentity(entry);
+        }
+        displayedCoHosts.add(entry);
       }
     }
 
@@ -11440,8 +12332,10 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     double boxH,
   ) {
     final agoraUid = _coHostAgoraUid(coHost);
-    if (agoraUid > 0 && agoraUid == widget.liveUser.agoraUID)
+    if (agoraUid > 0 &&
+        (agoraUid == _expectedHostAgoraUid || agoraUid == _remoteUid)) {
       return const SizedBox.shrink();
+    }
 
     final nestedUser =
         coHost['user'] is Map
@@ -11458,17 +12352,32 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     final isVip = parseBool(
       coHost['isVIP'] ?? coHost['isVip'] ?? nestedUser['isVIP'],
     );
+    // Hydrate missing name/image (join-request data or profile fetch) so the
+    // tile shows the seated guest's real name instead of 'Guest'.
+    _ensureCoHostIdentity(coHost);
+    final tileUserId =
+        (coHost['userId'] ?? nestedUser['_id'] ?? nestedUser['userId'])
+            ?.toString();
+    final cachedIdentity =
+        _coHostProfileCache[tileUserId] ??
+        _coHostProfileCache[_coHostUidToUserId[agoraUid]];
     final coHostName =
         coHost['name']?.toString() ??
         coHost['userName']?.toString() ??
+        coHost['username']?.toString() ??
+        coHost['nickName']?.toString() ??
         nestedUser['name']?.toString() ??
+        nestedUser['userName']?.toString() ??
+        nestedUser['username']?.toString() ??
+        cachedIdentity?['name'] ??
         'Guest';
     final coHostImage =
         coHost['image']?.toString() ??
         coHost['userImage']?.toString() ??
         coHost['avatar']?.toString() ??
         nestedUser['image']?.toString() ??
-        nestedUser['userImage']?.toString();
+        nestedUser['userImage']?.toString() ??
+        cachedIdentity?['image'];
     final coHostFrame =
         coHost['avatarFrame']?.toString() ??
         coHost['avatarFrameImage']?.toString() ??
@@ -11544,9 +12453,15 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                   errorWidget: (_, __, ___) => const SizedBox.shrink(),
                 ),
               ),
-            // Video or avatar.
+            // Video or avatar. The epoch key recreates the platform view
+            // whenever the tile set changes — a newly added SurfaceView can
+            // otherwise render mispositioned/black over the main video on
+            // some Android devices.
             if (controller != null && !isCameraOff)
-              AgoraVideoView(controller: controller)
+              AgoraVideoView(
+                key: ValueKey('cohost_${agoraUid}_e$_videoSurfaceEpoch'),
+                controller: controller,
+              )
             else
               Center(
                 child: UserAvatar(
@@ -11581,15 +12496,17 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                         child: Icon(Icons.star, color: Colors.amber, size: 10),
                       ),
                     Expanded(
-                      child: Text(
-                        coHostName,
+                      // Long names scroll left-right (marquee) instead of
+                      // truncating — same behavior as native co-host tiles.
+                      child: MarqueeText(
+                        text: coHostName,
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: boxW > 80 ? 11 : 9,
                           fontWeight: FontWeight.w600,
                         ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
+                        velocity: 30,
+                        blankSpace: 24,
                       ),
                     ),
                   ],
@@ -11731,15 +12648,10 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   }
 
   void _openViewers() {
-    final liveId = widget.liveUser.liveRoomId;
-    if (liveId != null && liveId.isNotEmpty) {
-      // Refresh the list before opening so stale counts/avatars are less likely.
-      SocketService.instance.emit(Const.eventView, {
-        'liveStreamingId': liveId,
-        'liveUserId': widget.liveUser.userId,
-        'userId': context.read<SessionManager>().userId,
-        'requestFullList': true,
-      });
+    // Refresh the list before opening so stale counts/avatars are less likely.
+    final payload = _viewRequestPayload();
+    if (payload != null) {
+      SocketService.instance.emit(Const.eventView, payload);
     }
     showViewersSheet(
       context,
@@ -11834,19 +12746,30 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                             );
                             return;
                           }
+                          final targetId = v.userId ?? '';
+                          if (targetId.isEmpty) return;
                           try {
                             final session = context.read<SessionManager>();
                             await ApiService.muteViewerInLive(
                               liveStreamingId: widget.liveUser.liveRoomId ?? '',
                               userId: session.userId,
-                              viewerId: v.userId ?? '',
+                              viewerId: targetId,
                               mute: true,
                             );
-                            Fluttertoast.showToast(msg: 'User muted');
                           } catch (e) {
                             Log.e(_tag, 'muteViewer failed', e);
-                            Fluttertoast.showToast(msg: 'Mute failed');
                           }
+                          setState(() => _chatMutedUsers.add(targetId));
+                          SocketService.instance.emit(Const.eventBanChat, {
+                            'liveStreamingId': widget.liveUser.liveRoomId,
+                            'liveUserMongoId': widget.liveUser.id,
+                            'liveUserId': widget.liveUser.userId,
+                            'userId': targetId,
+                            'mute': 3,
+                          });
+                          Fluttertoast.showToast(
+                            msg: 'User muted from chat',
+                          );
                         },
                         onKick: () {
                           // VIP anti-kick protection — cannot kick protected viewers.
@@ -11871,6 +12794,16 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                             'userId': v.userId,
                             'liveStreamingId': widget.liveUser.liveRoomId,
                           });
+                          // Remove locally too — the kicked viewer should
+                          // leave the host's list immediately without
+                          // waiting on a socket round-trip.
+                          setState(() {
+                            _viewers.removeWhere((e) => e.userId == v.userId);
+                            _viewerCount = _viewers.length;
+                          });
+                          if (v.userId != null) {
+                            _markViewerRemoved(v.userId!);
+                          }
                           Fluttertoast.showToast(msg: 'User kicked');
                         },
                       );
@@ -11887,7 +12820,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                     ),
                     onTap: () {
                       Navigator.pop(ctx);
-                      _inviteViewerToCall(v);
+                      _inviteViewerToCall(v.userId, v.name, v.image);
                     },
                   ),
                   ListTile(
@@ -13594,6 +14527,12 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     String? relationshipType,
   }) {
     if (userId.isEmpty) return;
+    final myId = context.read<SessionManager>().userId;
+    // A guest sitting on the call grid gets "Remove" (drop to audience);
+    // a plain viewer gets "Invite Call" instead.
+    final isCoHost = _coHosts.any((h) => h['userId'] == userId);
+    final canModerateTarget =
+        _canModerate && userId != myId && userId != widget.liveUser.userId;
     showProfileRoomCard(
       context,
       seat: SeatItem(
@@ -13603,13 +14542,18 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         avatarFrame: avatarFrame,
         country: country,
         countryFlagImage: countryFlagImage,
-        position: -2,
+        // position >= 0 marks the user as "on seat" so the card shows the
+        // seated management actions (Remove) instead of the viewer invite.
+        position: isCoHost ? 0 : -2,
         reserved: true,
         isVIP: isVIP,
         vipBadgeUrl: vipBadgeUrl,
         cpLevel: cpLevel,
         friendLevel: friendLevel,
         relationshipType: relationshipType,
+        // Mark the room host's card so it shows the Owner chip and never
+        // exposes moderation actions (kick/mute) against the host.
+        role: userId == widget.liveUser.userId ? 'host' : 'user',
       ),
       isHostView: widget.isHost,
       iAmAdmin: _iAmAdmin,
@@ -13617,8 +14561,26 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           widget.liveUser.liveStreamingId ?? widget.liveUser.id ?? '',
       liveUserId: widget.liveUser.userId ?? '',
       liveUserMongoId: widget.liveUser.id ?? '',
+      // Seat mic-mute is an audio-room concept — hide it in video live.
+      canMute: false,
+      inviteLabel: 'Invite Call',
+      removeLabel: 'Remove',
+      emitSeatSocketOnRemove: false,
+      onInviteToSeat:
+          canModerateTarget && !isCoHost
+              ? () => _inviteViewerToCall(userId, name, image)
+              : null,
+      onRemoveFromSeat:
+          canModerateTarget && isCoHost
+              ? () => _removeCoHostFromCall(userId)
+              : null,
       onMention: () {},
       onGift: _openGifts,
+      onBanChat:
+          _canModerate ? () => _muteViewerFromCard(userId) : null,
+      onKickOut:
+          _canModerate ? () => _kickViewerFromCard(userId) : null,
+      isChatMuted: _chatMutedUsers.contains(userId),
     );
   }
 
@@ -13633,6 +14595,10 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         'levelBadgeUrl': c.badgeUrls.isNotEmpty ? c.badgeUrls.first : null,
       },
     });
+    final isCoHost = _coHosts.any((h) => h['userId'] == userId);
+    final myId = context.read<SessionManager>().userId;
+    final canModerateTarget =
+        _canModerate && userId != myId && userId != widget.liveUser.userId;
     final seat = SeatItem(
       userId: userId,
       name: c.name,
@@ -13640,13 +14606,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       avatarFrame: c.frameUrl,
       country: c.country,
       countryFlagImage: c.countryFlagImage,
-      position: -2,
+      position: isCoHost ? 0 : -2,
       reserved: false,
       isVIP: c.isVIP || (c.vipLevel ?? 0) > 0,
       vipBadgeUrl: identity.badgeUrl,
       cpLevel: c.cpLevel,
       friendLevel: c.friendLevel,
       relationshipType: c.relationshipType,
+      role: userId == widget.liveUser.userId ? 'host' : 'user',
     );
     showProfileRoomCard(
       context,
@@ -13657,9 +14624,99 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           widget.liveUser.liveStreamingId ?? widget.liveUser.id ?? '',
       liveUserId: widget.liveUser.userId ?? '',
       liveUserMongoId: widget.liveUser.id ?? '',
+      // Seat mic-mute is an audio-room concept — hide it in video live.
+      canMute: false,
+      inviteLabel: 'Invite Call',
+      removeLabel: 'Remove',
+      emitSeatSocketOnRemove: false,
+      onInviteToSeat:
+          canModerateTarget && !isCoHost
+              ? () => _inviteViewerToCall(userId, c.name, c.userImage)
+              : null,
+      onRemoveFromSeat:
+          canModerateTarget && isCoHost
+              ? () => _removeCoHostFromCall(userId)
+              : null,
       onMention: () {},
       onGift: _openGifts,
+      onBanChat:
+          _canModerate ? () => _muteViewerFromCard(userId) : null,
+      onKickOut:
+          _canModerate ? () => _kickViewerFromCard(userId) : null,
+      isChatMuted: _chatMutedUsers.contains(userId),
     );
+  }
+
+  /// Toggle a viewer's chat mute from the profile card — same REST API the
+  /// viewer moderation sheet uses, plus a `banChat` socket emit (mute:3/0)
+  /// so every client in the room updates their local muted set via the
+  /// `viewerMuted` broadcast, exactly like the audio room flow.
+  Future<void> _muteViewerFromCard(String userId) async {
+    if (userId.isEmpty) return;
+    final viewer = _viewers.where((e) => e.userId == userId).firstOrNull;
+    final isMuted = _chatMutedUsers.contains(userId);
+    if (!isMuted && viewer?.isAntiMuteEnabled == true) {
+      Fluttertoast.showToast(
+        msg: 'This VIP user is protected from being muted',
+      );
+      return;
+    }
+    setState(() {
+      if (isMuted) {
+        _chatMutedUsers.remove(userId);
+      } else {
+        _chatMutedUsers.add(userId);
+      }
+    });
+    try {
+      final session = context.read<SessionManager>();
+      await ApiService.muteViewerInLive(
+        liveStreamingId: widget.liveUser.liveRoomId ?? '',
+        userId: session.userId,
+        viewerId: userId,
+        mute: !isMuted,
+      );
+    } catch (e) {
+      Log.e(_tag, 'muteViewer failed', e);
+    }
+    SocketService.instance.emit(Const.eventBanChat, {
+      'liveStreamingId': widget.liveUser.liveRoomId,
+      'liveUserMongoId': widget.liveUser.id,
+      'liveUserId': widget.liveUser.userId,
+      'userId': userId,
+      'mute': isMuted ? 0 : 3,
+    });
+    Fluttertoast.showToast(
+      msg: isMuted ? 'User unmuted from chat' : 'User muted from chat',
+    );
+  }
+
+  /// Kick a viewer from the profile card — same flow as the viewer moderation
+  /// sheet (updateBlockedlist + lessView + local removal).
+  void _kickViewerFromCard(String userId) {
+    if (userId.isEmpty) return;
+    final viewer = _viewers.where((e) => e.userId == userId).firstOrNull;
+    if (viewer?.isAntiKickEnabled == true) {
+      Fluttertoast.showToast(
+        msg: 'This VIP user is protected from being kicked',
+      );
+      return;
+    }
+    SocketService.instance.emit(Const.eventUpdateBlockedlist, {
+      'liveStreamingId': widget.liveUser.liveRoomId,
+      'blockedUserId': userId,
+      'type': 'block',
+    });
+    SocketService.instance.emit(Const.eventLessView, {
+      'userId': userId,
+      'liveStreamingId': widget.liveUser.liveRoomId,
+    });
+    setState(() {
+      _viewers.removeWhere((e) => e.userId == userId);
+      _viewerCount = _viewers.length;
+    });
+    _markViewerRemoved(userId);
+    Fluttertoast.showToast(msg: 'User kicked');
   }
 
   /// Bigo/Chamet-style chat bubble — reuse the audio room bubble design
@@ -13675,6 +14732,8 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           c.isSeatRequest && widget.isHost
               ? () => _acceptSeatRequestFromComment(c)
               : null,
+      onAcceptCallInvite:
+          (c.isCallInvite && !_isJoined) ? _acceptCallInvite : null,
       onLongPressName: () => _copyComment(c.text ?? ''),
       onCopy: () => _copyComment(c.text ?? ''),
     );
@@ -13753,6 +14812,8 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       friendLevel: c.friendLevel,
       isSeatRequest: c.isSeatRequest,
       seatRequestUserId: c.seatRequestUserId,
+      isCallInvite: c.isCallInvite,
+      callInviteForUserId: c.callInviteForUserId,
       badgeUrls: c.badgeUrls,
       tagLabels: c.tagLabels,
     );
@@ -14677,6 +15738,8 @@ class _LiveComment {
     this.mentionedUserName,
     this.isSeatRequest = false,
     this.seatRequestUserId,
+    this.isCallInvite = false,
+    this.callInviteForUserId,
     this.badgeUrls = const [],
     this.tagLabels = const [],
   });
@@ -14722,6 +15785,8 @@ class _LiveComment {
   final String? mentionedUserName;
   final bool isSeatRequest;
   final String? seatRequestUserId;
+  final bool isCallInvite;
+  final String? callInviteForUserId;
   final List<String> badgeUrls;
   final List<String> tagLabels;
 }

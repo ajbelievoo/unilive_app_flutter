@@ -190,10 +190,10 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
   bool _isStreaking = false;
   static const Duration _streakInterval = Duration(milliseconds: 500);
 
-  // Lucky gifting mode — gift goes into a lucky draw; the sender can win
-  // back a multiplied diamond reward which is broadcast to the whole room.
-  // DISABLED per Issue #3 & #29 - Lucky Gifting needs backend fixes
-  bool _luckyMode = false; // Always false until backend is fixed
+  /// Lucky draws only run in room contexts (video live, audio room, PK) —
+  /// 1:1 chat/call gifts have no room to broadcast the win to.
+  bool get _supportsLuckyDraw =>
+      widget.type == 'live' || widget.type == 'audio' || widget.type == 'pk';
 
   @override
   void initState() {
@@ -789,7 +789,6 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
               // NOTE: do NOT set a top-level `isLucky` — receivers render
               // `isLucky: true` as a gold "won lucky gift" card; the win
               // card must only come from winLuckyGift/luckyGift broadcasts.
-              if (_luckyMode) 'isLucky': true,
               if (giftCategoryId != null) 'category': giftCategoryId,
               if (giftCategoryName != null) 'categoryName': giftCategoryName,
               if (isExpBoostEnabled) 'isExpBoostEnabled': true,
@@ -914,10 +913,10 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
       );
       if (!mounted) return;
       Navigator.pop(context);
-      // Lucky gifting draw — runs after the sheet closes so the result
-      // dialog appears on top of the room, not behind the sheet.
-      if (_luckyMode) {
-        _runLuckyDraw(baseCoins: _selectedGift!.coin * _count);
+      // Lucky-category gifts enter the win-back draw — runs after the sheet
+      // closes so the result dialog appears on top of the room.
+      if (isLuckyGift && _supportsLuckyDraw) {
+        _runLuckyDraw(baseCoins: totalCost.toInt());
       }
     } catch (e) {
       Log.e(_tag, 'sendGift failed', e);
@@ -927,19 +926,22 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
     }
   }
 
-  /// Lucky gifting draw. Weighted random: 40% win chance. On win the
-  /// multiplied reward is credited locally and broadcast to the room via
-  /// the `luckyGift` socket event so everyone sees the win banner/comment.
-  /// If the backend implements server-side draws it can ignore/override this.
-  void _runLuckyDraw({required int baseCoins}) {
+  /// Lucky gifting win-back draw. Weighted random: 28% win chance. On win
+  /// the multiplied reward is credited locally and broadcast to the room via
+  /// the `winLuckyGift` socket event so everyone sees the win banner/comment.
+  /// `clientDraw`/`drawId` mark client-generated wins so the room handlers
+  /// do not double-credit the sender when the event echoes back.
+  ///
+  /// Bigo/Chamet-style balanced economy: ~9% house edge (EV ≈ 0.91x).
+  void _runLuckyDraw({required int baseCoins, bool silent = false}) {
     final rnd = Random();
     if (baseCoins <= 0) return;
-    final win = rnd.nextDouble() < 0.40;
+    final win = rnd.nextDouble() < 0.28;
     if (!win) {
-      Fluttertoast.showToast(msg: 'Better luck next time!');
+      if (!silent) Fluttertoast.showToast(msg: 'Better luck next time!');
       return;
     }
-    // Weighted multiplier: 2x (50%), 3x (30%), 5x (15%), 10x (5%).
+    // Weighted multiplier: 2x (50%), 3x (30%), 5x (15%), 10x (4%), 20x (1%).
     final roll = rnd.nextDouble();
     final multiplier =
         roll < 0.50
@@ -948,13 +950,17 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
             ? 3
             : roll < 0.95
             ? 5
-            : 10;
+            : roll < 0.99
+            ? 10
+            : 20;
     final winCoins = (baseCoins * multiplier).clamp(0, 1000000);
 
     final session = context.read<SessionManager>();
     final user = session.getUser();
     if (user != null) {
-      session.saveUser(user.copyWith(coin: user.coin + winCoins));
+      final balance = user.coin.toInt() + winCoins;
+      // Backend treats diamond == coin — keep both fields in sync.
+      session.saveUser(user.copyWith(coin: balance, diamond: balance));
     }
 
     // Broadcast the win to the room (banner + gold comment in both video
@@ -966,10 +972,19 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
       'image': VideoUtil.getFullImageUrl(session.userImage),
       'coin': winCoins,
       'multiplier': multiplier,
+      'clientDraw': true,
+      'drawId': 'cd_${session.userId}_${DateTime.now().millisecondsSinceEpoch}',
       'isVIP': user?.isVIP ?? false,
       'vipTier': user?.vipDetails?.tier ?? '',
     });
 
+    if (silent) {
+      // Streak sends can't pop a dialog per roll — toast the win instead.
+      Fluttertoast.showToast(
+        msg: 'Lucky win! +$winCoins diamonds (${multiplier}x)',
+      );
+      return;
+    }
     if (!mounted) return;
     showDialog(
       context: context,
@@ -1220,6 +1235,13 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
       totalCoins: totalCost.toInt(),
       isLucky: isLuckyGift,
     );
+
+    // Lucky-category gifts roll the win-back draw on every send. Silent
+    // mode — a dialog per send would break the streak gesture; wins
+    // surface as a toast and still credit + broadcast.
+    if (isLuckyGift && _supportsLuckyDraw) {
+      _runLuckyDraw(baseCoins: totalCost.toInt(), silent: true);
+    }
 
     setState(() {});
   }
@@ -2084,46 +2106,6 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
               ),
             ),
           if (_selectedGift != null) const SizedBox(width: 10),
-          // Lucky gifting toggle (live/audio rooms only).
-          // DISABLED per Issue #3 & #29 - Lucky Gifting UI Fix
-          // Backend lucky gift logic needs to be fixed before re-enabling
-          // if (widget.type != 'chat')
-          //   GestureDetector(
-          //     onTap: () => setState(() => _luckyMode = !_luckyMode),
-          //     child: Container(
-          //       margin: const EdgeInsets.only(right: 6),
-          //       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          //       decoration: BoxDecoration(
-          //         gradient: _luckyMode
-          //             ? const LinearGradient(colors: [Color(0xFFFFB800), Color(0xFFFF6B00)])
-          //             : null,
-          //         color: _luckyMode ? null : const Color(0xFF0F1621),
-          //         borderRadius: BorderRadius.circular(16),
-          //         border: Border.all(
-          //           color: _luckyMode
-          //               ? const Color(0xFFFFD700)
-          //               : Colors.white.withValues(alpha: 0.15),
-          //         ),
-          //       ),
-          //       child: Row(
-          //         mainAxisSize: MainAxisSize.min,
-          //         children: [
-          //           Icon(Icons.auto_awesome,
-          //               size: 14,
-          //               color: _luckyMode ? Colors.white : const Color(0xFFFFD700)),
-          //           const SizedBox(width: 4),
-          //           Text(
-          //             'Lucky',
-          //             style: TextStyle(
-          //               color: _luckyMode ? Colors.white : const Color(0xFFFFD700),
-          //               fontSize: 12,
-          //               fontWeight: FontWeight.bold,
-          //             ),
-          //           ),
-          //         ],
-          //       ),
-          //     ),
-          //   ),
           // Streak counter badge (visible during continuous send).
           if (_isStreaking && _streakCount > 1)
             Container(

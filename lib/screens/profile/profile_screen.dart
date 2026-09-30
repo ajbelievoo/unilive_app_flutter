@@ -608,8 +608,7 @@ class _Header extends StatelessWidget {
   List<String> _availableMedalUrls(User? u) {
     final urls = <String>[];
     if (u?.vipBadgeUrl?.isNotEmpty == true) urls.add(u!.vipBadgeUrl!);
-    if (u?.hostLevel?.image?.isNotEmpty == true) urls.add(u!.hostLevel!.image!);
-    // User level is a profile badge, not a medal.
+    // User level and host level are profile badges, not medals.
     for (final url in u?.medals ?? <String>[]) {
       if (url.isNotEmpty && !urls.contains(url)) urls.add(url);
     }

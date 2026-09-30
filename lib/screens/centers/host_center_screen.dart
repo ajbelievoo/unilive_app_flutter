@@ -8,19 +8,23 @@
 /// - Top creators ranking
 library centers;
 
+import 'dart:math' show max;
+
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/json_annotation_helper.dart';
+import '../../models/setting_root.dart';
 import '../../routes/app_routes.dart';
 import '../../services/api_service.dart';
 import '../../services/host_features_service.dart';
 import '../../services/session_manager.dart';
 import '../../theme/app_theme.dart';
-import '../../utils/format_utils.dart' show formatCount;
+import '../../utils/format_utils.dart' show formatCount, diamondsToBeans;
 import '../../utils/log.dart';
+import '../../widgets/currency_icon.dart';
 import '../../widgets/premium_ui.dart';
 import '../../widgets/user_avatar.dart';
 
@@ -53,7 +57,7 @@ class _HostCenterScreenState extends State<HostCenterScreen>
   @override
   void initState() {
     super.initState();
-    _tabCtrl = TabController(length: 4, vsync: this);
+    _tabCtrl = TabController(length: 5, vsync: this);
     _loadAll();
   }
 
@@ -74,18 +78,33 @@ class _HostCenterScreenState extends State<HostCenterScreen>
     });
 
     try {
+      // Core host data must load; other endpoints are best-effort and fall
+      // back to the on-device cache so the Host Center is never blank when
+      // the backend's live-history endpoints are not yet storing data.
       final results = await Future.wait([
         ApiService.getHostProfile(hostId),
         ApiService.getHostSettlement(hostId),
         ApiService.getHostTasks(hostId),
-        ApiService.getHostLiveHistory(hostId: hostId, month: month),
-        ApiService.getHostLiveHistoryToday(hostId),
       ]);
       _profile = results[0];
       _settlement = results[1];
       _tasks = results[2];
-      _liveHistory = results[3];
-      _todayLive = results[4];
+
+      _liveHistory = {};
+      _todayLive = {};
+      try {
+        _liveHistory = await ApiService.getHostLiveHistory(
+          hostId: hostId,
+          month: month,
+        );
+      } catch (e, s) {
+        Log.e(_tag, 'getHostLiveHistory failed, using cache fallback', e, s);
+      }
+      try {
+        _todayLive = await ApiService.getHostLiveHistoryToday(hostId);
+      } catch (e, s) {
+        Log.e(_tag, 'getHostLiveHistoryToday failed, using cache fallback', e, s);
+      }
 
       // Task reward history is non-critical: load it separately so the rest
       // of the Host Center still works if this endpoint is unavailable.
@@ -96,7 +115,7 @@ class _HostCenterScreenState extends State<HostCenterScreen>
         _taskRewardHistory = {};
       }
 
-      await _normalizeHostData(hostId);
+      await _normalizeHostData(hostId, session.getSetting());
       // Check if user is a host
       final data = _profile?['data'] as Map<String, dynamic>? ?? _profile;
       _isHost = data != null && parseBool(data['isHost']);
@@ -108,72 +127,277 @@ class _HostCenterScreenState extends State<HostCenterScreen>
     }
   }
 
-  /// Normalize `data` fields that may arrive as a Map or a List, and fall back
-  /// to the local on-device cache when the backend endpoints are empty.
-  Future<void> _normalizeHostData(String hostId) async {
-    // Make sure today history has a List `data` entry.
+  /// Normalize `data` fields that may arrive as a Map or a List, and merge
+  /// them with the real-time on-device cache so the host dashboard, task
+  /// progress and live history always reflect the current broadcast even when
+  /// the backend endpoints are empty or lag behind.
+  Future<void> _normalizeHostData(String hostId, Setting? setting) async {
+    final today = DateTime.now().toIso8601String().split('T').first;
+
+    // --- Today history -------------------------------------------------------
     _todayLive ??= {};
     final todayRaw = _todayLive!['data'];
     if (todayRaw is Map) {
       _todayLive!['data'] = [todayRaw];
-    }
-    final todayList = _todayLive!['data'] as List? ?? [];
-    final first = todayList.isNotEmpty ? todayList.first as Map<String, dynamic>? : null;
-    final cacheFallback = first == null ||
-        ((first['audioDuration'] ?? 0) == 0 &&
-            (first['videoDuration'] ?? 0) == 0 &&
-            (first['todayEarning'] ?? 0) == 0);
-    if (cacheFallback) {
-      try {
-        final cache = await HostLiveCache.getTodayProgress(hostId);
-        _todayLive!['data'] = [
-          if (first != null) {...first, ...cache} else cache,
-        ];
-      } catch (e) {
-        Log.e(_tag, 'today cache fallback failed', e);
-      }
+    } else if (todayRaw == null || todayRaw is! List) {
+      _todayLive!['data'] = <dynamic>[];
     }
 
-    // Same for monthly live history — keep it as a List.
+    // --- Monthly live history ------------------------------------------------
     _liveHistory ??= {};
     final historyRaw = _liveHistory!['data'];
     if (historyRaw is Map) {
       _liveHistory!['data'] = [historyRaw];
-    } else if (historyRaw == null) {
-      _liveHistory!['data'] = [];
+    } else if (historyRaw == null || historyRaw is! List) {
+      _liveHistory!['data'] = <dynamic>[];
     }
 
-    // Normalize task reward history the same way.
+    // --- Task reward history -------------------------------------------------
     _taskRewardHistory ??= {};
     final taskHistoryRaw = _taskRewardHistory!['data'];
     if (taskHistoryRaw is Map) {
       _taskRewardHistory!['data'] = [taskHistoryRaw];
-    } else if (taskHistoryRaw == null) {
-      _taskRewardHistory!['data'] = [];
+    } else if (taskHistoryRaw == null || taskHistoryRaw is! List) {
+      _taskRewardHistory!['data'] = <dynamic>[];
     }
 
-    // If live history is empty but the cache has data, show a synthetic session.
-    final historyList = _liveHistory!['data'] as List? ?? [];
-    if (historyList.isEmpty) {
-      try {
-        final cache = await HostLiveCache.getTodayProgress(hostId);
-        final hasProgress = (cache['audioDuration'] ?? 0) > 0 ||
-            (cache['videoDuration'] ?? 0) > 0 ||
-            (cache['todayEarning'] ?? 0) > 0;
-        if (hasProgress) {
-          _liveHistory!['data'] = [{
-            'type': (cache['videoDuration'] ?? 0) > (cache['audioDuration'] ?? 0) ? 'video' : 'audio',
-            'totalMinutes': cache['totalMinutes'],
-            'duration': cache['totalMinutes'],
-            'coin': cache['todayEarning'],
-            'rCoin': cache['todayEarning'],
-            'date': DateTime.now().toIso8601String(),
-          }];
-        }
-      } catch (e) {
-        Log.e(_tag, 'history cache fallback failed', e);
+    // --- Merge on-device cache -----------------------------------------------
+    try {
+      final cache = await HostLiveCache.getTodayProgress(hostId);
+      final cacheAudioMin = parseInt(cache['audioDuration']);
+      final cacheVideoMin = parseInt(cache['videoDuration']);
+      final cacheEarningDiamonds = parseInt(cache['todayEarning']);
+      final cacheEarningBeans = diamondsToBeans(cacheEarningDiamonds, setting);
+      final cacheAudioEarnBeans =
+          diamondsToBeans(parseInt(cache['audioEarning']), setting);
+      final cacheVideoEarnBeans =
+          diamondsToBeans(parseInt(cache['videoEarning']), setting);
+      final cacheTotalMin = parseInt(cache['totalMinutes']);
+
+      // Update the Today history entry.
+      final todayList = _todayLive!['data'] as List;
+      Map<String, dynamic> todayEntry;
+      if (todayList.isEmpty) {
+        todayEntry = <String, dynamic>{'date': DateTime.now().toIso8601String()};
+        todayList.add(todayEntry);
+      } else if (todayList.first is Map) {
+        todayEntry = Map<String, dynamic>.from(todayList.first as Map);
+        todayList[0] = todayEntry;
+      } else {
+        todayEntry = <String, dynamic>{'date': DateTime.now().toIso8601String()};
+        todayList.insert(0, todayEntry);
       }
+
+      final backendAudio = parseInt(todayEntry['audioDuration']);
+      final backendVideo = parseInt(todayEntry['videoDuration']);
+      final backendTotal = parseInt(todayEntry['totalMinutes']);
+      final backendEarning = _firstHostEarning(todayEntry, setting: setting);
+
+      todayEntry['audioDuration'] = max(backendAudio, cacheAudioMin);
+      todayEntry['videoDuration'] = max(backendVideo, cacheVideoMin);
+      todayEntry['totalMinutes'] = max(
+        backendTotal,
+        max(cacheTotalMin, cacheAudioMin + cacheVideoMin),
+      );
+      todayEntry['todayEarning'] = max(backendEarning, cacheEarningBeans);
+      todayEntry['coin'] = todayEntry['todayEarning'];
+      todayEntry['rCoin'] = todayEntry['todayEarning'];
+      // Per-type earnings so an "Audio Live Task" never counts gifts received
+      // during a video live and vice-versa.
+      todayEntry['audioEarning'] = max(
+        _typedEarning(todayEntry, 'audio', setting: setting),
+        cacheAudioEarnBeans,
+      );
+      todayEntry['videoEarning'] = max(
+        _typedEarning(todayEntry, 'video', setting: setting),
+        cacheVideoEarnBeans,
+      );
+
+      // Update any live-history entries dated today; if none, append one.
+      final historyList = _liveHistory!['data'] as List;
+      bool foundToday = false;
+      int backendAudioEarn = 0;
+      int backendVideoEarn = 0;
+      for (int i = 0; i < historyList.length; i++) {
+        final raw = historyList[i];
+        if (raw is! Map) continue;
+        final entry = Map<String, dynamic>.from(raw);
+        final dateStr = parseString(
+              entry['date'] ??
+                  entry['createdAt'] ??
+                  entry['startTime'] ??
+                  entry['liveDate'],
+            ) ??
+            '';
+        if (_dateKey(dateStr) != today) continue;
+        foundToday = true;
+
+        final hAudio = parseInt(entry['audioDuration']);
+        final hVideo = parseInt(entry['videoDuration']);
+        final hTotal = parseInt(
+          entry['totalMinutes'] ??
+              entry['duration'] ??
+              entry['minutes'] ??
+              0,
+        );
+        final hEarning = _firstHostEarning(entry, setting: setting);
+        final rawType = parseString(entry['type']) ?? '';
+        final isAudioRow = rawType == 'audio';
+        final isVideoRow = rawType == 'video';
+        final isTypedRow = isAudioRow || isVideoRow;
+        final type = isTypedRow
+            ? rawType
+            : (cacheVideoMin > cacheAudioMin ? 'video' : 'audio');
+
+        // Per-type merge: a typed row only absorbs the matching cache bucket.
+        // Previously every today row got combined audio+video minutes and
+        // combined earnings stamped on it, so video progress leaked onto
+        // "Audio Live" rows and vice-versa.
+        final newAudio = max(
+          hAudio,
+          (isAudioRow || !isTypedRow) ? cacheAudioMin : 0,
+        );
+        final newVideo = max(
+          hVideo,
+          (isVideoRow || !isTypedRow) ? cacheVideoMin : 0,
+        );
+        final newEarning = isTypedRow
+            ? max(
+                hEarning,
+                isAudioRow ? cacheAudioEarnBeans : cacheVideoEarnBeans,
+              )
+            : max(hEarning, cacheEarningBeans);
+        final newTotal = isTypedRow
+            ? max(hTotal, isAudioRow ? newAudio : newVideo)
+            : max(hTotal, max(cacheTotalMin, newAudio + newVideo));
+
+        // Track the backend's own per-type earnings (before cache merge) so
+        // the today summary can expose accurate per-type progress.
+        if (isAudioRow) backendAudioEarn = max(backendAudioEarn, hEarning);
+        if (isVideoRow) backendVideoEarn = max(backendVideoEarn, hEarning);
+
+        entry['type'] = type;
+        entry['audioDuration'] = newAudio;
+        entry['videoDuration'] = newVideo;
+        entry['totalMinutes'] = newTotal;
+        entry['duration'] = newTotal;
+        entry['todayEarning'] = newEarning;
+        entry['coin'] = newEarning;
+        entry['rCoin'] = newEarning;
+        if (dateStr.isEmpty) {
+          entry['date'] = DateTime.now().toIso8601String();
+        }
+        historyList[i] = entry;
+      }
+
+      if (!foundToday) {
+        final hasProgress = cacheAudioMin > 0 ||
+            cacheVideoMin > 0 ||
+            cacheEarningBeans > 0;
+        if (hasProgress) {
+          historyList.insert(0, {
+            'type': cacheVideoMin > cacheAudioMin ? 'video' : 'audio',
+            'audioDuration': cacheAudioMin,
+            'videoDuration': cacheVideoMin,
+            'audioEarning': cacheAudioEarnBeans,
+            'videoEarning': cacheVideoEarnBeans,
+            'totalMinutes': cacheTotalMin > 0
+                ? cacheTotalMin
+                : (cacheAudioMin + cacheVideoMin),
+            'duration': cacheTotalMin > 0
+                ? cacheTotalMin
+                : (cacheAudioMin + cacheVideoMin),
+            'todayEarning': cacheEarningBeans,
+            'coin': cacheEarningBeans,
+            'rCoin': cacheEarningBeans,
+            'date': DateTime.now().toIso8601String(),
+          });
+        }
+      }
+
+      // Fold the backend's own per-type row earnings into the today entry so
+      // task progress reflects what the server actually recorded per type.
+      todayEntry['audioEarning'] = max(
+        parseInt(todayEntry['audioEarning']),
+        backendAudioEarn,
+      );
+      todayEntry['videoEarning'] = max(
+        parseInt(todayEntry['videoEarning']),
+        backendVideoEarn,
+      );
+    } catch (e, s) {
+      Log.e(_tag, 'normalize host data cache merge failed', e, s);
     }
+  }
+
+  /// Read a per-type earning (audio/video) from a backend map. Bean-style
+  /// keys are returned raw; coin/diamond-style keys are converted to Beans.
+  int _typedEarning(
+    Map<String, dynamic> data,
+    String type, {
+    Setting? setting,
+  }) {
+    for (final key in [
+      '${type}Earning',
+      '${type}Rcoin',
+      '${type}RCoin',
+      '${type}Beans',
+    ]) {
+      final value = data[key];
+      if (value == null) continue;
+      if (value is num) return value.toInt();
+      final parsed = int.tryParse(value.toString());
+      if (parsed != null) return parsed;
+    }
+    for (final key in ['${type}Coin', '${type}Coins', '${type}Diamonds']) {
+      final value = data[key];
+      if (value == null) continue;
+      final parsed =
+          value is num ? value.toInt() : int.tryParse(value.toString());
+      if (parsed != null) return diamondsToBeans(parsed, setting);
+    }
+    return 0;
+  }
+
+  /// Extract the first earning value from a backend map, preferring beans.
+  /// If only diamond-style keys are present, convert them to beans using the
+  /// admin `diamondToRcoin` config.
+  int _firstHostEarning(Map<String, dynamic> data, {Setting? setting}) {
+    for (final key in const [
+      'todayEarning',
+      'rCoin',
+      'rcoin',
+      'todayRcoin',
+      'todayRCoin',
+    ]) {
+      final value = data[key];
+      if (value == null) continue;
+      if (value is num) return value.toInt();
+      final parsed = int.tryParse(value.toString());
+      if (parsed != null) return parsed;
+    }
+    for (final key in const [
+      'coin',
+      'coins',
+      'todayCoins',
+      'todayCoin',
+      'totalEarning',
+      'totalRcoin',
+    ]) {
+      final value = data[key];
+      if (value == null) continue;
+      final parsed = value is num ? value.toInt() : int.tryParse(value.toString());
+      if (parsed != null) return diamondsToBeans(parsed, setting);
+    }
+    return 0;
+  }
+
+  /// Returns the yyyy-MM-dd portion of an ISO-ish date string.
+  String _dateKey(String dateStr) {
+    if (dateStr.isEmpty) return '';
+    final split = dateStr.split('T');
+    if (split.isNotEmpty) return split.first;
+    return dateStr.length >= 10 ? dateStr.substring(0, 10) : dateStr;
   }
 
   @override
@@ -207,14 +431,13 @@ class _HostCenterScreenState extends State<HostCenterScreen>
                 ),
               )
             else ...[
-              _buildStatsRow(),
-              const SizedBox(height: 12),
               _buildTabBar(),
               const SizedBox(height: 8),
               Expanded(
                 child: TabBarView(
                   controller: _tabCtrl,
                   children: [
+                    _buildAnalyticsTab(),
                     _buildDashboardTab(),
                     _buildLiveHistoryTab(),
                     _buildSettlementTab(),
@@ -267,7 +490,7 @@ class _HostCenterScreenState extends State<HostCenterScreen>
     );
   }
 
-  Widget _buildStatsRow() {
+  Widget _buildAnalyticsTab() {
     final data = _profile?['data'] as Map<String, dynamic>? ?? {};
     // hostLevel can be a string ID or an object — handle both
     String hostLevelText;
@@ -280,29 +503,154 @@ class _HostCenterScreenState extends State<HostCenterScreen>
       hostLevelText = 'N/A';
     }
     final rCoin = parseInt(data['rCoin'] ?? 0);
+
     final todayData = _todayLive?['data'] as List? ?? [];
-    final todayMinutes = todayData.fold<int>(0, (sum, item) {
+    final todayAudio = todayData.fold<int>(0, (sum, item) {
+      if (item is! Map) return sum;
       final d = item as Map<String, dynamic>;
-      return sum + parseInt(d['totalMinutes'] ?? d['duration'] ?? 0);
+      return sum + parseInt(d['audioDuration'] ?? 0);
+    });
+    final todayVideo = todayData.fold<int>(0, (sum, item) {
+      if (item is! Map) return sum;
+      final d = item as Map<String, dynamic>;
+      return sum + parseInt(d['videoDuration'] ?? 0);
+    });
+    final todayMinutes = todayAudio + todayVideo;
+
+    final setting = context.read<SessionManager>().getSetting();
+    final todayEarning = todayData.fold<int>(0, (sum, item) {
+      if (item is! Map) return sum;
+      final d = item as Map<String, dynamic>;
+      return sum + _firstHostEarning(d, setting: setting);
     });
 
+    final weekly = _historyTotals(maxDaysAgo: 6);
+    final monthly = _historyTotals(maxDaysAgo: 30);
+
+    final cardWidth = (MediaQuery.of(context).size.width - 64) / 3;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      child: Row(children: [
-        _statCard('Beans', formatCount(rCoin),
-            Icons.grain, const [Color(0xFFFFB800), Color(0xFFFF9500)]),
-        const SizedBox(width: 12),
-        _statCard('Today Live', '${todayMinutes}m',
-            Icons.schedule, const [Color(0xFF4F8DFD), Color(0xFF3B7BFF)]),
-        const SizedBox(width: 12),
-        _statCard(
-            'Host Level',
-            hostLevelText,
-            Icons.star,
-            const [Color(0xFFE0A800), Color(0xFFC88800)],
-            onTap: () => context.pushNamed(AppRoutes.hostLevelList)),
-      ]),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Host Analytics',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Live time, earnings & host activity at a glance',
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.6),
+              fontSize: 12,
+            ),
+          ),
+          const SizedBox(height: 20),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: [
+              _statCard(
+                'Beans',
+                formatCount(rCoin),
+                Icons.grain,
+                const [Color(0xFFFFB800), Color(0xFFFF9500)],
+                width: cardWidth,
+              ),
+              _statCard(
+                'Today Live',
+                '${todayMinutes}m',
+                Icons.schedule,
+                const [Color(0xFF4F8DFD), Color(0xFF3B7BFF)],
+                width: cardWidth,
+              ),
+              _statCard(
+                'Today Earnings',
+                formatCount(todayEarning),
+                Icons.account_balance_wallet,
+                const [Color(0xFF00BFA5), Color(0xFF00897B)],
+                width: cardWidth,
+              ),
+              _statCard(
+                'Audio Today',
+                '${todayAudio}m',
+                Icons.mic,
+                const [Color(0xFF6A5AE0), Color(0xFF4A3FB8)],
+                width: cardWidth,
+              ),
+              _statCard(
+                'Video Today',
+                '${todayVideo}m',
+                Icons.videocam,
+                const [Color(0xFFFF6B9D), Color(0xFFFF4B7A)],
+                width: cardWidth,
+              ),
+              _statCard(
+                'Weekly',
+                '${weekly.total}m',
+                Icons.calendar_view_week,
+                const [Color(0xFF00C9A7), Color(0xFF00A18B)],
+                width: cardWidth,
+              ),
+              _statCard(
+                'Monthly',
+                '${monthly.total}m',
+                Icons.calendar_today,
+                const [Color(0xFF9C27B0), Color(0xFF7B1FA2)],
+                width: cardWidth,
+              ),
+              _statCard(
+                'Host Level',
+                hostLevelText,
+                Icons.star,
+                const [Color(0xFFE0A800), Color(0xFFC88800)],
+                width: cardWidth,
+                onTap: () => context.pushNamed(AppRoutes.hostLevelList),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
+  }
+
+  /// Sum total / audio / video minutes from the loaded live history.
+  /// If [maxDaysAgo] is null, sums the whole month; otherwise sums the last
+  /// N days (e.g. 6 for weekly, 30 for monthly).
+  ({int total, int audio, int video}) _historyTotals({int? maxDaysAgo}) {
+    final liveData = _liveHistory?['data'] as List? ?? [];
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    int total = 0;
+    int audio = 0;
+    int video = 0;
+    for (final raw in liveData) {
+      if (raw is! Map) continue;
+      final d = Map<String, dynamic>.from(raw);
+      final dateStr = parseString(
+            d['date'] ??
+                d['createdAt'] ??
+                d['startTime'] ??
+                d['liveDate'],
+          ) ??
+          '';
+      final date = DateTime.tryParse(dateStr);
+      if (date == null) continue;
+      final day = DateTime(date.year, date.month, date.day);
+      final daysAgo = today.difference(day).inDays;
+      if (daysAgo < 0) continue;
+      if (maxDaysAgo != null && daysAgo > maxDaysAgo) continue;
+      total += parseInt(d['totalMinutes'] ?? d['duration'] ?? d['minutes'] ?? 0);
+      audio += parseInt(d['audioDuration']);
+      video += parseInt(d['videoDuration']);
+    }
+    return (total: total, audio: audio, video: video);
   }
 
   Widget _statCard(
@@ -310,40 +658,100 @@ class _HostCenterScreenState extends State<HostCenterScreen>
     String value,
     IconData icon,
     List<Color> gradient, {
+    double? width,
+    String? subLabel,
     VoidCallback? onTap,
   }) {
-    Widget card = Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: gradient),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: gradient[0].withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4))],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: Colors.white, size: 20),
-          const SizedBox(height: 8),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 2),
-          Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.8), fontSize: 11)),
-        ],
+    Widget card = SizedBox(
+      width: width ?? 96,
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              gradient[0].withValues(alpha: 0.12),
+              gradient[1].withValues(alpha: 0.05),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.10),
+              blurRadius: 10,
+              offset: const Offset(0, 4),
+              spreadRadius: -2,
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(5),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: Colors.white, size: 14),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              value,
+              style: const TextStyle(
+                color: Colors.white,
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+                letterSpacing: -0.5,
+              ),
+            ),
+            if (subLabel?.isNotEmpty == true) ...[
+              const SizedBox(height: 2),
+              Text(
+                subLabel!,
+                style: TextStyle(
+                  color: Colors.white.withValues(alpha: 0.80),
+                  fontSize: 8,
+                  fontWeight: FontWeight.w500,
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ],
+            const SizedBox(height: 2),
+            Text(
+              label,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.65),
+                fontSize: 9,
+                fontWeight: FontWeight.w500,
+              ),
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+            ),
+          ],
+        ),
       ),
     );
     if (onTap != null) {
       card = GestureDetector(onTap: onTap, child: card);
     }
-    return Expanded(child: card);
+    return card;
   }
 
   Widget _buildTabBar() {
     return TabBar(
       controller: _tabCtrl,
+      isScrollable: true,
       indicatorColor: AppTheme.primary,
       labelColor: Colors.white,
       unselectedLabelColor: Colors.white54,
-      labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+      labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
       tabs: const [
+        Tab(text: 'Analytics'),
         Tab(text: 'Dashboard'),
         Tab(text: 'Live History'),
         Tab(text: 'Payouts'),
@@ -720,22 +1128,40 @@ class _HostCenterScreenState extends State<HostCenterScreen>
     // Get today's progress from _todayLive
     final todayData = _todayLive?['data'] as List? ?? [];
     final today = todayData.isNotEmpty ? todayData[0] as Map<String, dynamic> : <String, dynamic>{};
-    final completedTime = _firstInt(today, type == 'audio'
-        ? const ['audioDuration', 'audioMinutes', 'audioTime', 'duration', 'totalMinutes', 'minutes']
-        : const ['videoDuration', 'videoMinutes', 'videoTime', 'duration', 'totalMinutes', 'minutes']);
-    final todayEarning = _firstInt(today, const [
-      'todayEarning',
-      'todayEarnings',
-      'earning',
-      'earnings',
-      'coin',
-      'coins',
-      'rCoin',
-      'todayRcoin',
-      'todayRCoin',
-      'totalEarning',
-      'totalEarnings',
-    ]);
+    final isAudioTask = type == 'audio';
+    final isVideoTask = type == 'video';
+    // Typed tasks only read their own type's minutes — a video live's minutes
+    // must never count towards an audio task (and vice-versa).
+    final completedTime = _firstInt(
+      today,
+      isAudioTask
+          ? const ['audioDuration', 'audioMinutes', 'audioTime']
+          : isVideoTask
+              ? const ['videoDuration', 'videoMinutes', 'videoTime']
+              : const ['duration', 'totalMinutes', 'minutes'],
+    );
+    // Same for earnings: typed tasks read the per-type earning fields the
+    // cache/backend provide, not the combined daily total.
+    final todayEarning = _firstInt(
+      today,
+      isAudioTask
+          ? const ['audioEarning', 'audioRcoin', 'audioRCoin', 'audioCoin']
+          : isVideoTask
+              ? const ['videoEarning', 'videoRcoin', 'videoRCoin', 'videoCoin']
+              : const [
+                  'todayEarning',
+                  'todayEarnings',
+                  'earning',
+                  'earnings',
+                  'coin',
+                  'coins',
+                  'rCoin',
+                  'todayRcoin',
+                  'todayRCoin',
+                  'totalEarning',
+                  'totalEarnings',
+                ],
+    );
 
     // Prefer the backend's completion flag when provided. When the backend
     // doesn't yet mark the task complete, still let the user try to claim —
@@ -747,10 +1173,15 @@ class _HostCenterScreenState extends State<HostCenterScreen>
     final coinDone = todayEarning >= coinRequired;
     final canClaim = (backendCompleted == true || (timeDone && coinDone)) && !isClaimed;
 
-    // Progress percentage
+    // Progress percentage — only average the dimensions the task actually has,
+    // otherwise a time-only task at 5/70 min shows a misleading 50%.
     final timeProgress = timeRequired > 0 ? (completedTime / timeRequired).clamp(0.0, 1.0) : 1.0;
     final coinProgress = coinRequired > 0 ? (todayEarning / coinRequired).clamp(0.0, 1.0) : 1.0;
-    final overallProgress = (timeProgress + coinProgress) / 2;
+    final overallProgress = timeRequired > 0 && coinRequired > 0
+        ? (timeProgress + coinProgress) / 2
+        : timeRequired > 0
+            ? timeProgress
+            : coinProgress;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
@@ -792,7 +1223,7 @@ class _HostCenterScreenState extends State<HostCenterScreen>
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.diamond, color: Colors.white, size: 14),
+                const CurrencyIcon(CurrencyType.bean, size: 14),
                 const SizedBox(width: 4),
                 Text(formatCount(coinsRewarded),
                     style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
@@ -828,7 +1259,7 @@ class _HostCenterScreenState extends State<HostCenterScreen>
               ),
             )
           else if (canClaim)
-            _claimButton(taskId)
+            _claimButton(taskId, type)
           else
             Container(
               width: double.infinity,
@@ -856,7 +1287,24 @@ class _HostCenterScreenState extends State<HostCenterScreen>
     final description = h['description']?.toString() ?? '';
     final timeTarget = parseInt(h['timeRequired'] ?? h['target'] ?? h['duration'] ?? 0);
     final coinTarget = parseInt(h['coinRequired'] ?? 0);
-    final coinsRewarded = parseInt(h['coinsRewarded'] ?? h['rewardCoins'] ?? h['coin'] ?? 0);
+    // Backend reward-history docs have used several names for the credited
+    // amount — read all of them so the tile never falls back to 0.
+    final coinsRewarded = _firstInt(h, const [
+      'coinsRewarded',
+      'rewardCoins',
+      'rewardCoin',
+      'reward',
+      'rewardAmount',
+      'amount',
+      'rCoin',
+      'rcoin',
+      'beans',
+      'coin',
+      'coins',
+      'earned',
+      'rewardValue',
+      'value',
+    ]);
     final isClaimed = parseBool(h['isClaimed'] ?? h['claimed']);
     final completedAt = h['claimedAt']?.toString() ??
         h['completedAt']?.toString() ??
@@ -925,7 +1373,15 @@ class _HostCenterScreenState extends State<HostCenterScreen>
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Row(mainAxisSize: MainAxisSize.min, children: [
-                const Icon(Icons.diamond, color: Colors.white, size: 14),
+                CurrencyIcon(
+                  // Older claims were credited in Diamonds; backend exposes
+                  // `rewardCurrency` so the icon matches what was paid.
+                  (h['rewardCurrency'] ?? h['currency'])?.toString() ==
+                          'diamond'
+                      ? CurrencyType.diamond
+                      : CurrencyType.bean,
+                  size: 14,
+                ),
                 const SizedBox(width: 4),
                 Text(formatCount(coinsRewarded),
                     style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
@@ -976,12 +1432,12 @@ class _HostCenterScreenState extends State<HostCenterScreen>
     );
   }
 
-  Widget _claimButton(String taskId) {
+  Widget _claimButton(String taskId, String type) {
     return Builder(builder: (context) {
       return SizedBox(
         width: double.infinity,
         child: ElevatedButton.icon(
-          onPressed: () => _claimTask(taskId),
+          onPressed: () => _claimTask(taskId, type),
           icon: const ImageIcon(const AssetImage("assets/gift/official_gift.png"), size: 18),
           label: const Text('Claim Reward', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
           style: ElevatedButton.styleFrom(
@@ -995,8 +1451,30 @@ class _HostCenterScreenState extends State<HostCenterScreen>
     });
   }
 
+  /// Find a liveStreamingId from a session of the given live type, so the
+  /// backend can validate the claim against the right history record.
+  String? _liveIdForType(String type) {
+    if (type != 'audio' && type != 'video') return null;
+    for (final source in [_todayLive?['data'], _liveHistory?['data']]) {
+      final entries =
+          source is List ? source : (source is Map ? [source] : const []);
+      for (final entry in entries) {
+        if (entry is! Map) continue;
+        if (entry['type']?.toString() != type) continue;
+        final id = parseString(
+          entry['liveStreamingId'] ??
+              entry['liveId'] ??
+              entry['streamId'] ??
+              entry['_id'],
+        );
+        if (id != null && id.isNotEmpty) return id;
+      }
+    }
+    return null;
+  }
+
   Future<void> _syncLiveHistoryBeforeClaim(String hostId) async {
-    final ids = <String>{};
+    final ids = <String, String>{};
     for (final source in [_todayLive?['data'], _liveHistory?['data']]) {
       final entries = source is List ? source : (source is Map ? [source] : const []);
       for (final entry in entries.take(10)) {
@@ -1010,19 +1488,23 @@ class _HostCenterScreenState extends State<HostCenterScreen>
               '',
             ) ??
             '';
-        if (id.isNotEmpty) ids.add(id);
+        if (id.isNotEmpty) ids[id] = parseString(entry['type']) ?? '';
       }
     }
     await Future.wait(
-      ids.map((id) async {
+      ids.entries.map((e) async {
         try {
-          await ApiService.updateLiveTime(hostId, id);
+          await ApiService.updateLiveTime(
+            hostId,
+            e.key,
+            liveType: e.value.isNotEmpty ? e.value : null,
+          );
         } catch (_) {}
       }),
     );
   }
 
-  Future<void> _claimTask(String taskId) async {
+  Future<void> _claimTask(String taskId, String taskType) async {
     final session = context.read<SessionManager>();
     try {
       await _syncLiveHistoryBeforeClaim(session.userId);
@@ -1034,15 +1516,26 @@ class _HostCenterScreenState extends State<HostCenterScreen>
       final videoDuration = parseInt(today['videoDuration'] ?? today['videoMinutes'] ?? today['videoTime'] ?? 0);
       final audioDuration = parseInt(today['audioDuration'] ?? today['audioMinutes'] ?? today['audioTime'] ?? 0);
       final earning = parseInt(today['todayEarning'] ?? today['earning'] ?? today['coin'] ?? today['rCoin'] ?? 0);
-      final liveId = parseString(today['liveStreamingId'] ?? today['liveId'] ?? today['streamId'] ?? today['_id']);
+      // The backend validates a typed task against that live type's own
+      // earning, so send the type-scoped value (e.g. audioEarning for an
+      // Audio Live Task) — not the combined daily total.
+      final typedEarning = taskType == 'audio'
+          ? parseInt(today['audioEarning'] ?? today['audioRcoin'] ?? 0)
+          : taskType == 'video'
+              ? parseInt(today['videoEarning'] ?? today['videoRcoin'] ?? 0)
+              : earning;
+      final liveId = _liveIdForType(taskType) ??
+          parseString(today['liveStreamingId'] ?? today['liveId'] ?? today['streamId'] ?? today['_id']);
       final res = await ApiService.claimTaskReward(
         hostId: session.userId,
         taskId: taskId,
         liveStreamingId: liveId,
         videoDuration: videoDuration > 0 ? videoDuration : null,
         audioDuration: audioDuration > 0 ? audioDuration : null,
-        rCoin: earning > 0 ? earning : null,
-        coin: earning > 0 ? earning : null,
+        rCoin: typedEarning > 0 ? typedEarning : null,
+        coin: typedEarning > 0 ? typedEarning : null,
+        liveType: taskType == 'audio' || taskType == 'video' ? taskType : null,
+        totalEarning: earning > 0 ? earning : null,
       );
       final data = res['data'] is Map ? Map<String, dynamic>.from(res['data'] as Map) : res;
       final ok = parseBool(res['status']) ||

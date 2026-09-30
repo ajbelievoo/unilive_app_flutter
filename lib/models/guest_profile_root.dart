@@ -326,7 +326,9 @@ class GuestUser {
       isFake: parseBool(json['isFake']),
       isLiked: parseBool(json['isLiked']),
       isVipProtected: parseBool(json['isVipProtected']),
-      isOnline: parseBool(json['isOnline']),
+      isOnline: parseBool(
+        json['isOnline'] ?? json['is_online'] ?? json['online'],
+      ),
       liveType: parseInt(json['liveType'], 0),
       averageRating: parseDouble(json['averageRating']),
       totalRatings: parseInt(json['totalRatings'], 0),

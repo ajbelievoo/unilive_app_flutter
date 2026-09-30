@@ -685,7 +685,10 @@ class _BadgeRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final badges = <Widget>[];
-    final levelStr = entry.level ?? '';
+    final rawLevel = entry.level ?? '';
+    final levelStr = rawLevel
+        .replaceFirst(RegExp(r'^\s*(level|lv\.?)\s*', caseSensitive: false), '')
+        .trim();
     if (levelStr.isNotEmpty) {
       badges.add(
         Container(

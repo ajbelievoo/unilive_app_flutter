@@ -359,7 +359,8 @@ class _SearchScreenState extends State<SearchScreen>
   }
 
   String _levelNumber(FollowUser u) {
-    final levelName = u.level?.name ?? u.hostLevel?.name ?? '';
+    // Only the user level counts — host level is not a level badge.
+    final levelName = u.level?.name ?? '';
     return levelName.replaceAll(RegExp(r'[^0-9]'), '');
   }
 

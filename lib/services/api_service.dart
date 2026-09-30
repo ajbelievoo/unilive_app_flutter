@@ -2543,12 +2543,14 @@ class ApiService {
     String userId,
     String liveStreamingId, {
     int? seconds,
+    String? liveType,
   }) async {
     final query = <String, dynamic>{
       'userId': userId,
       'liveStreamingId': liveStreamingId,
     };
     if (seconds != null) query['time'] = seconds;
+    if (liveType != null && liveType.isNotEmpty) query['liveType'] = liveType;
     try {
       final r = await _dio.post(
         '/liveUser/updateLiveTime',
@@ -2557,6 +2559,10 @@ class ApiService {
           'userId': userId,
           'liveUserId': userId,
           'liveStreamingId': liveStreamingId,
+          if (liveType != null && liveType.isNotEmpty) ...{
+            'liveType': liveType,
+            'roomType': liveType,
+          },
           if (seconds != null) ...{
             'time': seconds,
             'duration': seconds,
@@ -2575,6 +2581,10 @@ class ApiService {
         'liveStreamingId': liveStreamingId,
         'isLiveUpdate': 'true',
         'heartbeat': 'true',
+        if (liveType != null && liveType.isNotEmpty) ...{
+          'liveType': liveType,
+          'roomType': liveType,
+        },
         if (seconds != null) ...{
           'time': seconds.toString(),
           'duration': seconds.toString(),
@@ -2959,6 +2969,12 @@ class ApiService {
   }
 
   /// Claim task reward for a completed task.
+  ///
+  /// [liveType] is the task's target type (`audio`/`video`) so the backend
+  /// validates the claim against the correct per-type history bucket —
+  /// video-live minutes/earnings must not satisfy an audio task.
+  /// [rCoin]/[coin] carry the type-scoped earning; [totalEarning] carries the
+  /// combined daily earning for backends that validate against the day total.
   static Future<Map<String, dynamic>> claimTaskReward({
     required String hostId,
     required String taskId,
@@ -2967,6 +2983,9 @@ class ApiService {
     int? audioDuration,
     int? rCoin,
     int? coin,
+    String? liveType,
+    int? totalEarning,
+    String? rewardCurrency,
   }) async {
     final r = await _dio.patch(
       '/task/claimTaskReward',
@@ -2976,12 +2995,24 @@ class ApiService {
         'taskId': taskId,
         'userId': hostId,
         'hostUserId': hostId,
+        // Host task rewards are earnings → always Beans (rCoin), not Diamonds.
+        'rewardCurrency': rewardCurrency ?? 'rCoin',
         if (liveStreamingId != null && liveStreamingId.isNotEmpty)
           'liveStreamingId': liveStreamingId,
+        if (liveType != null && liveType.isNotEmpty) ...{
+          'liveType': liveType,
+          'taskType': liveType,
+          'type': liveType,
+        },
         if (videoDuration != null) 'videoDuration': videoDuration,
         if (audioDuration != null) 'audioDuration': audioDuration,
         if (rCoin != null) 'rCoin': rCoin,
         if (coin != null) 'coin': coin,
+        if (totalEarning != null) ...{
+          'totalEarning': totalEarning,
+          'totalRcoin': totalEarning,
+          'totalCoin': totalEarning,
+        },
       },
     );
     return _asMap(r.data);

@@ -733,32 +733,36 @@ class HostFeaturesService {
       }
     }
 
-    // Last resort: use the local on-device cache for today. This is the
-    // only fallback that works when backend endpoints are 404 / not implemented.
-    // Overwrite backend 0s with cache values, and convert cache earnings
-    // (stored as gift Diamonds) to Beans.
-    if ((today['audioDuration'] ?? 0) == 0 &&
-        (today['videoDuration'] ?? 0) == 0 &&
-        (today['todayEarning'] ?? 0) == 0) {
-      try {
-        final cache = await HostLiveCache.getTodayProgress(userId);
-        final cacheAudioMin = parseInt(cache['audioDuration']);
-        final cacheVideoMin = parseInt(cache['videoDuration']);
-        final cacheEarning = diamondsToBeans(
-          parseInt(cache['todayEarning']),
-          SessionManager.instance?.getSetting(),
-        );
-        today['audioDuration'] = max(today['audioDuration'] ?? 0, cacheAudioMin);
-        today['videoDuration'] = max(today['videoDuration'] ?? 0, cacheVideoMin);
-        today['todayEarning'] = max(today['todayEarning'] ?? 0, cacheEarning);
-        today['totalMinutes'] = max(
-          today['totalMinutes'] ?? 0,
-          cacheAudioMin + cacheVideoMin,
-        );
-      } catch (e) {
-        Log.e(_tag, 'local cache fallback failed', e);
-      }
+    // Always merge the real-time on-device cache on top of whatever the
+    // backend returned. This makes task progress accurate even when the
+    // backend's history endpoints are behind or not yet implemented, and it
+    // also repairs cases where the backend returned partial data.
+    try {
+      final cache = await HostLiveCache.getTodayProgress(userId);
+      final cacheAudioMin = parseInt(cache['audioDuration']);
+      final cacheVideoMin = parseInt(cache['videoDuration']);
+      final cacheEarning = diamondsToBeans(
+        parseInt(cache['todayEarning']),
+        SessionManager.instance?.getSetting(),
+      );
+      today['audioDuration'] = max(today['audioDuration'] ?? 0, cacheAudioMin);
+      today['videoDuration'] = max(today['videoDuration'] ?? 0, cacheVideoMin);
+      today['todayEarning'] = max(today['todayEarning'] ?? 0, cacheEarning);
+      today['totalMinutes'] = max(
+        today['totalMinutes'] ?? 0,
+        max(cacheAudioMin + cacheVideoMin, parseInt(cache['totalMinutes'])),
+      );
+    } catch (e) {
+      Log.e(_tag, 'local cache merge failed', e);
     }
+
+    // Ensure the common aliases exist for callers.
+    today['totalMinutes'] = max(
+      today['totalMinutes'] ?? 0,
+      (today['audioDuration'] ?? 0) + (today['videoDuration'] ?? 0),
+    );
+    today['coin'] = today['todayEarning'] ?? 0;
+    today['rCoin'] = today['todayEarning'] ?? 0;
 
     return today;
   }
@@ -1183,6 +1187,8 @@ class HostLiveCache {
   static String _videoDurationKey(String userId) =>
       'host_video_duration_$userId';
   static String _todayEarningKey(String userId) => 'host_today_earning_$userId';
+  static String _audioEarningKey(String userId) => 'host_audio_earning_$userId';
+  static String _videoEarningKey(String userId) => 'host_video_earning_$userId';
   static String _todayMinutesKey(String userId) => 'host_today_minutes_$userId';
   static String _totalSessionsKey(String userId) => 'host_total_sessions_$userId';
 
@@ -1199,6 +1205,8 @@ class HostLiveCache {
       await prefs.setInt(_audioDurationKey(userId), 0);
       await prefs.setInt(_videoDurationKey(userId), 0);
       await prefs.setInt(_todayEarningKey(userId), 0);
+      await prefs.setInt(_audioEarningKey(userId), 0);
+      await prefs.setInt(_videoEarningKey(userId), 0);
       await prefs.setInt(_todayMinutesKey(userId), 0);
     }
   }
@@ -1234,15 +1242,24 @@ class HostLiveCache {
   }
 
   /// Record coins earned by the host today.
+  ///
+  /// [liveType] (`audio` or `video`) is required so the Host Center can keep
+  /// per-type earnings — a video live's gifts must not count towards the
+  /// "Audio Live Task" earning target and vice-versa.
   static Future<void> addEarnings({
     required String userId,
     required int coins,
+    required String liveType,
   }) async {
     if (coins <= 0) return;
     await _ensureDate(userId);
     final prefs = await SharedPreferences.getInstance();
     final current = prefs.getInt(_todayEarningKey(userId)) ?? 0;
     await prefs.setInt(_todayEarningKey(userId), current + coins);
+    final typeKey =
+        liveType == 'audio' ? _audioEarningKey(userId) : _videoEarningKey(userId);
+    final typeCurrent = prefs.getInt(typeKey) ?? 0;
+    await prefs.setInt(typeKey, typeCurrent + coins);
   }
 
   /// Get today's cached progress as a map compatible with `getHostLiveHistoryToday`.
@@ -1255,6 +1272,8 @@ class HostLiveCache {
     final audioSec = prefs.getInt(_audioDurationKey(userId)) ?? 0;
     final videoSec = prefs.getInt(_videoDurationKey(userId)) ?? 0;
     final earning = prefs.getInt(_todayEarningKey(userId)) ?? 0;
+    final audioEarning = prefs.getInt(_audioEarningKey(userId)) ?? 0;
+    final videoEarning = prefs.getInt(_videoEarningKey(userId)) ?? 0;
     final audioMin = audioSec ~/ 60;
     final videoMin = videoSec ~/ 60;
     final totalMin = audioMin + videoMin;
@@ -1262,6 +1281,8 @@ class HostLiveCache {
       'audioDuration': audioMin,
       'videoDuration': videoMin,
       'todayEarning': earning,
+      'audioEarning': audioEarning,
+      'videoEarning': videoEarning,
       'totalMinutes': totalMin,
       'coin': earning,
       'rCoin': earning,

@@ -698,7 +698,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const CurrencyIcon(CurrencyType.diamond, size: 14),
+                  const CurrencyIcon(CurrencyType.bean, size: 14),
                   const SizedBox(width: 4),
                   Text(
                     '+${task.rewardCoins}',
@@ -725,7 +725,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
                             if (ok) {
                               Fluttertoast.showToast(
                                 msg:
-                                    'Reward claimed: +${task.rewardCoins} ${Const.coinName}',
+                                    'Reward claimed: +${task.rewardCoins} ${Const.rCoinName}',
                               );
                               _loadData();
                             }

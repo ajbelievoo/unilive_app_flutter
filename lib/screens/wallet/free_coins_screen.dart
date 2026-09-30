@@ -1432,7 +1432,7 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
       children: [
         CurrencyIcon(CurrencyType.diamond, size: 28),
         SizedBox(height: 6),
-        Text('Belive Rewards Program', style: TextStyle(color: _textMuted, fontSize: 11, fontWeight: FontWeight.bold)),
+        Text('UNILIVE Rewards Program', style: TextStyle(color: _textMuted, fontSize: 11, fontWeight: FontWeight.bold)),
         SizedBox(height: 2),
         Text('Earn more, enjoy more', style: TextStyle(color: Color(0xFF4A4A60), fontSize: 10)),
       ],

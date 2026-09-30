@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -10,7 +12,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../../constants/const.dart';
 import '../../models/chat_root.dart';
 import '../../models/follow_models.dart';
-import '../../models/assigned_tag.dart';
 import '../../models/guest_profile_root.dart';
 import '../../models/json_annotation_helper.dart';
 import '../../models/live_stream_root.dart';
@@ -58,6 +59,15 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
   String? _chatTopic;
   bool _sentVisitMessage = false;
 
+  // Presence tracking — the /user/profile API never returns isOnline; the
+  // backend tracks online state via socket events (same as native chat).
+  bool _isOnline = false;
+  String _profileUserId = '';
+  Timer? _statusTimer;
+  void Function()? _cancelStatusSub;
+  void Function()? _cancelOnlineSub;
+  void Function()? _cancelOfflineSub;
+
   @override
   void initState() {
     super.initState();
@@ -67,6 +77,10 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
 
   @override
   void dispose() {
+    _statusTimer?.cancel();
+    _cancelStatusSub?.call();
+    _cancelOnlineSub?.call();
+    _cancelOfflineSub?.call();
     _tabCtrl.dispose();
     super.dispose();
   }
@@ -98,6 +112,8 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
         // Profile API doesn't return isFollow/isLiked — check both separately
         final profileId = _user!.id ?? widget.userId ?? '';
         if (profileId.isNotEmpty) {
+          // Track this user's online/offline status via socket presence.
+          _startPresenceTracking(profileId);
           // Fetch friends for this profile so the count and list are accurate.
           _friendsFuture = ApiService.friendsList(
             userId: profileId,
@@ -178,6 +194,60 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
       Log.e(_tag, 'loadProfile failed', e, s);
     } finally {
       if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  /// Socket-based presence — mirrors native `ChatActivity`:
+  /// emit `checkUserStatus` → backend replies `userStatus {userId, online}`;
+  /// `userOnline`/`userOffline` broadcasts keep it live afterwards.
+  void _startPresenceTracking(String profileId) {
+    _profileUserId = profileId;
+    final myId = context.read<SessionManager>().userId;
+    _cancelStatusSub ??= SocketService.instance.on('userStatus', _onUserStatus);
+    _cancelOnlineSub ??= SocketService.instance.on(
+      Const.eventUserOnline,
+      _onUserOnline,
+    );
+    _cancelOfflineSub ??= SocketService.instance.on(
+      Const.eventUserOffline,
+      _onUserOffline,
+    );
+    SocketService.instance.emit('checkUserStatus', {
+      'userId': profileId,
+      'requesterId': myId,
+    });
+    _statusTimer?.cancel();
+    _statusTimer = Timer.periodic(const Duration(seconds: 10), (_) {
+      SocketService.instance.emit('checkUserStatus', {
+        'userId': profileId,
+        'requesterId': myId,
+      });
+    });
+  }
+
+  void _onUserStatus(dynamic data) {
+    if (!mounted) return;
+    if (data is! Map) return;
+    final userId = data['userId']?.toString();
+    if (userId == null || userId != _profileUserId) return;
+    // Backend may send either key — native reads "online", chat reads "isOnline".
+    final online = data['online'] == true || data['isOnline'] == true;
+    setState(() => _isOnline = online);
+  }
+
+  void _onUserOnline(dynamic data) {
+    if (!mounted) return;
+    if (data is! Map) return;
+    if (data['userId']?.toString() == _profileUserId) {
+      setState(() => _isOnline = true);
+    }
+  }
+
+  void _onUserOffline(dynamic data) {
+    if (!mounted) return;
+    if (data is! Map) return;
+    if (data['userId']?.toString() == _profileUserId) {
+      setState(() => _isOnline = false);
     }
   }
 
@@ -944,12 +1014,9 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
                 const SizedBox(height: 10),
                 // Online/offline status — green dot + "Online" / "Offline"
                 _buildOnlineStatus(u),
-                // Manual profile tags (admin-assigned) — chips
-                if (u.tags.isNotEmpty) ...[
-                  const SizedBox(height: 8),
-                  _buildTagChips(u.tags),
-                ],
                 const SizedBox(height: 10),
+                // Badges + admin-assigned tags — single source of truth:
+                // ProfileBadgeRow renders u.tags itself (no duplicate chips).
                 ProfileBadgeRow.fromGuestUser(
                   u,
                   isDark: true,
@@ -1020,7 +1087,9 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
 
   /// Online/offline status indicator — green dot + "Online" or "Offline".
   Widget _buildOnlineStatus(GuestUser u) {
-    final isOnline = u.isOnline || _isLive;
+    // _isOnline comes from socket presence (checkUserStatus/userOnline) since
+    // the profile API doesn't return an online flag.
+    final isOnline = u.isOnline || _isLive || _isOnline;
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -1056,69 +1125,11 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
     );
   }
 
-  /// Manual profile tags — admin-assigned chips (Admin, BD, Agency Owner, etc.)
-  Widget _buildTagChips(List<AssignedTag> tags) {
-    return Wrap(
-      spacing: 6,
-      runSpacing: 4,
-      children: tags.where((t) => t.name?.isNotEmpty == true).map((t) {
-        final name = t.name!;
-        final color = _tagColor(name);
-        return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [color, color.withValues(alpha: 0.7)]),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: color.withValues(alpha: 0.3), width: 0.5),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(_tagIcon(name), color: Colors.white, size: 11),
-              const SizedBox(width: 3),
-              Text(
-                name,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 0.3,
-                ),
-              ),
-            ],
-          ),
-        );
-      }).toList(),
-    );
-  }
-
-  Color _tagColor(String name) {
-    final lower = name.toLowerCase();
-    if (lower.contains('admin')) return const Color(0xFFFF3B30);
-    if (lower.contains('bd')) return const Color(0xFF4F8DFD);
-    if (lower.contains('agency')) return const Color(0xFF6A5AE0);
-    if (lower.contains('seller')) return const Color(0xFFFFB800);
-    if (lower.contains('host')) return const Color(0xFFFF6B9D);
-    if (lower.contains('moderator') || lower.contains('mod')) return const Color(0xFF34C759);
-    return const Color(0xFF8E8E93);
-  }
-
-  IconData _tagIcon(String name) {
-    final lower = name.toLowerCase();
-    if (lower.contains('admin')) return Icons.shield_rounded;
-    if (lower.contains('bd')) return Icons.headset_mic_rounded;
-    if (lower.contains('agency')) return Icons.business_rounded;
-    if (lower.contains('seller')) return Icons.diamond_rounded;
-    if (lower.contains('host')) return Icons.mic_rounded;
-    if (lower.contains('moderator') || lower.contains('mod')) return Icons.gavel_rounded;
-    return Icons.label_rounded;
-  }
-
   Widget _buildMedalSlots(GuestUser u) {
     // Medal box should only show medals, not the user level tag.
     final medals = <String>[];
     if (u.vipBadgeUrl?.isNotEmpty == true) medals.add(u.vipBadgeUrl!);
-    if (u.hostLevel?.image?.isNotEmpty == true) medals.add(u.hostLevel!.image!);
+    // Host level is not a medal — hosts are identified by the mic chip only.
     for (final url in u.medals) {
       if (url.isNotEmpty && !medals.contains(url)) medals.add(url);
     }
@@ -1727,7 +1738,7 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
   Widget _buildBottomBar() {
     return SafeArea(
       child: Container(
-        padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+        padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
         decoration: BoxDecoration(
           color: Colors.white,
           boxShadow: [
@@ -1748,16 +1759,15 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
                           : const LinearGradient(
                             colors: [Color(0xFF7E3FF2), Color(0xFF5B2DD6)],
                           ),
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(18),
                   boxShadow:
                       !_isFollow
                           ? [
                             BoxShadow(
                               color: const Color(
                                 0xFF7E3FF2,
-                              ).withValues(alpha: 0.4),
-                              blurRadius: 12,
-                              spreadRadius: 1,
+                              ).withValues(alpha: 0.35),
+                              blurRadius: 8,
                             ),
                           ]
                           : null,
@@ -1768,15 +1778,22 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
                     backgroundColor: Colors.transparent,
                     foregroundColor: _isFollow ? Colors.black87 : Colors.white,
                     shadowColor: Colors.transparent,
+                    minimumSize: const Size(0, 36),
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    textStyle: const TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(18),
                     ),
                   ),
                   child:
                       _followLoading
                           ? const SizedBox(
-                            width: 20,
-                            height: 20,
+                            width: 16,
+                            height: 16,
                             child: Preloader(
                               strokeWidth: 2,
                               color: Colors.white,
@@ -1786,16 +1803,16 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
                 ),
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: 10),
             Expanded(
               child: Container(
                 decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
+                  borderRadius: BorderRadius.circular(18),
                   border: Border.all(color: Colors.green),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.green.withValues(alpha: 0.3),
-                      blurRadius: 10,
+                      color: Colors.green.withValues(alpha: 0.25),
+                      blurRadius: 8,
                     ),
                   ],
                 ),
@@ -1813,17 +1830,24 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
                   },
                   icon: const Icon(
                     Icons.chat_bubble_outline,
-                    size: 18,
+                    size: 15,
                     color: Colors.green,
                   ),
                   label: const Text(
                     'Message',
-                    style: TextStyle(color: Colors.green),
+                    style: TextStyle(
+                      color: Colors.green,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                    ),
                   ),
                   style: OutlinedButton.styleFrom(
                     side: BorderSide.none,
+                    minimumSize: const Size(0, 36),
+                    padding: const EdgeInsets.symmetric(horizontal: 10),
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(18),
                     ),
                   ),
                 ),
@@ -1855,22 +1879,19 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
         mainAxisSize: MainAxisSize.min,
         children: [
           Container(
+            width: 34,
+            height: 34,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: color.withValues(alpha: 0.1),
               boxShadow: [
                 BoxShadow(
-                  color: color.withValues(alpha: 0.3),
-                  blurRadius: 10,
-                  spreadRadius: 1,
+                  color: color.withValues(alpha: 0.25),
+                  blurRadius: 8,
                 ),
               ],
             ),
-            child: IconButton(
-              onPressed: onTap,
-              icon: Icon(icon, color: color),
-              style: IconButton.styleFrom(backgroundColor: Colors.transparent),
-            ),
+            child: Icon(icon, color: color, size: 18),
           ),
           if (callRate > 0) ...[
             const SizedBox(height: 2),

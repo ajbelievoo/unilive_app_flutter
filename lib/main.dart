@@ -56,15 +56,23 @@ import 'widgets/in_app_notification_banner.dart';
 import 'widgets/incoming_call_banner.dart';
 import 'package:belive/widgets/preloader.dart';
 
-void main() {
+Future<void> main() async {
   // 1. Sabse pehle binding ensure karein
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 2. Global crash/error handler setup karein before runApp taaki
+  // 2. Firebase init first so Crashlytics can report early errors.
+  try {
+    await Firebase.initializeApp().timeout(const Duration(seconds: 10));
+    debugPrint('[Main] Firebase initialized SUCCESS');
+  } catch (e) {
+    debugPrint('[Main] Firebase init error: $e');
+  }
+
+  // 3. Global crash/error handler setup karein before runApp taaki
   //    early build/platform errors bhi report ho sakein.
   CrashHandler.initialize();
 
-  // 3. Turant app run karein, baaki kaam andar honge
+  // 4. Turant app run karein, baaki kaam andar honge
   runApp(_BeliveApp());
 }
 
@@ -94,6 +102,14 @@ class _BeliveAppState extends State<_BeliveApp>
     // heads-up notification (with ring) instead of the in-app banner.
     PushNotificationService.isAppOpen = state == AppLifecycleState.resumed;
     Log.d('_BeliveAppState', 'lifecycle=$state, isAppOpen=${PushNotificationService.isAppOpen}');
+    // Presence broadcast — native emits userOnline on resume and
+    // userOffline on pause/destroy so other users see correct status.
+    if (state == AppLifecycleState.resumed) {
+      SocketService.instance.emitPresence(true);
+    } else if (state == AppLifecycleState.paused ||
+        state == AppLifecycleState.detached) {
+      SocketService.instance.emitPresence(false);
+    }
   }
 
   @override
@@ -110,14 +126,9 @@ class _BeliveAppState extends State<_BeliveApp>
     // for gesture/hidden navigation.
     await SystemUiService.instance.applyDefault();
 
-    // 2. Firebase initialize (Debug mode mein hang ho sakta hai isliye try-catch)
-    debugPrint('[Main] Firebase initializing...');
-    try {
-      await Firebase.initializeApp().timeout(const Duration(seconds: 10));
-      debugPrint('[Main] Firebase initialized SUCCESS');
-    } catch (e) {
-      debugPrint('[Main] Firebase init error: $e');
-    }
+    // 2. Firebase already initialized in main() for Crashlytics; enable
+    //    analytics/crashlytics collection here after session is ready.
+    debugPrint('[Main] Firebase services already initialized in main()');
 
     // 2b. Initialize Google Mobile Ads SDK for rewarded video ads.
     RewardedAdService.instance.initialize().catchError((e) {

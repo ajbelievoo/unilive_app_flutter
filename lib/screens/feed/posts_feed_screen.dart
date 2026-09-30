@@ -21,6 +21,7 @@ import '../../utils/format_utils.dart';
 import '../../utils/log.dart';
 import '../../theme/app_theme.dart';
 import '../../widgets/user_avatar.dart';
+import '../comments/comments_screen.dart';
 import 'package:belive/widgets/preloader.dart';
 
 /// One visual unit below the status bar ("1 sut" gap).
@@ -259,63 +260,73 @@ class _PostsFeedScreenState extends State<PostsFeedScreen>
       padding: const EdgeInsets.all(12),
       child: Row(
         children: [
-          if (post.isVIP)
-            Container(
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.yellow.withValues(alpha: 0.55),
-                    blurRadius: 14,
-                    spreadRadius: 1,
+          Expanded(
+            child: GestureDetector(
+              onTap: () => _openProfile(post),
+              behavior: HitTestBehavior.opaque,
+              child: Row(
+                children: [
+                  if (post.isVIP)
+                    Container(
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppTheme.yellow.withValues(alpha: 0.55),
+                            blurRadius: 14,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: UserAvatar(
+                        imageUrl: post.userImage,
+                        size: 40,
+                        frameUrl: post.avatarFrameImage,
+                      ),
+                    )
+                  else
+                    UserAvatar(
+                      imageUrl: post.userImage,
+                      size: 40,
+                      frameUrl: post.avatarFrameImage,
+                    ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              post.name ?? 'Unknown',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w600,
+                                fontSize: 15,
+                                color: post.isVIP ? const Color(0xFFFFD54F) : null,
+                              ),
+                            ),
+                            if (post.isVIP) ...[
+                              const SizedBox(width: 4),
+                              const Icon(
+                                Icons.verified,
+                                color: Color(0xFFFFB800),
+                                size: 14,
+                              ),
+                            ],
+                          ],
+                        ),
+                        Text(
+                          post.time ?? '',
+                          style: const TextStyle(
+                            fontSize: 12,
+                            color: AppTheme.textTertiary,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
-              child: UserAvatar(
-                imageUrl: post.userImage,
-                size: 40,
-                frameUrl: post.avatarFrameImage,
-              ),
-            )
-          else
-            UserAvatar(
-              imageUrl: post.userImage,
-              size: 40,
-              frameUrl: post.avatarFrameImage,
-            ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Text(
-                      post.name ?? 'Unknown',
-                      style: TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 15,
-                        color: post.isVIP ? const Color(0xFFFFD54F) : null,
-                      ),
-                    ),
-                    if (post.isVIP) ...[
-                      const SizedBox(width: 4),
-                      const Icon(
-                        Icons.verified,
-                        color: Color(0xFFFFB800),
-                        size: 14,
-                      ),
-                    ],
-                  ],
-                ),
-                Text(
-                  post.time ?? '',
-                  style: const TextStyle(
-                    fontSize: 12,
-                    color: AppTheme.textTertiary,
-                  ),
-                ),
-              ],
             ),
           ),
           IconButton(
@@ -400,21 +411,24 @@ class _PostsFeedScreenState extends State<PostsFeedScreen>
       child: Row(
         children: [
           if (post.like > 0)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.favorite, color: Colors.red, size: 14),
-                  const SizedBox(width: 4),
-                  Text(
-                    formatCount(post.like),
-                    style: const TextStyle(fontSize: 12, color: Colors.red),
-                  ),
-                ],
+            GestureDetector(
+              onTap: () => _openLikes(post),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.red.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.favorite, color: Colors.red, size: 14),
+                    const SizedBox(width: 4),
+                    Text(
+                      formatCount(post.like),
+                      style: const TextStyle(fontSize: 12, color: Colors.red),
+                    ),
+                  ],
+                ),
               ),
             ),
           const Spacer(),
@@ -612,6 +626,28 @@ class _PostsFeedScreenState extends State<PostsFeedScreen>
     if (post.post != null && post.post!.isNotEmpty) {
       context.pushNamed(AppRoutes.imagePreview, extra: {'url': post.post!});
     }
+  }
+
+  void _openProfile(PostItem post) {
+    final userId = post.userId;
+    if (userId == null || userId.isEmpty) return;
+    context.pushNamed(
+      AppRoutes.guestProfile,
+      extra: {'userId': userId},
+    );
+  }
+
+  void _openLikes(PostItem post) {
+    final postId = post.id;
+    if (postId == null || postId.isEmpty) return;
+    context.pushNamed(
+      AppRoutes.comments,
+      extra: {
+        'postId': postId,
+        'type': 'post',
+        'viewType': CommentViewType.likes,
+      },
+    );
   }
 
   void _showPostOptions(PostItem post) {

@@ -1,4 +1,4 @@
-﻿plugins {
+plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin plugins.
@@ -19,13 +19,14 @@ android {
 
     defaultConfig {
         applicationId = "com.believoo.app"
-        minSdk = 23
+        minSdk = flutter.minSdkVersion
         targetSdk = 36
         versionCode = flutter.versionCode
         versionName = flutter.versionName
         multiDexEnabled = true
         ndk {
-            // Include only ARM ABIs used by real devices. x86_64 is emulator-only and bloats the APK.
+            // Keep both 64-bit and 32-bit ARM so older devices don't crash at launch.
+            // AAB still serves each device only the ABI it needs.
             abiFilters += listOf("arm64-v8a", "armeabi-v7a")
         }
     }
@@ -62,20 +63,19 @@ android {
             isShrinkResources = false
         }
         release {
-            // Temporary: use debug signing so Google login works for testing.
-            // Release keystore SHA-1 is not registered in Firebase yet.
-            signingConfig = signingConfigs.getByName("debug")
+            // Play Store release build must be signed with the release keystore.
+            // Ensure the release SHA-1 is registered in Firebase for Google Sign-In.
+            signingConfig = signingConfigs.getByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
             )
-            // Disable native debug metadata extraction - it fails on Windows
-            // with long path / file-lock issues and is only needed for
-            // Play Console native crash symbolication (not for sideloaded APKs).
+            // Include native symbol table for Play Console crash/ANR symbolication.
+            // Use SYMBOL_TABLE (not FULL) to avoid Windows long-path issues.
             ndk {
-                debugSymbolLevel = "NONE"
+                debugSymbolLevel = "SYMBOL_TABLE"
             }
         }
     }

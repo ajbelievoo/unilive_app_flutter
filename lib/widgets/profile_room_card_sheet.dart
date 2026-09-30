@@ -46,8 +46,17 @@ void showProfileRoomCard(
   VoidCallback? onSetStageSpeaker,
   ValueChanged<bool>? onAdminToggled,
   VoidCallback? onRemoveFromSeat,
+  VoidCallback? onKickOut,
   bool canMute = true,
   bool canKick = true,
+  bool isChatMuted = false,
+  String inviteLabel = 'Invite Seat',
+  String removeLabel = 'Remove Seat',
+
+  /// When false, the "Remove" action skips the built-in `lessParticipants`
+  /// emit and only invokes [onRemoveFromSeat] — used by video live where a
+  /// co-host is dropped via `lessParticipatesCallJoin` instead.
+  bool emitSeatSocketOnRemove = true,
 }) {
   showModalBottomSheet(
     context: context,
@@ -73,8 +82,13 @@ void showProfileRoomCard(
           onSetStageSpeaker: onSetStageSpeaker,
           onAdminToggled: onAdminToggled,
           onRemoveFromSeat: onRemoveFromSeat,
+          onKickOut: onKickOut,
           canMute: canMute,
           canKick: canKick,
+          isChatMuted: isChatMuted,
+          inviteLabel: inviteLabel,
+          removeLabel: removeLabel,
+          emitSeatSocketOnRemove: emitSeatSocketOnRemove,
         ),
   );
 }
@@ -98,8 +112,13 @@ class _ProfileRoomCard extends StatefulWidget {
     this.onSetStageSpeaker,
     this.onAdminToggled,
     this.onRemoveFromSeat,
+    this.onKickOut,
     required this.canMute,
     required this.canKick,
+    this.isChatMuted = false,
+    this.inviteLabel = 'Invite Seat',
+    this.removeLabel = 'Remove Seat',
+    this.emitSeatSocketOnRemove = true,
   });
 
   final AudioRoomUser? roomUser;
@@ -119,8 +138,20 @@ class _ProfileRoomCard extends StatefulWidget {
   final VoidCallback? onSetStageSpeaker;
   final ValueChanged<bool>? onAdminToggled;
   final VoidCallback? onRemoveFromSeat;
+
+  /// Optional override for the "Kick Out" action. When provided, the default
+  /// audio-room kick flow is bypassed — video live rooms kick viewers via
+  /// their own updateBlockedlist + lessView events instead.
+  final VoidCallback? onKickOut;
   final bool canMute;
   final bool canKick;
+
+  /// True when the target user is currently chat-muted in this room — the
+  /// management action flips to "Unmute Chat".
+  final bool isChatMuted;
+  final String inviteLabel;
+  final String removeLabel;
+  final bool emitSeatSocketOnRemove;
 
   @override
   State<_ProfileRoomCard> createState() => _ProfileRoomCardState();
@@ -321,16 +352,19 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
       return;
     }
     // Emit lessParticipated (not removeCrone) to avoid the server swapping
-    // the host into the removed user's seat.
-    SocketService.instance.emit(Const.eventLessParticipated, {
-      'liveStreamingId': widget.liveStreamingId,
-      'liveUserMongoId': widget.liveUserMongoId,
-      'position': seat.position,
-      'userId': seat.userId,
-      'removedUserID': seat.userId,
-      'role': seat.role,
-      'kickedByHost': true,
-    });
+    // the host into the removed user's seat. Video live skips this emit and
+    // removes co-hosts through lessParticipatesCallJoin in the callback.
+    if (widget.emitSeatSocketOnRemove) {
+      SocketService.instance.emit(Const.eventLessParticipated, {
+        'liveStreamingId': widget.liveStreamingId,
+        'liveUserMongoId': widget.liveUserMongoId,
+        'position': seat.position,
+        'userId': seat.userId,
+        'removedUserID': seat.userId,
+        'role': seat.role,
+        'kickedByHost': true,
+      });
+    }
     widget.onRemoveFromSeat?.call();
     Fluttertoast.showToast(msg: 'Removed from seat');
     if (mounted) Navigator.pop(context);
@@ -609,7 +643,6 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
     final isVIP = (user?.isVIP ?? false) || seat.isVIP;
     final followers = user?.followers ?? 0;
     final bio = user?.bio ?? '';
-    final medals = _collectMedals(user, seat);
     final textColor = isVIP ? Colors.white : const Color(0xFF1A1A2E);
     final subTextColor = isVIP ? Colors.white70 : Colors.black54;
 
@@ -648,68 +681,33 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
           ],
         ),
         const SizedBox(height: 6),
-        // ── Level badge + Role tag (Owner/Admin) ──
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _levelBadge(user, seat),
-            if (seat.isHost) ...[
-              const SizedBox(width: 6),
-              _roleChip('Owner', const Color(0xFF00C853)),
-            ] else if (seat.isAdmin) ...[
-              const SizedBox(width: 6),
-              _roleChip('Admin', const Color(0xFF4F8DFD)),
-            ],
-          ],
-        ),
-        const SizedBox(height: 8),
-        // ── Achievement badges horizontal scroll ──
-        if (medals.isNotEmpty)
-          SizedBox(
-            height: 38,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              shrinkWrap: true,
-              itemCount: medals.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 6),
-              itemBuilder:
-                  (_, i) => Container(
-                    width: 38,
-                    height: 38,
-                    decoration: BoxDecoration(
-                      color:
-                          isVIP
-                              ? Colors.white.withValues(alpha: 0.1)
-                              : const Color(0xFFF6F5FB),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(
-                        color:
-                            isVIP
-                                ? Colors.white.withValues(alpha: 0.15)
-                                : Colors.black.withValues(alpha: 0.06),
-                      ),
-                    ),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(7),
-                      child: CachedNetworkImage(
-                        imageUrl: medals[i],
-                        fit: BoxFit.cover,
-                        errorWidget: (_, __, ___) => const SizedBox.shrink(),
-                      ),
-                    ),
-                  ),
-            ),
+        // ── Room role chip (Owner / Admin) ──
+        if (seat.isHost)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: _roleChip('Owner', const Color(0xFF00C853)),
+          )
+        else if (seat.isAdmin)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 6),
+            child: _roleChip('Admin', const Color(0xFF4F8DFD)),
           ),
-        if (medals.isNotEmpty) const SizedBox(height: 6),
-        // ── Tags row (VIP, host-level badges) ──
-        if (user != null && (user.tags.isNotEmpty || user.isVIP))
+        // ── Badges: level + VIP + family + tags — one uniform row driven by
+        // the backend badge images. Host level is never shown (mic chip only);
+        // the level renders exactly once (ProfileBadgeRow dedupes echoes). ──
+        if (user != null)
           Padding(
             padding: const EdgeInsets.only(bottom: 4),
             child: ProfileBadgeRow.fromGuestUser(
               user,
               isDark: isVIP,
               alignment: WrapAlignment.center,
+              // The seat socket payload can carry fresher VIP data than the
+              // profile fetch.
+              isVIP: isVIP,
+              vipBadgeUrl: seat.vipBadgeUrl,
+              // The verified check already sits next to the name above.
+              showVerified: false,
             ),
           ),
         // ── ID + Followers ──
@@ -740,22 +738,6 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
     );
   }
 
-  List<String> _collectMedals(GuestUser? user, SeatItem seat) {
-    final medals = <String>[];
-    if (user?.vipBadgeUrl?.isNotEmpty == true) {
-      medals.add(user!.vipBadgeUrl!);
-    } else if (seat.vipBadgeUrl?.isNotEmpty == true) {
-      medals.add(seat.vipBadgeUrl!);
-    }
-    if (user?.hostLevel?.image?.isNotEmpty == true) {
-      medals.add(user!.hostLevel!.image!);
-    }
-    if (user?.level?.image?.isNotEmpty == true) {
-      medals.add(user!.level!.image!);
-    }
-    return medals;
-  }
-
   Widget _roleChip(String label, Color color) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -770,49 +752,6 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
           fontSize: 10,
           fontWeight: FontWeight.bold,
         ),
-      ),
-    );
-  }
-
-  /// Gold "Lv.X" badge shown below the username (Masti Live style).
-  Widget _levelBadge(GuestUser? user, SeatItem seat) {
-    final levelName = user?.level?.name ?? '';
-    if (levelName.isEmpty) return const SizedBox.shrink();
-
-    // Format: extract the number from level name → "Lv.2", "Lv.12", etc.
-    final match = RegExp(r'\d+').firstMatch(levelName);
-    final display = match != null ? 'Lv.${match.group(0)}' : levelName;
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFFB8860B), Color(0xFFFFD700)],
-        ),
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFFFFD700).withValues(alpha: 0.3),
-            blurRadius: 4,
-            offset: const Offset(0, 1),
-          ),
-        ],
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.emoji_events, color: Colors.white, size: 13),
-          const SizedBox(width: 3),
-          Text(
-            display,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              letterSpacing: 0.3,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -919,7 +858,7 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
           if (widget.onRemoveFromSeat != null)
             _CardAction(
               icon: Icons.chair,
-              label: 'Remove Seat',
+              label: widget.removeLabel,
               color: Colors.orange,
               onTap: _removeFromSeat,
             ),
@@ -945,7 +884,7 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
           if (widget.onInviteToSeat != null)
             _CardAction(
               icon: Icons.chair,
-              label: 'Invite Seat',
+              label: widget.inviteLabel,
               color: const Color(0xFF00E5FF),
               onTap: () {
                 Navigator.pop(context);
@@ -963,11 +902,14 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
               },
             ),
         ],
-        // Row 3 — ban + kick
+        // Row 3 — chat mute + kick
         if (widget.onBanChat != null)
           _CardAction(
-            icon: Icons.volume_off,
-            label: 'Ban Chat',
+            icon:
+                widget.isChatMuted
+                    ? Icons.chat_bubble
+                    : Icons.chat_bubble_outline,
+            label: widget.isChatMuted ? 'Unmute Chat' : 'Mute Chat',
             color: Colors.red,
             onTap: () {
               Navigator.pop(context);
@@ -979,7 +921,14 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
             icon: Icons.exit_to_app,
             label: 'Kick Out',
             color: Colors.red,
-            onTap: _kickOut,
+            onTap: () {
+              if (widget.onKickOut != null) {
+                Navigator.pop(context);
+                widget.onKickOut!();
+              } else {
+                _kickOut();
+              }
+            },
           ),
       ];
       return _buildActionGrid(actions);

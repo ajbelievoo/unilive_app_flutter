@@ -1166,7 +1166,12 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
           _hostUserId ?? widget.roomUser.liveUserId ?? session.userId;
       if (hostId.isEmpty) return;
       try {
-        await ApiService.updateLiveTime(hostId, _liveId, seconds: _watchSeconds);
+        await ApiService.updateLiveTime(
+          hostId,
+          _liveId,
+          seconds: _watchSeconds,
+          liveType: 'audio',
+        );
         Log.d(_tag, 'updateLiveTime pinged liveId=$_liveId seconds=$_watchSeconds');
       } catch (e) {
         // Backend may not expose this endpoint; the socket heartbeat is the
@@ -1186,6 +1191,8 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         'liveStreamingId': _liveId,
         'liveUserId': hostId,
         'userId': session.userId,
+        'liveType': 'audio',
+        'roomType': 'audio',
         'watchSeconds': _watchSeconds,
         'elapsedSeconds': _watchSeconds,
         'seconds': _watchSeconds,
@@ -1223,7 +1230,11 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     }
     final earDelta = _roomDailyCoins - _lastCachedEarnings;
     if (earDelta > 0) {
-      HostLiveCache.addEarnings(userId: hostId, coins: earDelta);
+      HostLiveCache.addEarnings(
+        userId: hostId,
+        coins: earDelta,
+        liveType: 'audio',
+      );
       _lastCachedEarnings = _roomDailyCoins;
     }
   }
@@ -1771,6 +1782,16 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
           'requestFullList': true,
         });
       }
+
+      // Restart foreground service when the app is visible again so the audio
+      // room keeps running while the user backgrounds the app.
+      AudioQualityService.startForegroundService(
+        title: widget.isHost ? 'Audio Room' : 'Audio Room',
+        text:
+            widget.isHost
+                ? 'You are hosting an audio room'
+                : 'Listening to an audio room',
+      );
     } else if (state == AppLifecycleState.paused ||
         state == AppLifecycleState.inactive) {
       // Issue #17: Host left app - notify backend to start 2-minute timer
@@ -4285,7 +4306,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         _showNotification('$name won $coins diamonds in lucky gift!');
         final luckyComment = _LiveComment(
           name: name,
-          text: 'got $coins diamonds from a lucky bag',
+          text: 'won $coins diamonds in lucky gift!',
           isLuckyWin: true,
           luckyCoins: coins,
           userImage: image,
@@ -4322,7 +4343,9 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
             (map['userId']?.toString() == myId) ||
             name == (context.read<AuthProvider>().user?.name ?? '');
         if (isMe && coins > 0) {
-          _creditLuckyWin(coins);
+          // Client-generated draws already credited the win in the gift
+          // sheet — skip the credit on the echoed event (combo still shows).
+          if (map['clientDraw'] != true) _creditLuckyWin(coins);
           _triggerComboButton(Map<String, dynamic>.from(map), coins);
         }
       } catch (_) {}
@@ -4403,7 +4426,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
             text:
                 message.isNotEmpty
                     ? message
-                    : 'got $coins diamonds from a lucky bag',
+                    : 'won $coins diamonds in lucky gift!',
             isLuckyWin: true,
             luckyCoins: coins,
             userImage: image,
@@ -4652,22 +4675,36 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     });
 
     // Chat ban — backend broadcasts viewerMuted with mute:3 when host/admin
-    // bans a user from chat. Add the user to the local banned set so their
-    // messages are hidden. Ports native onViewerMuted (mute==3 → chat ban).
+    // mutes a user from chat (mute:0/false → unmute). Update the local muted
+    // set so their messages are hidden/shown. Ports native onViewerMuted.
     _listenExtraSocket(Const.eventViewerMuted, (data) {
       try {
         final map = data is Map ? Map<String, dynamic>.from(data) : null;
         if (map == null || !mounted) return;
-        final mute = map['mute'];
+        final rawMute = map['mute'];
         final bannedUserId =
             map['userId']?.toString() ?? map['viewerId']?.toString() ?? '';
-        // mute: 3 → chat ban (ports native viewerMuted mute type 3)
-        if (mute == 3 && bannedUserId.isNotEmpty) {
-          setState(() => _bannedChatUsers.add(bannedUserId));
-          final myId = context.read<SessionManager>().userId;
-          if (bannedUserId == myId) {
-            Fluttertoast.showToast(msg: 'You have been banned from chat');
+        if (bannedUserId.isEmpty) return;
+        final isMuted =
+            rawMute == 3 || rawMute == true || map['isMuted'] == true;
+        final isUnmuted =
+            rawMute == 0 || rawMute == false || map['isMuted'] == false;
+        if (!isMuted && !isUnmuted) return;
+        setState(() {
+          if (isMuted) {
+            _bannedChatUsers.add(bannedUserId);
+          } else {
+            _bannedChatUsers.remove(bannedUserId);
           }
+        });
+        final myId = context.read<SessionManager>().userId;
+        if (bannedUserId == myId) {
+          Fluttertoast.showToast(
+            msg:
+                isMuted
+                    ? 'You have been muted from chat'
+                    : 'You have been unmuted from chat',
+          );
         }
       } catch (_) {}
     });
@@ -6970,6 +7007,10 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     final text = SecurityModerationService.filterProfanity(rawText);
     // Spam detection
     final session = context.read<SessionManager>();
+    if (_bannedChatUsers.contains(session.userId)) {
+      Fluttertoast.showToast(msg: 'You are muted from chat in this room');
+      return;
+    }
     if (SecurityModerationService.isSpamming(session.userId)) {
       Fluttertoast.showToast(
         msg: 'You are sending messages too fast. Please slow down.',
@@ -7000,7 +7041,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
               [
                 user?.vipBadgeUrl,
                 user?.level?.image,
-                user?.hostLevel?.image,
+                // Host level is intentionally excluded — hosts show the mic chip.
                 ...?user?.tags.map((tag) => tag.image),
               ].whereType<String>().where((url) => url.isNotEmpty).toList(),
           tagLabels:
@@ -8623,6 +8664,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                   !isMySeat
               ? () => _banChatUser(seat.userId ?? '')
               : null,
+      isChatMuted: _bannedChatUsers.contains(seat.userId),
       onSetStageSpeaker:
           (_amHost || _iAmAdmin) &&
                   _stageMode &&
@@ -8851,20 +8893,30 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     Fluttertoast.showToast(msg: 'User blocked');
   }
 
-  /// Ban a user from chat. Emits `banChat` to backend with mute:3, which
-  /// broadcasts `viewerMuted` to the room. Also bans locally so messages
-  /// are hidden immediately without waiting for the round-trip.
+  /// Toggle a user's chat mute. Emits `banChat` to backend with mute:3
+  /// (mute) / mute:0 (unmute), which broadcasts `viewerMuted` to the room.
+  /// Also updates locally so messages hide/show immediately without waiting
+  /// for the round-trip.
   void _banChatUser(String userId) {
     if (userId.isEmpty) return;
-    setState(() => _bannedChatUsers.add(userId));
+    final isMuted = _bannedChatUsers.contains(userId);
+    setState(() {
+      if (isMuted) {
+        _bannedChatUsers.remove(userId);
+      } else {
+        _bannedChatUsers.add(userId);
+      }
+    });
     SocketService.instance.emit(Const.eventBanChat, {
       'liveStreamingId': _roomUser.liveStreamingId,
       'liveUserMongoId': _roomUser.id,
       'liveUserId': _roomUser.liveUserId,
       'userId': userId,
-      'mute': 3,
+      'mute': isMuted ? 0 : 3,
     });
-    Fluttertoast.showToast(msg: 'User banned from chat');
+    Fluttertoast.showToast(
+      msg: isMuted ? 'User unmuted from chat' : 'User muted from chat',
+    );
   }
 
   void _showViewerPicker(int position) {
@@ -9582,10 +9634,12 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         map['name']?.toString() ?? map['senderName']?.toString() ?? 'Someone';
     final giftName = event?.giftName ?? map['giftName']?.toString() ?? 'Gift';
     final senderImage =
-        map['image']?.toString() ??
-        map['senderImage']?.toString() ??
-        map['userImage']?.toString() ??
-        '';
+        (event?.senderImage.isNotEmpty == true)
+            ? event!.senderImage
+            : (map['image']?.toString() ??
+                map['senderImage']?.toString() ??
+                map['userImage']?.toString() ??
+                '');
     _showNotification(
       '$senderName sent $giftName x$giftCount to $receiverName',
       userImage: senderImage,
@@ -10151,7 +10205,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         collect(source[key]);
       }
       collect(source['level']);
-      collect(source['hostLevel']);
+      // 'hostLevel' intentionally excluded — host level is never shown.
       collect(source['vipDetails']);
     }
     return urls.take(12).toList(growable: false);
@@ -11377,6 +11431,8 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         'liveHostRoom': myUserId,
         'liveUserId': myUserId,
         'userId': myUserId,
+        'liveType': 'audio',
+        'roomType': 'audio',
         'time': _watchSeconds,
         'reason': 'Audio room ended by host',
       };
@@ -11389,6 +11445,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       SocketService.instance.emit(Const.eventAudioLiveHostRemove, {
         'liveUserId': _roomUser.id ?? '',
         'liveStreamingId': _liveId,
+        'liveType': 'audio',
         'time': _watchSeconds,
       });
       SocketService.instance.emit(Const.eventLessView, {
@@ -14314,10 +14371,10 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                     borderRadius: BorderRadius.circular(6),
                   ),
                   child: const Text(
-                    'LUCKY',
+                    'LP',
                     style: TextStyle(
                       color: Colors.black,
-                      fontSize: 8,
+                      fontSize: 9,
                       fontWeight: FontWeight.bold,
                     ),
                   ),

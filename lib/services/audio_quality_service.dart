@@ -15,7 +15,9 @@ library audio_quality_service;
 import 'dart:convert';
 
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
+import 'package:flutter/widgets.dart';
 import 'package:flutter_foreground_task/flutter_foreground_task.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:wakelock_plus/wakelock_plus.dart';
 
@@ -100,6 +102,22 @@ class AudioQualityService {
     String? text,
   }) async {
     try {
+      final lifecycle = WidgetsBinding.instance.lifecycleState;
+      if (lifecycle != AppLifecycleState.resumed) {
+        Log.w(_tag, 'App not resumed ($lifecycle); deferring foreground service start');
+        return;
+      }
+
+      // Android 14+ requires CAMERA and RECORD_AUDIO runtime permissions before
+      // starting a foreground service of type camera|microphone. If the user
+      // hasn't granted them, don't start the service — this avoids a crash.
+      final camera = await Permission.camera.status;
+      final mic = await Permission.microphone.status;
+      if (!camera.isGranted || !mic.isGranted) {
+        Log.w(_tag, 'Camera/microphone permission not granted; skipping foreground service');
+        return;
+      }
+
       FlutterForegroundTask.init(
         androidNotificationOptions: AndroidNotificationOptions(
           channelId: 'live_foreground',

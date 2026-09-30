@@ -160,7 +160,12 @@ Future<bool> joinLiveRoom({
           room.pkConfig!.host1Id == room.liveUserId;
       context.pushNamed(
         AppRoutes.pkBattle,
-        extra: {'config': room.pkConfig!, 'isHost1': isHost1, 'isHost': false},
+        extra: {
+          'config': room.pkConfig!,
+          'isHost1': isHost1,
+          'isHost': false,
+          'room': room,
+        },
       );
       return true;
     } else if (room.isFake) {

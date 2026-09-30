@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:io';
 
+import 'package:firebase_crashlytics/firebase_crashlytics.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
@@ -10,6 +12,20 @@ import '../utils/log.dart';
 class CrashHandler {
   static const String _tag = 'CrashHandler';
   static final Map<String, DateTime> _lastReports = {};
+
+  /// True for network/image load errors that should not spam Crashlytics.
+  static bool _isNoisyNetworkError(Object? error, String library) {
+    if (error is HttpException || error is SocketException) return true;
+    final message = error.toString();
+    if (message.contains('No host specified in URI') ||
+        message.contains('storage://')) {
+      return true;
+    }
+    if (error is FormatException && library.contains('image resource service')) {
+      return true;
+    }
+    return library == 'image resource service';
+  }
 
   static bool _shouldReport(String signature) {
     final now = DateTime.now();
@@ -44,9 +60,20 @@ class CrashHandler {
       if (stack != null) {
         debugPrintStack(label: '[$_tag] exact Flutter stack', stackTrace: stack);
       }
+
+      final isNetworkNoise = _isNoisyNetworkError(details.exception, library);
+
+      // Send Dart/Flutter errors to Crashlytics as non-fatal so the
+      // Crashes tab only contains real native crashes.
+      if (!isNetworkNoise) {
+        unawaited(_sendToCrashlytics(
+          () => FirebaseCrashlytics.instance.recordFlutterError(details),
+        ));
+      }
+
       final signature =
           '${details.exceptionAsString()}|$library|$context|${stack?.toString().split('\n').firstOrNull ?? ''}';
-      if (_shouldReport(signature)) {
+      if (_shouldReport(signature) && !isNetworkNoise) {
         await _sendReport(
           title: 'Flutter error',
           description:
@@ -59,8 +86,19 @@ class CrashHandler {
 
     PlatformDispatcher.instance.onError = (error, stack) {
       Log.e(_tag, 'Async/platform error: $error', error, stack);
+
+      final isNetworkNoise = error is HttpException || error is SocketException;
+
+      // Record async/platform errors as non-fatal; real native crashes are
+      // automatically caught by the Firebase Android SDK.
+      if (!isNetworkNoise) {
+        unawaited(_sendToCrashlytics(
+          () => FirebaseCrashlytics.instance.recordError(error, stack, fatal: false),
+        ));
+      }
+
       final signature = '$error|${stack.toString().split('\n').firstOrNull ?? ''}';
-      if (_shouldReport(signature)) {
+      if (_shouldReport(signature) && !isNetworkNoise) {
         unawaited(_sendReport(
           title: 'Flutter async/platform error',
           description: error.toString(),
@@ -73,6 +111,14 @@ class CrashHandler {
 
     if (!kReleaseMode) {
       Log.d(_tag, 'Crash handler initialized (debug mode)');
+    }
+  }
+
+  static Future<void> _sendToCrashlytics(Future<void> Function() call) async {
+    try {
+      await call();
+    } catch (e, st) {
+      Log.e(_tag, 'Failed to send to Crashlytics', e, st);
     }
   }
 

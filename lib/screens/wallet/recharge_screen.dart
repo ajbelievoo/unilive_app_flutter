@@ -35,6 +35,7 @@ class _RechargeScreenState extends State<RechargeScreen> {
   int _userDiamonds = 0;
   bool _purchasing = false;
   String? _activePlanId;
+  String _selectedCurrency = 'USD';
 
   @override
   void initState() {
@@ -107,7 +108,7 @@ class _RechargeScreenState extends State<RechargeScreen> {
               ),
               Text('Buy ${formatCountFull(plan.coin)} Diamonds', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              Text('Price: ${_planPrice(plan)}', style: const TextStyle(fontSize: 16, color: AppTheme.textSecondary)),
+              Text('Price: ${_planPrice(plan, _selectedCurrency)}', style: const TextStyle(fontSize: 16, color: AppTheme.textSecondary)),
               const SizedBox(height: 20),
               _paymentOption(
                 Icons.account_balance_wallet,
@@ -244,6 +245,30 @@ class _RechargeScreenState extends State<RechargeScreen> {
     }
   }
 
+  Widget _currencySelector() {
+    return PopupMenuButton<String>(
+      initialValue: _selectedCurrency,
+      onSelected: (v) => setState(() => _selectedCurrency = v),
+      itemBuilder: (ctx) => const [
+        PopupMenuItem(value: 'USD', child: Text('USD (\$)')),
+        PopupMenuItem(value: 'INR', child: Text('INR (₹)')),
+      ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _selectedCurrency,
+              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+            ),
+            const Icon(Icons.arrow_drop_down, color: Colors.white),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -251,6 +276,7 @@ class _RechargeScreenState extends State<RechargeScreen> {
         title: const Text('Recharge Diamonds'),
         backgroundColor: AppTheme.primary,
         foregroundColor: Colors.white,
+        actions: [_currencySelector()],
       ),
       body: _loading
           ? const Center(child: Preloader())
@@ -289,6 +315,7 @@ class _RechargeScreenState extends State<RechargeScreen> {
                               onPurchase: () => _purchase(plan),
                               isBusy: _purchasing,
                               isActive: isActive,
+                              currency: _selectedCurrency,
                             );
                           },
                           childCount: _plans.length,
@@ -303,8 +330,8 @@ class _RechargeScreenState extends State<RechargeScreen> {
   }
 }
 
-String _planPrice(CoinPlan plan) {
-  if (plan.rupee > 0) return '₹${plan.rupee}';
+String _planPrice(CoinPlan plan, [String currency = 'USD']) {
+  if (currency == 'INR' && plan.rupee > 0) return '₹${plan.rupee}';
   return '\$${plan.dollar}';
 }
 
@@ -351,12 +378,14 @@ class _PlanCard extends StatelessWidget {
     required this.onPurchase,
     required this.isBusy,
     required this.isActive,
+    this.currency = 'USD',
   });
 
   final CoinPlan plan;
   final VoidCallback onPurchase;
   final bool isBusy;
   final bool isActive;
+  final String currency;
 
   @override
   Widget build(BuildContext context) {
@@ -396,7 +425,7 @@ class _PlanCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              _planPrice(plan),
+              _planPrice(plan, currency),
               style: TextStyle(fontSize: 15, color: isTop ? Colors.white70 : AppTheme.primary, fontWeight: FontWeight.w700),
             ),
             const SizedBox(height: 12),

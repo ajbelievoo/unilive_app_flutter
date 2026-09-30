@@ -1259,6 +1259,7 @@ class _DiscoveryTabState extends State<_DiscoveryTab>
             'config': room.pkConfig!,
             'isHost1': isHost1,
             'isHost': false,
+            'room': room,
           },
         );
       } else if (room.isFake || selectedUser.isFake) {

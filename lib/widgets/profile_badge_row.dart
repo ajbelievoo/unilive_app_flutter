@@ -25,11 +25,15 @@ String? resolveVipBadgeUrl({
 /// Renders two rows of profile badges/tags matching Bigo/Chamet parity.
 ///
 /// Row 1 (status): VIP, user level, family, verified, host (mic icon), and
-/// the primary role/designation string — all rendered without a bubble box.
+/// the primary role/designation string.
 ///
 /// Row 2 (admin tags): backend `tags` array (Agency, BD, Coin Seller, Super
-/// Seller, Super Admin, Official Manager, Region Head, etc.) — shown as-is
-/// without a bubble box, in a separate row below the status row.
+/// Seller, Super Admin, Official Manager, Region Head, etc.) — shown in a
+/// separate row below the status row.
+///
+/// Every badge renders at a uniform [_kBadgeHeight] — image badges keep their
+/// aspect ratio (auto width), text tags render as small pill chips — so badges
+/// never appear at mismatched sizes.
 ///
 /// Role tags are **never** auto-derived from `isAgency`, `isBd`, etc. boolean
 /// flags — service/role and tag display are fully decoupled.
@@ -65,6 +69,8 @@ class ProfileBadgeRow extends StatelessWidget {
     this.spacing = 6,
     this.runSpacing = 6,
     this.alignment = WrapAlignment.start,
+    this.showLevel = true,
+    this.showVerified = true,
   });
 
   factory ProfileBadgeRow.fromUser(
@@ -72,6 +78,8 @@ class ProfileBadgeRow extends StatelessWidget {
     bool isDark = false,
     VoidCallback? onFamilyTap,
     WrapAlignment alignment = WrapAlignment.start,
+    bool showLevel = true,
+    bool showVerified = true,
   }) => ProfileBadgeRow(
         tags: u.tags,
         level: u.level,
@@ -97,6 +105,8 @@ class ProfileBadgeRow extends StatelessWidget {
         role: u.role,
         isDark: isDark,
         alignment: alignment,
+        showLevel: showLevel,
+        showVerified: showVerified,
       );
 
   factory ProfileBadgeRow.fromGuestUser(
@@ -104,16 +114,20 @@ class ProfileBadgeRow extends StatelessWidget {
     bool isDark = false,
     VoidCallback? onFamilyTap,
     WrapAlignment alignment = WrapAlignment.start,
+    bool showLevel = true,
+    bool showVerified = true,
+    bool? isVIP,
+    String? vipBadgeUrl,
   }) => ProfileBadgeRow(
         tags: u.tags,
         level: u.level,
         hostLevel: u.hostLevel,
         vipDetails: u.vipDetails,
         vip: null,
-        vipBadgeUrl: u.vipBadgeUrl,
+        vipBadgeUrl: vipBadgeUrl ?? u.vipBadgeUrl,
         vipLevel: u.vipLevel,
         vipLevelName: u.vipLevelName,
-        isVIP: u.isVIP,
+        isVIP: isVIP ?? u.isVIP,
         isVerified: u.isVerified,
         isHost: u.isHost,
         isBd: u.isBd,
@@ -129,6 +143,8 @@ class ProfileBadgeRow extends StatelessWidget {
         role: u.role,
         isDark: isDark,
         alignment: alignment,
+        showLevel: showLevel,
+        showVerified: showVerified,
       );
 
   final List<AssignedTag> tags;
@@ -158,64 +174,79 @@ class ProfileBadgeRow extends StatelessWidget {
   final double runSpacing;
   final WrapAlignment alignment;
 
+  /// When false, the user-level badge is skipped — used by cards that already
+  /// render the level elsewhere (e.g. the gold "Lv.X" pill) so it isn't
+  /// duplicated.
+  final bool showLevel;
+
+  /// When false, the "Verified" chip is skipped — used by cards that already
+  /// render a verified check next to the name.
+  final bool showVerified;
+
+  /// Uniform badge height — every badge (image, pill chip, icon) renders at
+  /// this height so nothing looks bigger/smaller than the rest.
+  static const double _kBadgeHeight = 20;
+
   @override
   Widget build(BuildContext context) {
-    final statusBadges = _buildStatusBadges();
-    final tagBadges = _buildTagBadges();
+    // One shared dedupe set across both rows — a role string and a backend
+    // tag with the same name must not render twice.
+    final displayed = <String>{};
+    final statusBadges = _buildStatusBadges(displayed);
+    final tagBadges = _buildTagBadges(displayed);
 
     if (statusBadges.isEmpty && tagBadges.isEmpty) return const SizedBox.shrink();
     if (tagBadges.isEmpty) {
-      return Wrap(
-        spacing: spacing,
-        runSpacing: runSpacing,
-        alignment: alignment,
-        children: statusBadges,
-      );
+      return _badgeWrap(statusBadges);
     }
     if (statusBadges.isEmpty) {
-      return Wrap(
-        spacing: spacing,
-        runSpacing: runSpacing,
-        alignment: alignment,
-        children: tagBadges,
-      );
+      return _badgeWrap(tagBadges);
     }
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Wrap(
-          spacing: spacing,
-          runSpacing: runSpacing,
-          alignment: alignment,
-          children: statusBadges,
-        ),
+        _badgeWrap(statusBadges),
         SizedBox(height: runSpacing),
-        Wrap(
-          spacing: spacing,
-          runSpacing: runSpacing,
-          alignment: alignment,
-          children: tagBadges,
-        ),
+        _badgeWrap(tagBadges),
       ],
     );
   }
 
+  Widget _badgeWrap(List<Widget> badges) {
+    return Wrap(
+      spacing: spacing,
+      runSpacing: runSpacing,
+      alignment: alignment,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: badges,
+    );
+  }
+
+  /// Extracts the first digit run from a name ("Lv.12" -> "12") — used to
+  /// detect when two different fields carry the same numeric level badge.
+  static String? _digits(String? s) =>
+      s == null ? null : RegExp(r'\d+').firstMatch(s)?.group(0);
+
   /// Status row: VIP, user level, family, verified, host (mic), role string.
-  /// Rendered without bubble/chip containers.
-  List<Widget> _buildStatusBadges() {
-    final displayed = <String>{};
+  List<Widget> _buildStatusBadges(Set<String> displayed) {
     final chips = <Widget>[];
 
     void addChip(Widget chip, String key) {
       final normalized = key.trim().toLowerCase();
       if (normalized.isEmpty) return;
-      if (displayed.contains(normalized)) return;
-      displayed.add(normalized);
+      if (!displayed.add(normalized)) return;
       chips.add(chip);
     }
 
-    // VIP badge (image or text) — no box.
+    // Image URLs are also registered in `displayed` so a backend tag carrying
+    // the same badge image isn't rendered a second time in the tag row.
+    void addImageChip(Widget chip, String key, String imageUrl) {
+      addChip(chip, key);
+      displayed.add(imageUrl.trim().toLowerCase());
+    }
+
+    // VIP badge (image or pill chip).
     if (isVIP) {
       final badgeUrl = resolveVipBadgeUrl(
         vipDetails: vipDetails,
@@ -227,45 +258,64 @@ class ProfileBadgeRow extends StatelessWidget {
           vipLevelName ??
           (vipLevel > 0 ? vipLevel.toString() : '1');
       if (badgeUrl?.isNotEmpty == true) {
-        addChip(_statusImage(badgeUrl!, label: 'VIP $tier'), 'vip');
+        final url = badgeUrl!;
+        addImageChip(_badgeImage(url, label: 'VIP $tier'), 'vip $tier', url);
       } else {
-        addChip(_statusText('VIP $tier', color: const Color(0xFFFFD700)), 'vip');
+        addChip(
+          _textChip('VIP $tier', color: const Color(0xFFFFD700), icon: Icons.workspace_premium_rounded),
+          'vip $tier',
+        );
       }
     }
 
-    // User level (image or text) — no box.
-    if (level?.name?.isNotEmpty == true) {
-      final name = level!.name!;
+    // User level (image or pill chip) — the backend badge image is shown
+    // even when the name is missing, since the image itself is the tag.
+    if (showLevel &&
+        (level?.name?.isNotEmpty == true || level?.image?.isNotEmpty == true)) {
+      final name = level!.name ?? '';
       final image = level!.image;
       if (image?.isNotEmpty == true) {
-        addChip(_statusImage(image!, label: 'Lv $name'), 'level_$name');
+        final url = image!;
+        addImageChip(
+          _badgeImage(url, label: name.isNotEmpty ? 'Lv $name' : 'Level'),
+          'lv ${name.isNotEmpty ? name : url}',
+          url,
+        );
       } else {
-        addChip(_statusText('Lv $name', color: const Color(0xFFFF6B9D)), 'level_$name');
+        addChip(_textChip('Lv $name', color: const Color(0xFFFF6B9D)), 'lv $name');
       }
     }
 
-    // Family badge — no box.
+    // Host level is never rendered as a badge — the green mic chip is the
+    // only host indicator. `hostLevel` is still kept on the widget so tag-row
+    // dedupe can drop a backend tag that merely echoes the host level.
+
+    // Family badge.
     final family = familyName ?? '';
     if (family.isNotEmpty) {
       Widget familyBadge;
       if (familyBadgeUrl?.isNotEmpty == true) {
-        familyBadge = _statusImage(familyBadgeUrl!, label: family);
+        familyBadge = _badgeImage(familyBadgeUrl!, label: family);
+        displayed.add(familyBadgeUrl!.trim().toLowerCase());
       } else {
-        familyBadge = _statusText(family, color: const Color(0xFF1E88E5), icon: Icons.shield);
+        familyBadge = _textChip(family, color: const Color(0xFF1E88E5), icon: Icons.shield_rounded);
       }
       if (onFamilyTap != null) {
         familyBadge = GestureDetector(onTap: onFamilyTap, child: familyBadge);
       }
-      addChip(familyBadge, 'family_$family');
+      addChip(familyBadge, family);
     }
 
-    // Verified — no box.
-    if (isVerified) {
-      addChip(_statusText('Verified', color: const Color(0xFF4F8DFD), icon: Icons.verified), 'verified');
+    // Verified.
+    if (showVerified && isVerified) {
+      addChip(
+        _textChip('Verified', color: const Color(0xFF4F8DFD), icon: Icons.verified_rounded),
+        'verified',
+      );
     }
 
-    // Host — mic icon only, no box.
-    if (isHost) addChip(_statusIcon(Icons.mic, color: const Color(0xFF34C759)), 'host');
+    // Host — mic icon chip.
+    if (isHost) addChip(_iconChip(Icons.mic_rounded, color: const Color(0xFF34C759)), 'host');
 
     // Primary role/designation string, split by comma if multiple.
     // The 7 admin-controlled role tags are filtered out — they only appear
@@ -274,7 +324,7 @@ class ProfileBadgeRow extends StatelessWidget {
       for (final part in role!.split(',')) {
         final r = part.trim();
         if (r.isNotEmpty && !_isAdminControlledRoleTag(r)) {
-          addChip(_statusText(_displayRole(r), color: _colorForRole(r)), 'role_$r');
+          addChip(_textChip(_displayRole(r), color: _colorForRole(r)), r);
         }
       }
     }
@@ -282,29 +332,44 @@ class ProfileBadgeRow extends StatelessWidget {
     return chips;
   }
 
-  /// Tag row: backend-assigned tags/badges only, as-is, no bubble.
-  List<Widget> _buildTagBadges() {
-    final displayed = <String>{};
+  /// Tag row: backend-assigned tags/badges only.
+  List<Widget> _buildTagBadges(Set<String> displayed) {
     final chips = <Widget>[];
 
     void addChip(Widget chip, String key) {
       final normalized = key.trim().toLowerCase();
       if (normalized.isEmpty) return;
-      if (displayed.contains(normalized)) return;
-      displayed.add(normalized);
+      if (!displayed.add(normalized)) return;
       chips.add(chip);
     }
 
-    // Backend-assigned tags/badges — show as-is without bubble/chip styling.
+    // Backend-assigned tags/badges — images render height-locked, text-only
+    // tags render as colored pill chips. A tag that merely mirrors a badge
+    // already rendered above (same image URL, or an "Lv.N"-style name echoing
+    // the user's level or host level) is skipped.
+    final levelNum = _digits(level?.name);
+    final hostLevelNum = _digits(hostLevel?.name);
     for (final tag in tags) {
       final name = tag.name?.trim() ?? '';
       final image = tag.image;
       final key = name.isNotEmpty ? name : (image ?? '');
       if (key.isEmpty) continue;
+      if (image != null && displayed.contains(image.trim().toLowerCase())) {
+        continue;
+      }
+      final tagNum = _digits(name);
+      if (tagNum != null &&
+          (tagNum == levelNum || tagNum == hostLevelNum) &&
+          RegExp(r'lv|level').hasMatch(name.toLowerCase())) {
+        continue;
+      }
       if (image?.isNotEmpty == true) {
-        addChip(_tagImage(image!, label: name), 'tag_$key');
+        addChip(_badgeImage(image!, label: name), key);
       } else if (name.isNotEmpty) {
-        addChip(_tagText(name), 'tag_$name');
+        addChip(
+          _textChip(name, color: _tagColorFor(name), icon: _tagIconFor(name)),
+          name,
+        );
       }
     }
 
@@ -356,79 +421,130 @@ class ProfileBadgeRow extends StatelessWidget {
     return const Color(0xFF6A5AE0);
   }
 
-  /// Renders a backend tag image directly (no bubble/chip container).
-  Widget _tagImage(String imageUrl, {String? label, double size = 28}) {
+  /// Renders a badge image height-locked at [_kBadgeHeight] with auto width
+  /// (aspect ratio preserved) so wide pill badges and square badges all share
+  /// the same visual height. A generous max-width cap prevents ultra-wide
+  /// badges from overflowing the row.
+  Widget _badgeImage(String imageUrl, {String? label}) {
     final fullUrl = VideoUtil.getFullImageUrl(imageUrl);
     if (fullUrl.isEmpty) {
-      if (label?.isNotEmpty == true) return _tagText(label!);
+      if (label?.isNotEmpty == true) return _textChip(label!);
       return const SizedBox.shrink();
     }
-    final isSvga = SvgaHelper.isSvgaUrl(fullUrl);
 
-    final imageWidget = isSvga
-        ? SizedBox(
-            width: size,
-            height: size,
-            child: SvgaPlayer(url: fullUrl, width: size, height: size, fit: BoxFit.contain),
-          )
-        : CachedNetworkImage(
-            imageUrl: fullUrl,
-            width: size,
-            height: size,
-            fit: BoxFit.contain,
-            errorWidget: (_, __, ___) => label?.isNotEmpty == true ? _tagText(label!) : const SizedBox.shrink(),
-          );
+    if (SvgaHelper.isSvgaUrl(fullUrl)) {
+      // SVGA needs a bounded box — most badge SVGAs are wide pills, so give
+      // them a wider box; BoxFit.contain keeps square ones centered.
+      const svgaWidth = _kBadgeHeight * 2.6;
+      return SizedBox(
+        height: _kBadgeHeight,
+        width: svgaWidth,
+        child: SvgaPlayer(
+          url: fullUrl,
+          width: svgaWidth,
+          height: _kBadgeHeight,
+          fit: BoxFit.contain,
+        ),
+      );
+    }
 
-    return imageWidget;
-  }
-
-  /// Renders a backend tag name as plain text (no chip/bubble).
-  Widget _tagText(String label) {
-    return Text(
-      label,
-      style: TextStyle(
-        color: isDark ? Colors.white : const Color(0xFF1A1A2E),
-        fontSize: 12,
-        fontWeight: FontWeight.w600,
+    return ConstrainedBox(
+      constraints: const BoxConstraints(
+        maxWidth: _kBadgeHeight * 4.5,
+        maxHeight: _kBadgeHeight,
+      ),
+      child: CachedNetworkImage(
+        imageUrl: fullUrl,
+        height: _kBadgeHeight,
+        fit: BoxFit.contain,
+        errorWidget: (_, __, ___) => label?.isNotEmpty == true
+            ? _textChip(label!)
+            : const SizedBox.shrink(),
       ),
     );
   }
 
-  /// Renders a status image directly (no bubble/chip container).
-  Widget _statusImage(String imageUrl, {String? label}) {
-    return _tagImage(imageUrl, label: label);
-  }
-
-  /// Renders a status text label (no bubble/chip container).
-  Widget _statusText(String label, {Color? color, IconData? icon}) {
-    final hasIcon = icon != null;
-    final textColor = color ?? (isDark ? Colors.white : const Color(0xFF1A1A2E));
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        if (hasIcon) ...[
-          Icon(icon, color: textColor, size: 18),
-          const SizedBox(width: 3),
-        ],
-        Text(
-          label,
-          style: TextStyle(
-            color: textColor,
-            fontSize: 12,
-            fontWeight: FontWeight.w600,
+  /// Renders a text tag/status as a subtle pill chip at [_kBadgeHeight].
+  Widget _textChip(String label, {Color? color, IconData? icon}) {
+    final c = color ?? (isDark ? Colors.white : const Color(0xFF1A1A2E));
+    return Container(
+      height: _kBadgeHeight,
+      padding: const EdgeInsets.symmetric(horizontal: 7),
+      decoration: BoxDecoration(
+        color: c.withValues(alpha: isDark ? 0.16 : 0.10),
+        borderRadius: BorderRadius.circular(_kBadgeHeight / 2),
+        border: Border.all(color: c.withValues(alpha: 0.45), width: 0.6),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (icon != null) ...[
+            Icon(icon, color: c, size: 12),
+            const SizedBox(width: 3),
+          ],
+          Text(
+            label,
+            style: TextStyle(
+              color: c,
+              fontSize: 10.5,
+              fontWeight: FontWeight.w700,
+              height: 1,
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
     );
   }
 
-  /// Renders a status icon directly (no bubble/chip container).
-  Widget _statusIcon(IconData icon, {Color? color}) {
-    return Icon(
-      icon,
-      color: color ?? (isDark ? Colors.white : const Color(0xFF1A1A2E)),
-      size: 22,
+  /// Renders a single-icon chip (e.g. host mic) at [_kBadgeHeight].
+  Widget _iconChip(IconData icon, {Color? color}) {
+    final c = color ?? (isDark ? Colors.white : const Color(0xFF1A1A2E));
+    return Container(
+      height: _kBadgeHeight,
+      width: _kBadgeHeight + 8,
+      decoration: BoxDecoration(
+        color: c.withValues(alpha: isDark ? 0.16 : 0.10),
+        borderRadius: BorderRadius.circular(_kBadgeHeight / 2),
+        border: Border.all(color: c.withValues(alpha: 0.45), width: 0.6),
+      ),
+      child: Icon(icon, color: c, size: 13),
     );
+  }
+
+  /// Per-tag accent color for well-known admin tag names.
+  Color _tagColorFor(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('admin')) return const Color(0xFFFF3B30);
+    if (lower.contains('official') || lower.contains('manager')) {
+      return const Color(0xFF7B61FF);
+    }
+    if (lower.contains('region')) return const Color(0xFF4F8DFD);
+    if (lower.contains('bd')) return const Color(0xFF4F8DFD);
+    if (lower.contains('agency')) return const Color(0xFF6A5AE0);
+    if (lower.contains('seller')) return const Color(0xFFFFB800);
+    if (lower.contains('host')) return const Color(0xFFFF6B9D);
+    if (lower.contains('moderator') || lower.contains('mod')) {
+      return const Color(0xFF34C759);
+    }
+    return isDark ? Colors.white : const Color(0xFF1A1A2E);
+  }
+
+  /// Per-tag icon for well-known admin tag names.
+  IconData _tagIconFor(String name) {
+    final lower = name.toLowerCase();
+    if (lower.contains('admin')) return Icons.shield_rounded;
+    if (lower.contains('official') || lower.contains('manager')) {
+      return Icons.workspace_premium_rounded;
+    }
+    if (lower.contains('region')) return Icons.public_rounded;
+    if (lower.contains('bd')) return Icons.headset_mic_rounded;
+    if (lower.contains('agency')) return Icons.business_rounded;
+    if (lower.contains('seller')) return Icons.diamond_rounded;
+    if (lower.contains('host')) return Icons.mic_rounded;
+    if (lower.contains('moderator') || lower.contains('mod')) {
+      return Icons.gavel_rounded;
+    }
+    return Icons.label_rounded;
   }
 
 }

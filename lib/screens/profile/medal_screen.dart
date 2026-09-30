@@ -26,12 +26,9 @@ class _MedalScreenState extends State<MedalScreen> {
     final user = context.read<SessionManager>().getUser();
     final list = <_AvailableMedal>[];
 
-    // Hardcoded legacy medals (VIP, host level). User level is NOT a medal.
+    // Hardcoded legacy medals (VIP). User level and host level are NOT medals.
     if (user?.vipBadgeUrl?.isNotEmpty == true) {
       list.add(_AvailableMedal(label: 'VIP Badge', url: user!.vipBadgeUrl!));
-    }
-    if (user?.hostLevel?.image?.isNotEmpty == true) {
-      list.add(_AvailableMedal(label: 'Host Level', url: user!.hostLevel!.image!));
     }
 
     // Backend-supplied medals and achievements.

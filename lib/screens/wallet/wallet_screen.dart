@@ -34,6 +34,7 @@ class _WalletScreenState extends State<WalletScreen> {
   final _plans = <CoinPlan>[];
   bool _loading = true;
   bool _purchasing = false;
+  String _selectedCurrency = 'USD';
 
   @override
   void initState() {
@@ -124,6 +125,30 @@ class _WalletScreenState extends State<WalletScreen> {
     );
   }
 
+  Widget _currencySelector() {
+    return PopupMenuButton<String>(
+      initialValue: _selectedCurrency,
+      onSelected: (v) => setState(() => _selectedCurrency = v),
+      itemBuilder: (ctx) => const [
+        PopupMenuItem(value: 'USD', child: Text('USD (\$)')),
+        PopupMenuItem(value: 'INR', child: Text('INR (₹)')),
+      ],
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              _selectedCurrency,
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const Icon(Icons.arrow_drop_down),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
@@ -134,6 +159,7 @@ class _WalletScreenState extends State<WalletScreen> {
           title: const Text('My Wallet'),
           bottom: const TabBar(tabs: [Tab(text: 'Recharge'), Tab(text: 'Income')]),
           actions: [
+            _currencySelector(),
             IconButton(
               icon: const Icon(Icons.store),
               tooltip: 'Store',
@@ -201,7 +227,7 @@ class _WalletScreenState extends State<WalletScreen> {
                 childAspectRatio: 0.92,
               ),
               itemCount: _plans.length,
-              itemBuilder: (_, i) => _PlanCard(plan: _plans[i], onTap: () => _purchase(_plans[i])),
+              itemBuilder: (_, i) => _PlanCard(plan: _plans[i], onTap: () => _purchase(_plans[i]), currency: _selectedCurrency),
             ),
         ],
       ),
@@ -391,7 +417,7 @@ class _WalletScreenState extends State<WalletScreen> {
               ),
               Text('Buy ${formatCountFull(plan.coin)} Diamonds', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
-              Text('Price: ${_planPrice(plan)}', style: const TextStyle(fontSize: 16, color: AppTheme.textSecondary)),
+              Text('Price: ${_planPrice(plan, _selectedCurrency)}', style: const TextStyle(fontSize: 16, color: AppTheme.textSecondary)),
               const SizedBox(height: 20),
               _paymentOption(
                 Icons.account_balance_wallet,
@@ -501,8 +527,8 @@ class _WalletScreenState extends State<WalletScreen> {
   }
 }
 
-String _planPrice(CoinPlan plan) {
-  if (plan.rupee > 0) return '₹${plan.rupee}';
+String _planPrice(CoinPlan plan, [String currency = 'USD']) {
+  if (currency == 'INR' && plan.rupee > 0) return '₹${plan.rupee}';
   return '\$${plan.dollar}';
 }
 
@@ -663,7 +689,8 @@ class _IncomeActionCard extends StatelessWidget {
 class _PlanCard extends StatelessWidget {
   final CoinPlan plan;
   final VoidCallback onTap;
-  const _PlanCard({required this.plan, required this.onTap});
+  final String currency;
+  const _PlanCard({required this.plan, required this.onTap, this.currency = 'USD'});
 
   @override
   Widget build(BuildContext context) {
@@ -705,7 +732,7 @@ class _PlanCard extends StatelessWidget {
             ),
             const SizedBox(height: 4),
             Text(
-              _planPrice(plan),
+              _planPrice(plan, currency),
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: isTop ? Colors.white70 : AppTheme.primary),
             ),
           ],

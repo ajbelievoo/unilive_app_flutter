@@ -119,6 +119,7 @@ class SocketService {
       _connectionController.add(true);
       _registerPendingListeners();
       _flushPendingEmits();
+      emitPresence(true);
     });
 
     _socket!.onConnectError((e) {
@@ -149,6 +150,7 @@ class SocketService {
       _reconnectController.add(null);
       _registerPendingListeners();
       _flushPendingEmits();
+      emitPresence(true);
     });
 
     _socket!.onReconnectError((e) {
@@ -242,6 +244,18 @@ class SocketService {
   /// Subscribe once.
   void once(String event, void Function(dynamic data) handler) {
     _socket?.once(event, handler);
+  }
+
+  /// Announces this user's presence to the backend, mirroring native
+  /// `MainApplication.emitUserPresence()`. Fired automatically on every
+  /// socket connect/reconnect, and from the app lifecycle observer in
+  /// main.dart on foreground (online) / background (offline).
+  void emitPresence(bool online) {
+    final uid = _userId;
+    if (uid == null || uid.isEmpty) return;
+    emit(online ? Const.eventUserOnline : Const.eventUserOffline, {
+      'userId': uid,
+    });
   }
 
   /// Emit an event with an optional payload.

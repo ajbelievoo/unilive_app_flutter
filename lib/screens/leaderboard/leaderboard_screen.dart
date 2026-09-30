@@ -217,7 +217,8 @@ class _LeaderboardScreenState extends State<LeaderboardScreen>
                     ],
                   ),
                   title: Text(entry.displayName),
-                  subtitle: Text('Level ${entry.level ?? '1'}'),
+                  subtitle: Text(
+                      'Level ${(entry.level ?? '1').replaceFirst(RegExp(r'^\s*(level|lv\.?)\s*', caseSensitive: false), '').trim()}'),
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [

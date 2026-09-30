@@ -14,20 +14,26 @@ LiveVideoParticipantRole resolveLiveVideoParticipant({
     return LiveVideoParticipantRole.pkOpponent;
   }
   if (isRoomHost) return LiveVideoParticipantRole.coHost;
-  if (expectedHostUid > 0) {
-    return remoteUid == expectedHostUid
-        ? LiveVideoParticipantRole.host
-        : LiveVideoParticipantRole.coHost;
+  if (expectedHostUid > 0 && remoteUid == expectedHostUid) {
+    return LiveVideoParticipantRole.host;
   }
-  if (currentHostUid != null && currentHostUid > 0) {
-    return remoteUid == currentHostUid
-        ? LiveVideoParticipantRole.host
-        : LiveVideoParticipantRole.coHost;
+  if (currentHostUid != null &&
+      currentHostUid > 0 &&
+      remoteUid == currentHostUid) {
+    return LiveVideoParticipantRole.host;
   }
   if (knownCoHostUids.contains(remoteUid)) {
     return LiveVideoParticipantRole.coHost;
   }
-  return LiveVideoParticipantRole.host;
+  // Unknown broadcaster while the host slot is empty — assume it is the
+  // host. The expected uid can be stale (hosts rotate agoraUID on re-live on
+  // the same channel) and must not push the real host into the guest strip.
+  // If this was actually a guest whose socket event lagged, the real host's
+  // arrival corrects it via promotion in the room screen.
+  if (currentHostUid == null || currentHostUid <= 0) {
+    return LiveVideoParticipantRole.host;
+  }
+  return LiveVideoParticipantRole.coHost;
 }
 
 ({int host1, int host2}) resolvePkScores({

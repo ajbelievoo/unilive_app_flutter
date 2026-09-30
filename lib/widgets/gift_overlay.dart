@@ -645,6 +645,12 @@ class GiftQueueController {
   /// Helper to parse a gift from socket data.
   static GiftEvent? fromSocketData(dynamic data) {
     try {
+      // Multi-arg server emits arrive as a List of args — take the first
+      // Map arg (same as the other socket handlers).
+      if (data is List) {
+        final maps = data.whereType<Map>();
+        data = maps.isEmpty ? null : maps.first;
+      }
       final map = data is Map ? Map<String, dynamic>.from(data) : null;
       if (map == null) return null;
       // The `gift` field may arrive as a Map (some backends) or as a JSON
@@ -751,6 +757,29 @@ class GiftQueueController {
       final coin = toInt(value('coin') ?? map['giftCoin']);
       final count = toInt(value('count') ?? map['giftCount'], 1);
 
+      // Sender/receiver fields may sit at top level or inside nested
+      // user/sender/receiver objects depending on the broadcast channel.
+      Map<String, dynamic> nestedObj(String key) =>
+          map[key] is Map ? Map<String, dynamic>.from(map[key]) : {};
+      final senderMap = <String, dynamic>{}
+        ..addAll(nestedObj('user'))
+        ..addAll(nestedObj('sender'))
+        ..addAll(nestedObj('fromUser'))
+        ..addAll(nestedObj('senderUser'))
+        ..addAll(nestedObj('userDetails'))
+        ..addAll(nestedObj('senderDetails'));
+      final receiverMap = <String, dynamic>{}
+        ..addAll(nestedObj('receiver'))
+        ..addAll(nestedObj('toUser'))
+        ..addAll(nestedObj('receiverUser'));
+      String pick(List<dynamic> vals, [String fallback = '']) {
+        for (final v in vals) {
+          final s = v?.toString().trim() ?? '';
+          if (s.isNotEmpty && s != 'null') return s;
+        }
+        return fallback;
+      }
+
       return GiftEvent(
         giftId: value('giftId')?.toString() ?? nested['_id']?.toString() ?? '',
         giftName:
@@ -761,29 +790,55 @@ class GiftQueueController {
         svgaImage: animationAssetUrl,
         giftType: giftType,
         coin: coin,
-        senderName:
-            map['name']?.toString() ??
-            map['senderName']?.toString() ??
-            map['userName']?.toString() ??
-            'Someone',
-        senderId:
-            map['senderId']?.toString() ??
-            map['senderUserId']?.toString() ??
-            map['userId']?.toString() ??
-            map['user_id']?.toString() ??
-            '',
+        senderName: pick([
+          map['name'],
+          map['senderName'],
+          map['userName'],
+          map['senderUserName'],
+          senderMap['name'],
+          senderMap['userName'],
+          senderMap['senderName'],
+          senderMap['nickName'],
+          senderMap['nickname'],
+        ], 'Someone'),
+        senderId: pick([
+          map['senderId'],
+          map['senderUserId'],
+          map['userId'],
+          map['user_id'],
+          senderMap['userId'],
+          senderMap['_id'],
+          senderMap['id'],
+        ]),
         senderImage: VideoUtil.getFullImageUrl(
-          map['senderImage']?.toString() ?? map['userImage']?.toString() ?? '',
+          pick([
+            map['senderImage'],
+            map['userImage'],
+            senderMap['image'],
+            senderMap['userImage'],
+            senderMap['avatar'],
+            senderMap['profileImage'],
+            senderMap['photo'],
+            map['avatar'],
+            map['profileImage'],
+            map['image'],
+          ]),
         ),
-        receiverName:
-            map['receiverName']?.toString() ??
-            map['receiverUserName']?.toString() ??
-            'Host',
+        receiverName: pick([
+          map['receiverName'],
+          map['receiverUserName'],
+          receiverMap['name'],
+          receiverMap['userName'],
+        ], 'Host'),
         receiverImage: VideoUtil.getFullImageUrl(
-          map['receiverImage']?.toString() ??
-              map['receiverUserImage']?.toString() ??
-              map['receiverAvatar']?.toString() ??
-              '',
+          pick([
+            map['receiverImage'],
+            map['receiverUserImage'],
+            map['receiverAvatar'],
+            receiverMap['image'],
+            receiverMap['userImage'],
+            receiverMap['avatar'],
+          ]),
         ),
         count: count,
         timeStamp: () {
