@@ -162,9 +162,19 @@ class SvgaCacheManager {
   /// SVGAParser._prepareResources — runs on this isolate because ui.Image
   /// objects can't cross isolates (the platform decode itself happens on
   /// the engine's IO thread, so this doesn't block the UI).
+  ///
+  /// Entries referenced by [MovieEntity.audios] are skipped — SVGA stores
+  /// embedded audio in the `images` map keyed by audioKey, and feeding MP3
+  /// bytes to the platform image decoder produced the "Invalid image data"
+  /// / "unimplemented" error spam while wasting decode time.
   static Future<MovieEntity> _prepareResources(MovieEntity movie) async {
     if (movie.images.isEmpty) return movie;
+    final audioKeys = <String>{
+      for (final a in movie.audios)
+        if (a.audioKey.isNotEmpty) a.audioKey,
+    };
     await Future.wait(movie.images.entries.map((item) async {
+      if (audioKeys.contains(item.key)) return;
       try {
         final ui.Image image =
             await decodeImageFromList(Uint8List.fromList(item.value));
@@ -499,7 +509,9 @@ class _SvgaPlayerState extends State<SvgaPlayer>
     MovieEntity? video;
     try {
       video = await SvgaCacheManager.load(url).timeout(
-        const Duration(seconds: 20),
+        // Multi-MB SVGA files on slow devices/networks legitimately need
+        // more than 20s (download + queued decode + embedded images).
+        const Duration(seconds: 45),
       );
     } on TimeoutException catch (e) {
       Log.e('SvgaPlayer', 'SVGA load timed out: $url', e);
