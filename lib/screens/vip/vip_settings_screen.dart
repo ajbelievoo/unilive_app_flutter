@@ -41,7 +41,6 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
   static const String _tag = 'VipSettings';
 
   late final TabController _tab;
-  List<VipPlanItem> _plans = [];
   List<VipTier> _tiers = [];
   bool _loading = true;
   bool _purchasing = false;
@@ -52,7 +51,7 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
   @override
   void initState() {
     super.initState();
-    _tab = TabController(length: 3, vsync: this);
+    _tab = TabController(length: 2, vsync: this);
     _initPrefs();
   }
 
@@ -75,16 +74,15 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
       _userVipLevel = _extractVipLevel(user);
       final vipInfo = user?.vip;
       if (vipInfo?.expiresAt != null && vipInfo!.expiresAt!.isNotEmpty) {
-        _vipExpiryText = 'Expires: ${vipInfo.expiresAt}';
+        final parsed = DateTime.tryParse(vipInfo.expiresAt!);
+        _vipExpiryText = parsed != null
+            ? 'Valid until ${parsed.day}/${parsed.month}/${parsed.year}'
+            : 'Expires: ${vipInfo.expiresAt}';
       }
 
-      final results = await Future.wait([
-        ApiService.getVipPlans(),
-        ApiService.getVipTiers(),
-      ]);
-
-      _plans = (results[0] as VipPlanRoot).vipPlan;
-      _tiers = (results[1] as VipTierRoot).data;
+      // Legacy VIP "plans" purchase endpoint no longer exists on the
+      // backend (/vipPlan/purchase → dead) — only tiers are buyable.
+      _tiers = (await ApiService.getVipTiers()).data;
 
     } catch (e, s) {
       Log.e(_tag, 'loadData failed', e, s);
@@ -99,44 +97,158 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
       // Prefer vipStatus.currentLevel
       final status = u?.vipStatus;
       if (status != null && status.currentLevel > 0) return status.currentLevel;
-      // Fallback to vipInfo tierId
-      final vipInfo = u?.vip;
-      final tierId = vipInfo?.tierId?.toString() ?? vipInfo?.tier?.toString() ?? '';
-      final digits = tierId.replaceAll(RegExp(r'[^0-9]'), '');
-      if (digits.isEmpty) return 0;
-      return int.parse(digits);
+      // Fallback: parse digits from the purchased tier's NAME (e.g. "VIP 4").
+      // Never parse vip.tierId — that's a Mongo ObjectId whose hex digits
+      // would produce a garbage level.
+      final tierName = u?.vipDetails?.tier ?? u?.vip?.tier ?? '';
+      final match = RegExp(r'(\d+)').firstMatch(tierName);
+      if (match != null) return int.parse(match.group(1)!);
+      return 0;
     } catch (_) {
       return 0;
     }
   }
 
   Widget _buildVipStatusHeader() {
+    final session = context.read<SessionManager>();
+    final user = session.getUser();
+    final isVip = _isVip();
+    final badgeUrl = user?.vipDetails?.levelBadgeUrl;
+    final frameUrl = user?.vipDetails?.profileFrameUrl;
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF7E3FF2), Color(0xFF9B5FF5)],
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: isVip
+              ? const [Color(0xFF3D2B00), Color(0xFF1A1405)]
+              : const [Color(0xFF23232B), Color(0xFF141419)],
         ),
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: isVip ? const Color(0x66FFD700) : Colors.white.withValues(alpha: 0.08),
+        ),
+        boxShadow: isVip
+            ? [
+                BoxShadow(
+                  color: const Color(0xFFFFD700).withValues(alpha: 0.12),
+                  blurRadius: 24,
+                  offset: const Offset(0, 6),
+                ),
+              ]
+            : null,
       ),
       child: Row(
         children: [
-          const Icon(Icons.workspace_premium, color: Colors.white, size: 40),
-          const SizedBox(width: 12),
+          // Avatar with VIP frame
+          SizedBox(
+            width: 56,
+            height: 56,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                ClipOval(
+                  child: user?.image != null && user!.image!.isNotEmpty
+                      ? CachedNetworkImage(
+                          imageUrl: user.image!,
+                          width: 44,
+                          height: 44,
+                          fit: BoxFit.cover,
+                          errorWidget: (_, __, ___) => _avatarFallback(isVip),
+                        )
+                      : _avatarFallback(isVip),
+                ),
+                if (isVip && frameUrl != null && frameUrl.isNotEmpty)
+                  CachedNetworkImage(
+                    imageUrl: frameUrl,
+                    width: 56,
+                    height: 56,
+                    errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'VIP $_userVipLevel',
-                  style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        isVip ? 'VIP $_userVipLevel Active' : 'No VIP',
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          color: isVip ? const Color(0xFFFFD700) : Colors.white70,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.4,
+                        ),
+                      ),
+                    ),
+                    if (isVip && badgeUrl != null && badgeUrl.isNotEmpty) ...[
+                      const SizedBox(width: 8),
+                      CachedNetworkImage(
+                        imageUrl: badgeUrl,
+                        width: 22,
+                        height: 22,
+                        errorWidget: (_, __, ___) => const SizedBox.shrink(),
+                      ),
+                    ],
+                  ],
                 ),
-                if (_vipExpiryText.isNotEmpty)
-                  Text(_vipExpiryText, style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                const SizedBox(height: 4),
+                Text(
+                  isVip
+                      ? (_vipExpiryText.isNotEmpty ? _vipExpiryText : 'Membership active')
+                      : 'Upgrade to unlock VIP privileges',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.55),
+                    fontSize: 12,
+                  ),
+                ),
               ],
             ),
           ),
+          if (!isVip)
+            GestureDetector(
+              onTap: () => context.pushNamed(AppRoutes.vip),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  gradient: AppTheme.goldGradient,
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Text(
+                  'Upgrade',
+                  style: TextStyle(
+                    color: Colors.black,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ),
         ],
+      ),
+    );
+  }
+
+  Widget _avatarFallback(bool isVip) {
+    return Container(
+      width: 44,
+      height: 44,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: isVip ? const Color(0xFF3D2B00) : Colors.white12,
+      ),
+      child: Icon(
+        Icons.person,
+        color: isVip ? const Color(0xFFFFD700) : Colors.white38,
+        size: 26,
       ),
     );
   }
@@ -162,37 +274,6 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
   bool _isVip() {
     final user = context.read<SessionManager>().getUser();
     return user?.isVIP == true;
-  }
-
-  Future<void> _purchasePlan(VipPlanItem plan) async {
-    if (_purchasing) return;
-    final session = context.read<SessionManager>();
-    final user = session.getUser();
-    final diamonds = user?.coin.toInt() ?? 0;
-    if (plan.dollar > diamonds) {
-      Fluttertoast.showToast(msg: 'Not enough diamonds. Need ${formatCount(plan.dollar)}');
-      context.pushNamed(AppRoutes.recharge);
-      return;
-    }
-    setState(() => _purchasing = true);
-    try {
-      final res = await ApiService.purchaseVip(
-        userId: session.userId,
-        planId: plan.id ?? '',
-        paymentType: 'diamond',
-      );
-      if (res.status) {
-        Fluttertoast.showToast(msg: 'VIP activated!');
-        _loadData();
-      } else {
-        Fluttertoast.showToast(msg: res.message ?? 'Purchase failed');
-      }
-    } catch (e) {
-      Log.e(_tag, 'purchasePlan failed', e);
-      Fluttertoast.showToast(msg: 'Failed: $e');
-    } finally {
-      if (mounted) setState(() => _purchasing = false);
-    }
   }
 
   Future<void> _buyTier(VipTier tier) async {
@@ -240,13 +321,25 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
     if (!mounted) return;
     final session = context.read<SessionManager>();
     try {
-      await ApiService.updateVipSetting(
+      final res = await ApiService.updateVipSetting(
         userId: session.userId,
         settingKey: prefKey,
         value: value,
       );
+      if (res.status != true) {
+        // Backend rejected (e.g. level too low / VIP expired) — revert the
+        // local toggle so the switch doesn't lie.
+        await _prefs.setBool(prefKey, !value);
+        if (mounted) {
+          setState(() {});
+          Fluttertoast.showToast(msg: res.message ?? 'Could not update setting');
+        }
+      }
     } catch (e) {
+      await _prefs.setBool(prefKey, !value);
+      if (mounted) setState(() {});
       Log.e(_tag, 'toggleSetting API failed', e);
+      Fluttertoast.showToast(msg: 'Setting update failed');
     }
   }
 
@@ -363,7 +456,6 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
                         controller: _tab,
                         children: [
                           _privilegesTab(),
-                          _plansTab(),
                           _tiersTab(),
                         ],
                       ),
@@ -422,7 +514,6 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
         labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
         tabs: const [
           Tab(text: 'Privileges'),
-          Tab(text: 'Plans'),
           Tab(text: 'Tiers'),
         ],
       ),
@@ -802,89 +893,6 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
                   style: const TextStyle(fontSize: 10, color: Colors.white38, fontWeight: FontWeight.bold),
                 ),
               ),
-      ),
-    );
-  }
-
-  // ---- Plans Tab ----------------------------------------------------------
-  Widget _plansTab() {
-    if (_plans.isEmpty) {
-      return const Center(child: Text('No VIP plans available', style: TextStyle(color: AppTheme.textTertiary)));
-    }
-    return ListView.builder(
-      padding: const EdgeInsets.all(16),
-      itemCount: _plans.length,
-      itemBuilder: (ctx, i) => _planCard(_plans[i]),
-    );
-  }
-
-  Widget _planCard(VipPlanItem plan) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF2A2A2A), Color(0xFF1A1A1A)],
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.3),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  plan.name ?? 'VIP Plan',
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
-                ),
-              ),
-              if (plan.isTop)
-                const PremiumBadge(text: 'POPULAR', gradient: AppTheme.goldGradient),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            '${plan.validity} ${plan.validityType ?? 'days'}',
-            style: const TextStyle(color: Colors.white60, fontSize: 14),
-          ),
-          const SizedBox(height: 20),
-          Row(
-            children: [
-              const Text('💎', style: TextStyle(fontSize: 18)),
-              const SizedBox(width: 8),
-              Text(
-                formatCount(plan.dollar),
-                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFFFFD700)),
-              ),
-              const Spacer(),
-              GestureDetector(
-                onTap: _purchasing ? null : () => _purchasePlan(plan),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
-                  decoration: BoxDecoration(
-                    gradient: AppTheme.goldGradient,
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: const Text(
-                    'Activate',
-                    style: TextStyle(color: Colors.black, fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
       ),
     );
   }

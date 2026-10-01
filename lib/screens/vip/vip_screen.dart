@@ -280,6 +280,16 @@ class _VipScreenState extends State<VipScreen> with TickerProviderStateMixin {
         if (!prefs.containsKey(key)) {
           await prefs.setBool(key, true);
         }
+        // Persist to the backend too — the toggles are enforced server-side
+        // (visitor records, DM gating, invisible join). Level-gated keys
+        // may be rejected server-side; that's fine, the pref stays local.
+        try {
+          await ApiService.updateVipSetting(
+            userId: context.read<SessionManager>().userId,
+            settingKey: key,
+            value: true,
+          );
+        } catch (_) {}
       }
     } catch (e) {
       Log.e('VipScreen', 'autoEnableVipToggles failed', e);

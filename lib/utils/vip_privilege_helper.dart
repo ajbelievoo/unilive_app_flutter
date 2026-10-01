@@ -21,6 +21,7 @@ library vip_privilege_helper;
 import 'dart:ui';
 
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/json_annotation_helper.dart';
 import '../models/user_root.dart';
@@ -28,6 +29,21 @@ import '../services/session_manager.dart';
 
 class VipPrivilegeHelper {
   VipPrivilegeHelper._();
+
+  /// VIP 6+ "Hide Online Status" — reads the user's toggle from
+  /// SharedPreferences and returns whether room joins should be flagged
+  /// `Invisible: true`. The backend re-validates level + VIP state, so this
+  /// only needs to reflect the local choice for an active VIP.
+  static Future<bool> shouldJoinInvisible(SessionManager session) async {
+    try {
+      final user = session.getUser();
+      if (user?.isVIP != true) return false;
+      final prefs = await SharedPreferences.getInstance();
+      return prefs.getBool('hide_online_status') ?? false;
+    } catch (_) {
+      return false;
+    }
+  }
 
   // ---------------------------------------------------------------------------
   // Local-user privilege checks

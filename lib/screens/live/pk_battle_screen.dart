@@ -25,6 +25,7 @@ import '../../services/api_service.dart';
 import '../../services/session_manager.dart';
 import '../../services/socket_service.dart';
 import '../../utils/log.dart';
+import '../../utils/vip_privilege_helper.dart';
 import '../../widgets/big_gift_overlay.dart';
 import '../../widgets/gift_bottom_sheet.dart';
 import '../../widgets/gift_overlay.dart';
@@ -430,11 +431,16 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
   /// addView/view/liveRoomConnect emits LiveRoomScreen uses.
   void _emitViewerRoomJoin() {
     if (widget.isHost || _viewerJoinEmitted) return;
+    _emitViewerRoomJoinAsync();
+  }
+
+  Future<void> _emitViewerRoomJoinAsync() async {
     try {
       final session = SessionManager.instance;
       if (session == null) return;
       _viewerJoinEmitted = true;
       final user = session.getUser();
+      final invisible = await VipPrivilegeHelper.shouldJoinInvisible(session);
       final liveId =
           widget.room?.liveRoomId ??
           (widget.isHost1 ? _config.host1LiveId : _config.host2LiveId) ??
@@ -461,7 +467,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
         'isHost': false,
         'level': user?.level?.toJson() ?? {'name': '1'},
         'levelName': user?.level?.name ?? '1',
-        'Invisible': false,
+        'Invisible': invisible,
         'liveType': 'video',
         'isVipProtected': user?.isVipProtected ?? false,
         'vipBadgeUrl': user?.vipDetails?.levelBadgeUrl ?? '',

@@ -11712,9 +11712,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   }
 
   void _emitAddView() {
+    _emitAddViewAsync();
+  }
+
+  Future<void> _emitAddViewAsync() async {
     try {
       final session = context.read<SessionManager>();
       final user = session.getUser();
+      final invisible = await VipPrivilegeHelper.shouldJoinInvisible(session);
       // Ports native addLessView: send FULL profile so the backend can
       // construct a join comment with the user's avatar/name/VIP status
       // and broadcast it to all viewers. Without these fields the backend
@@ -11734,7 +11739,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         'isHost': false,
         'level': user?.level?.toJson() ?? {'name': '1'},
         'levelName': user?.level?.name ?? '1',
-        'Invisible': false,
+        'Invisible': invisible,
         'liveType': 'video',
         'isVipProtected': user?.isVipProtected ?? false,
         'vipBadgeUrl': user?.vipDetails?.levelBadgeUrl ?? '',

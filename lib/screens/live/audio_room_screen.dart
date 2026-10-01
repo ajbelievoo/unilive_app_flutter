@@ -2806,9 +2806,14 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   /// "joined the room" broadcast. Mirrors native `addLessView(true)` and
   /// the initial system `EVENT_COMMENT_AUDIO` emit.
   void _emitJoinEvents({bool announce = true}) {
+    _emitJoinEventsAsync(announce: announce);
+  }
+
+  Future<void> _emitJoinEventsAsync({bool announce = true}) async {
     try {
       final session = context.read<SessionManager>();
       final user = session.getUser();
+      final invisible = await VipPrivilegeHelper.shouldJoinInvisible(session);
       final liveId = _liveId;
       final liveUserMongoId = _roomUser.id ?? '';
       final hostId = _hostUserId ?? liveUserMongoId;
@@ -2855,7 +2860,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         'level': user?.level?.toJson() ?? {'name': '1'},
         'levelName': user?.level?.name ?? '1',
         'hostLevel': user?.hostLevel?.name ?? '',
-        'Invisible': false,
+        'Invisible': invisible,
         'liveType': 'audio',
         'isVipProtected': user?.isVipProtected ?? false,
         'vipBadgeUrl': vipBadgeUrl,
