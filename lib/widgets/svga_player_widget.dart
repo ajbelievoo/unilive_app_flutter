@@ -126,7 +126,7 @@ class SvgaCacheManager {
   /// large rooms to retain hundreds of megabytes after gifts/entries ended.
   static final LinkedHashMap<String, Uint8List> _bytesCache = LinkedHashMap();
   static final Map<String, Future<Uint8List?>> _inFlight = HashMap();
-  static const int _maxMemoryEntries = 6;
+  static const int _maxMemoryEntries = 16;
   static const int _maxFileBytes = 40 * 1024 * 1024;
   static Directory? _cacheDir;
 
@@ -139,6 +139,24 @@ class SvgaCacheManager {
   static int _activeDecodes = 0;
   static const int _maxConcurrentDecodes = 2;
   static final Queue<Completer<void>> _decodeWaiters = Queue();
+
+  /// LRU of decoded embedded images (masters). Players receive cheap
+  /// `ui.Image.clone()`s which share the native texture — cloning is
+  /// refcounted, so the per-player MovieEntity can dispose its clone
+  /// without affecting the master or other players. This makes repeat
+  /// visits (swipe back to a tier, re-enter a room) near-instant since
+  /// only the protobuf parse re-runs — images skip decode entirely.
+  static final LinkedHashMap<String, ui.Image> _imageCache = LinkedHashMap();
+  static const int _maxCachedImages = 200;
+
+  static void _cacheImage(String key, ui.Image image) {
+    _imageCache.remove(key);
+    _imageCache[key] = image;
+    while (_imageCache.length > _maxCachedImages) {
+      final evicted = _imageCache.remove(_imageCache.keys.first);
+      evicted?.dispose();
+    }
+  }
 
   static Future<void> _acquireDecodeSlot() {
     if (_activeDecodes < _maxConcurrentDecodes) {
@@ -167,7 +185,11 @@ class SvgaCacheManager {
   /// embedded audio in the `images` map keyed by audioKey, and feeding MP3
   /// bytes to the platform image decoder produced the "Invalid image data"
   /// / "unimplemented" error spam while wasting decode time.
-  static Future<MovieEntity> _prepareResources(MovieEntity movie) async {
+  ///
+  /// Decoded masters live in [_imageCache]; each MovieEntity gets a
+  /// `clone()` so entity cleanup never kills a shared image.
+  static Future<MovieEntity> _prepareResources(
+      MovieEntity movie, String url) async {
     if (movie.images.isEmpty) return movie;
     final audioKeys = <String>{
       for (final a in movie.audios)
@@ -175,10 +197,18 @@ class SvgaCacheManager {
     };
     await Future.wait(movie.images.entries.map((item) async {
       if (audioKeys.contains(item.key)) return;
+      final cacheKey = '$url::${item.key}';
+      final cached = _imageCache.remove(cacheKey);
+      if (cached != null) {
+        _imageCache[cacheKey] = cached;
+        movie.bitmapCache[item.key] = cached.clone();
+        return;
+      }
       try {
         final ui.Image image =
             await decodeImageFromList(Uint8List.fromList(item.value));
-        movie.bitmapCache[item.key] = image;
+        _cacheImage(cacheKey, image);
+        movie.bitmapCache[item.key] = image.clone();
       } catch (e) {
         Log.w('SvgaCacheManager', 'embedded image decode failed: $e');
       }
@@ -227,7 +257,7 @@ class SvgaCacheManager {
         try {
           video = await Isolate.run(() => _decodeMovieEntitySync(bytes))
               .timeout(const Duration(seconds: 20));
-          video = await _prepareResources(video);
+          video = await _prepareResources(video, url);
         } finally {
           _releaseDecodeSlot();
         }
@@ -399,8 +429,23 @@ class SvgaCacheManager {
   }
 
   static void preload(List<String> urls) {
-    for (final url in urls.take(_maxMemoryEntries)) {
+    for (final url in urls.take(24)) {
       _getBytes(url.trim());
+    }
+  }
+
+  /// Pre-decodes SVGA files so their embedded images land in [_imageCache].
+  /// The parsed entity is released right away — players later rebuild it
+  /// from cached bytes and clone the already-decoded images, cutting a
+  /// 3–5s cold decode down to a fast parse + clone. Runs through the same
+  /// concurrency-limited pipeline; fire-and-forget from callers.
+  static void warmDecode(List<String> urls) {
+    for (final url in urls) {
+      load(url).then((entity) {
+        try {
+          entity?.dispose();
+        } catch (_) {}
+      }).catchError((_) {});
     }
   }
 }

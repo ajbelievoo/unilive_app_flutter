@@ -61,6 +61,37 @@ class _VipScreenState extends State<VipScreen> with TickerProviderStateMixin {
   /// every provider rebuild.
   bool _imagesPrecached = false;
 
+  /// Guards the one-shot SVGA warm-up pass so it only runs once per visit.
+  bool _svgaWarmed = false;
+
+  /// Kick off background decode of every tier's SVGA assets (frame, badge,
+  /// name tag, chat bubble, room card, voice wave). The decode pipeline is
+  /// concurrency-limited and populates the shared image cache, so when the
+  /// user swipes to a tier its previews render almost instantly instead of
+  /// decoding 0.8–10MB files on demand.
+  void _warmTierAssets(List<VipTier> tiers) {
+    if (_svgaWarmed) return;
+    _svgaWarmed = true;
+    final urls = <String>[];
+    for (final t in tiers) {
+      for (final u in <String?>[
+        t.effectiveProfileFrameUrl,
+        t.effectiveLevelBadgeUrl,
+        t.nameUrl,
+        t.chatBubbleUrl,
+        t.effectiveRoomCardUrl,
+        t.voiceWaveUrl,
+      ]) {
+        if (u != null && u.isNotEmpty && SvgaHelper.isSvgaUrl(u)) {
+          urls.add(u);
+        }
+      }
+    }
+    if (urls.isNotEmpty) {
+      SvgaCacheManager.warmDecode(urls);
+    }
+  }
+
   @override
   void initState() {
     super.initState();
@@ -432,6 +463,14 @@ class _VipScreenState extends State<VipScreen> with TickerProviderStateMixin {
                 precacheImage(NetworkImage(bg), context);
               }
             }
+          });
+        }
+
+        // Warm-decode all tier SVGA assets in the background so every page's
+        // previews render fast on first swipe and near-instantly on return.
+        if (tiers.isNotEmpty) {
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _warmTierAssets(tiers);
           });
         }
 
