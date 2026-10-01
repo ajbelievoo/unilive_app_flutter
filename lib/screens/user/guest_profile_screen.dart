@@ -17,6 +17,7 @@ import '../../models/json_annotation_helper.dart';
 import '../../models/live_stream_root.dart';
 import '../../models/audio_room_root.dart';
 import '../../routes/app_routes.dart';
+import '../../theme/app_theme.dart';
 import '../call/call_screen.dart' show startCall;
 import '../../services/api_service.dart';
 import '../../services/session_manager.dart';
@@ -488,11 +489,11 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Icon(Icons.error_outline, size: 64, color: Colors.grey.shade400),
+          Icon(Icons.error_outline, size: 64, color: AppTheme.fg(context, 0.35)),
           const SizedBox(height: 12),
           Text(
             'Could not load profile',
-            style: TextStyle(color: Colors.grey.shade600),
+            style: TextStyle(color: AppTheme.fg(context, 0.6)),
           ),
           const SizedBox(height: 16),
           ElevatedButton(onPressed: _loadProfile, child: const Text('Retry')),
@@ -504,7 +505,7 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
   Widget _buildContent() {
     final u = _user!;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F5FB),
+      backgroundColor: AppTheme.themed(context, 0xFF121212, 0xFFF6F5FB),
       extendBodyBehindAppBar: true,
       body: RefreshIndicator(
         onRefresh: _loadProfile,
@@ -1174,7 +1175,7 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.cardBg(context),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
@@ -1225,7 +1226,7 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
   }
 
   Widget _statDivider() =>
-      Container(height: 28, width: 1, color: const Color(0xFFE8E8F0));
+      Container(height: 28, width: 1, color: AppTheme.themed(context, 0xFF2A2A45, 0xFFE8E8F0));
 
   Widget _statItem(
     int count,
@@ -1251,18 +1252,18 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
             const SizedBox(height: 6),
             Text(
               formatCount(count),
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
-                color: Color(0xFF1A1A2E),
+                color: AppTheme.fg(context),
               ),
             ),
             const SizedBox(height: 2),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: Color(0xFF9A9AB0),
+                color: AppTheme.themed(context, 0xFF8A8AA8, 0xFF9A9AB0),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -1468,7 +1469,7 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.cardBg(context),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
@@ -1498,12 +1499,12 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
                   ),
                 ),
                 const SizedBox(width: 10),
-                const Text(
+                Text(
                   'Friends',
                   style: TextStyle(
                     fontSize: 15,
                     fontWeight: FontWeight.w700,
-                    color: Color(0xFF1A1A2E),
+                    color: AppTheme.fg(context),
                   ),
                 ),
                 const Spacer(),
@@ -1563,7 +1564,7 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
                       child: Text(
                         'No friends yet',
                         style: TextStyle(
-                          color: const Color(0xFF9A9AB0).withValues(alpha: 0.7),
+                          color: AppTheme.themed(context, 0xFF8A8AA8, 0xFF9A9AB0).withValues(alpha: 0.7),
                           fontSize: 12,
                         ),
                       ),
@@ -1606,19 +1607,19 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
                                           fit: BoxFit.cover,
                                           errorWidget:
                                               (_, __, ___) => Container(
-                                                color: const Color(0xFFF1F1FA),
-                                                child: const Icon(
+                                                color: AppTheme.themed(context, 0xFF2A2A2A, 0xFFF1F1FA),
+                                                child: Icon(
                                                   Icons.person,
-                                                  color: Color(0xFF9A9AB0),
+                                                  color: AppTheme.themed(context, 0xFF8A8AA8, 0xFF9A9AB0),
                                                   size: 20,
                                                 ),
                                               ),
                                         )
                                         : Container(
-                                          color: const Color(0xFFF1F1FA),
-                                          child: const Icon(
+                                          color: AppTheme.themed(context, 0xFF2A2A2A, 0xFFF1F1FA),
+                                          child: Icon(
                                             Icons.person,
-                                            color: Color(0xFF9A9AB0),
+                                            color: AppTheme.themed(context, 0xFF8A8AA8, 0xFF9A9AB0),
                                             size: 20,
                                           ),
                                         ),
@@ -1627,9 +1628,9 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
                             const SizedBox(height: 4),
                             Text(
                               f.name ?? 'User',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 9,
-                                color: Color(0xFF9A9AB0),
+                                color: AppTheme.themed(context, 0xFF8A8AA8, 0xFF9A9AB0),
                               ),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -1653,7 +1654,7 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.cardBg(context),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
@@ -1668,7 +1669,7 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
             TabBar(
               controller: _tabCtrl,
               labelColor: const Color(0xFF6A5AE0),
-              unselectedLabelColor: const Color(0xFF9A9AB0),
+              unselectedLabelColor: AppTheme.themed(context, 0xFF8A8AA8, 0xFF9A9AB0),
               indicatorColor: const Color(0xFF6A5AE0),
               indicatorSize: TabBarIndicatorSize.label,
               indicatorWeight: 3,
@@ -1726,7 +1727,7 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(fontSize: 13, color: Color(0xFF1A1A2E)),
+            style: TextStyle(fontSize: 13, color: AppTheme.fg(context)),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -1740,7 +1741,7 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
       child: Container(
         padding: const EdgeInsets.fromLTRB(16, 6, 16, 10),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.themed(context, 0xFF1E1E1E),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.05),
@@ -1776,7 +1777,7 @@ class _GuestProfileScreenState extends State<GuestProfileScreen>
                   onPressed: _followLoading ? null : _toggleFollow,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.transparent,
-                    foregroundColor: _isFollow ? Colors.black87 : Colors.white,
+                    foregroundColor: _isFollow ? AppTheme.fg(context, 0.87) : Colors.white,
                     shadowColor: Colors.transparent,
                     minimumSize: const Size(0, 36),
                     padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -2318,7 +2319,7 @@ class _HonorTabState extends State<_HonorTab>
         Container(
           margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           decoration: BoxDecoration(
-            color: const Color(0xFFF1F1FA),
+            color: AppTheme.themed(context, 0xFF2A2A2A, 0xFFF1F1FA),
             borderRadius: BorderRadius.circular(12),
           ),
           child: TabBar(
@@ -2332,7 +2333,7 @@ class _HonorTabState extends State<_HonorTab>
             ),
             dividerColor: Colors.transparent,
             labelColor: Colors.white,
-            unselectedLabelColor: const Color(0xFF6B6B80),
+            unselectedLabelColor: AppTheme.fg(context, 0.5),
             labelStyle: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
@@ -2470,7 +2471,7 @@ class _HonorTabState extends State<_HonorTab>
             const SizedBox(height: 8),
             Text(
               emptyMsg,
-              style: const TextStyle(color: Color(0xFF9A9AB0), fontSize: 12),
+              style: TextStyle(color: AppTheme.themed(context, 0xFF8A8AA8, 0xFF9A9AB0), fontSize: 12),
             ),
           ],
         ),
@@ -2498,7 +2499,7 @@ class _HonorTabState extends State<_HonorTab>
                   children: [
                     Container(
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF5F5FA),
+                        color: AppTheme.themed(context, 0xFF2A2A2A, 0xFFF5F5FA),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: const Color(0xFF6A5AE0).withValues(alpha: 0.1),
@@ -2521,7 +2522,7 @@ class _HonorTabState extends State<_HonorTab>
                                 ),
                               ),
                           errorWidget:
-                              (_, __, ___) => const ImageIcon(const AssetImage("assets/gift/official_gift.png"), color: Color(0xFF9A9AB0)),
+                              (_, __, ___) => ImageIcon(const AssetImage("assets/gift/official_gift.png"), color: AppTheme.themed(context, 0xFF8A8AA8, 0xFF9A9AB0)),
                         ),
                       ),
                     ),
@@ -2555,7 +2556,7 @@ class _HonorTabState extends State<_HonorTab>
               const SizedBox(height: 4),
               Text(
                 g.name,
-                style: const TextStyle(fontSize: 10, color: Color(0xFF9A9AB0)),
+                style: TextStyle(fontSize: 10, color: AppTheme.themed(context, 0xFF8A8AA8, 0xFF9A9AB0)),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
               ),
@@ -2648,7 +2649,7 @@ class _GuestGiftDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final title = isReceived ? 'Received From' : 'Sent To';
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F5FB),
+      backgroundColor: AppTheme.themed(context, 0xFF121212, 0xFFF6F5FB),
       appBar: AppBar(
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
         backgroundColor: const Color(0xFF6A5AE0),
@@ -2754,8 +2755,8 @@ class _GuestGiftDetailScreen extends StatelessWidget {
                             isReceived
                                 ? 'No sender details available'
                                 : 'No receiver details available',
-                            style: const TextStyle(
-                              color: Color(0xFF9A9AB0),
+                            style: TextStyle(
+                              color: AppTheme.themed(context, 0xFF8A8AA8, 0xFF9A9AB0),
                               fontSize: 13,
                             ),
                           ),
@@ -2766,7 +2767,7 @@ class _GuestGiftDetailScreen extends StatelessWidget {
                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 20),
                       itemCount: senders.length,
                       itemBuilder:
-                          (_, i) => _guestSenderCard(senders[i], i + 1),
+                          (ctx, i) => _guestSenderCard(ctx, senders[i], i + 1),
                     ),
           ),
         ],
@@ -2774,7 +2775,7 @@ class _GuestGiftDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _guestSenderCard(_GuestGiftSender sender, int rank) {
+  Widget _guestSenderCard(BuildContext context, _GuestGiftSender sender, int rank) {
     Color rankColor;
     IconData rankIcon;
     if (rank == 1) {
@@ -2795,7 +2796,7 @@ class _GuestGiftDetailScreen extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -2837,19 +2838,19 @@ class _GuestGiftDetailScreen extends StatelessWidget {
                         fit: BoxFit.cover,
                         errorWidget:
                             (_, __, ___) => Container(
-                              color: const Color(0xFFF1F1FA),
-                              child: const Icon(
+                              color: AppTheme.themed(context, 0xFF2A2A2A, 0xFFF1F1FA),
+                              child: Icon(
                                 Icons.person,
-                                color: Color(0xFF9A9AB0),
+                                color: AppTheme.themed(context, 0xFF8A8AA8, 0xFF9A9AB0),
                                 size: 22,
                               ),
                             ),
                       )
                       : Container(
-                        color: const Color(0xFFF1F1FA),
-                        child: const Icon(
+                        color: AppTheme.themed(context, 0xFF2A2A2A, 0xFFF1F1FA),
+                        child: Icon(
                           Icons.person,
-                          color: Color(0xFF9A9AB0),
+                          color: AppTheme.themed(context, 0xFF8A8AA8, 0xFF9A9AB0),
                           size: 22,
                         ),
                       ),
@@ -2859,10 +2860,10 @@ class _GuestGiftDetailScreen extends StatelessWidget {
           Expanded(
             child: Text(
               sender.name,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF1A1A2E),
+                color: AppTheme.fg(context),
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -2935,9 +2936,9 @@ class _PostsTabState extends State<_PostsTab> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.photo_library, size: 48, color: Colors.grey.shade400),
+            Icon(Icons.photo_library, size: 48, color: AppTheme.fg(context, 0.35)),
             const SizedBox(height: 8),
-            Text('No posts yet', style: TextStyle(color: Colors.grey.shade600)),
+            Text('No posts yet', style: TextStyle(color: AppTheme.fg(context, 0.6))),
           ],
         ),
       );
@@ -2968,11 +2969,11 @@ class _PostsTabState extends State<_PostsTab> {
           child: CachedNetworkImage(
             imageUrl: image,
             fit: BoxFit.cover,
-            placeholder: (_, __) => Container(color: Colors.grey.shade100),
+            placeholder: (_, __) => Container(color: AppTheme.themed(context, 0xFF2A2A2A, 0xFFF5F5F5)),
             errorWidget:
                 (_, __, ___) => Container(
-                  color: Colors.grey.shade200,
-                  child: const Icon(Icons.image, color: Colors.grey),
+                  color: AppTheme.themed(context, 0xFF2A2A2A, 0xFFEEEEEE),
+                  child: Icon(Icons.image, color: AppTheme.fg(context, 0.45)),
                 ),
           ),
         );

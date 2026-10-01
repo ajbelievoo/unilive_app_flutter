@@ -8,6 +8,7 @@ import '../../models/splash_poster_model.dart';
 import '../../routes/app_routes.dart';
 import '../../services/api_service.dart';
 import '../../services/session_manager.dart';
+import '../../theme/app_theme.dart';
 import '../../utils/log.dart';
 import 'package:provider/provider.dart';
 import 'package:belive/widgets/preloader.dart';
@@ -88,7 +89,7 @@ class _SplashPosterScreenState extends State<SplashPosterScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppTheme.themed(context, 0xFF000000, 0xFFFAFAFE),
       body: Stack(
         alignment: Alignment.topLeft,
         fit: StackFit.expand,
@@ -105,7 +106,7 @@ class _SplashPosterScreenState extends State<SplashPosterScreen> {
                     height: 100,
                   ),
                   const SizedBox(height: 20),
-                  const Preloader(color: Colors.white),
+                  Preloader(color: AppTheme.fg(context)),
                 ],
               ),
             )

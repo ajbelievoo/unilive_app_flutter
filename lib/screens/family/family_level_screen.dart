@@ -26,29 +26,29 @@ class FamilyLevelScreen extends StatelessWidget {
     final progress = nextLevelExp > 0 ? (currentExp / nextLevelExp).clamp(0.0, 1.0) : 0.0;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0B21),
+      backgroundColor: AppTheme.themed(context, 0xFF0F0B21, 0xFFF8F7FE),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: const BackButton(color: Colors.white),
-        title: const Text(
+        leading: BackButton(color: AppTheme.fg(context)),
+        title: Text(
           'Family Growth',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+          style: TextStyle(color: AppTheme.fg(context), fontWeight: FontWeight.bold, fontSize: 18),
         ),
         centerTitle: true,
         actions: [
           IconButton(
-            icon: const Icon(Icons.help_outline, color: Colors.white),
+            icon: Icon(Icons.help_outline, color: AppTheme.fg(context)),
             onPressed: () => context.pushNamed(AppRoutes.familyLevelRules),
           ),
         ],
       ),
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A0B6E), Color(0xFF0F0B21)],
+            colors: AppTheme.bgGradient(context, const [Color(0xFF1A0B6E), Color(0xFF0F0B21)]),
           ),
         ),
         child: SingleChildScrollView(
@@ -132,7 +132,7 @@ class FamilyLevelScreen extends StatelessWidget {
                                 child: LinearProgressIndicator(
                                   value: progress,
                                   minHeight: 18,
-                                  backgroundColor: Colors.white12,
+                                  backgroundColor: AppTheme.hairline(context),
                                   valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFFD700)),
                                 ),
                               ),
@@ -148,7 +148,7 @@ class FamilyLevelScreen extends StatelessWidget {
                             children: [
                               Text(
                                 'Exp: ${formatCount(currentExp)}',
-                                style: const TextStyle(color: Colors.white70, fontSize: 12),
+                                style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 12),
                               ),
                               Text(
                                 'Next: ${formatCount(nextLevelExp)}',
@@ -169,11 +169,11 @@ class FamilyLevelScreen extends StatelessWidget {
               const SizedBox(height: 30),
 
               // Header text
-              const Text(
+              Text(
                 'Reach higher levels to unlock premium family features and global recognition.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
-                  color: Colors.white60,
+                  color: AppTheme.fg(context, 0.6),
                   fontSize: 14,
                   height: 1.4,
                   fontStyle: FontStyle.italic,
@@ -182,23 +182,23 @@ class FamilyLevelScreen extends StatelessWidget {
               const SizedBox(height: 30),
 
               // Section 1: Family Identity
-              _buildSectionHeader('Level Rewards'),
+              _buildSectionHeader(context,'Level Rewards'),
               const SizedBox(height: 16),
 
-              _buildIdentityTier(1),
+              _buildIdentityTier(context,1),
               const SizedBox(height: 12),
-              _buildIdentityTier(5),
+              _buildIdentityTier(context,5),
               const SizedBox(height: 12),
-              _buildIdentityTier(10),
+              _buildIdentityTier(context,10),
               const SizedBox(height: 12),
-              _buildIdentityTier(15),
+              _buildIdentityTier(context,15),
               const SizedBox(height: 24),
 
               // Section 2: Privileges Table
-              _buildSectionHeader('Management Privileges'),
+              _buildSectionHeader(context,'Management Privileges'),
               const SizedBox(height: 16),
 
-              _buildPrivilegesTable(),
+              _buildPrivilegesTable(context),
               const SizedBox(height: 40),
             ],
           ),
@@ -207,10 +207,10 @@ class FamilyLevelScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildSectionHeader(String title) {
+  Widget _buildSectionHeader(BuildContext context, String title) {
     return Row(
       children: [
-        const Expanded(child: Divider(color: Colors.white12, thickness: 1)),
+        Expanded(child: Divider(color: AppTheme.hairline(context), thickness: 1)),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 16),
           child: Text(
@@ -223,21 +223,21 @@ class FamilyLevelScreen extends StatelessWidget {
             ),
           ),
         ),
-        const Expanded(child: Divider(color: Colors.white12, thickness: 1)),
+        Expanded(child: Divider(color: AppTheme.hairline(context), thickness: 1)),
       ],
     );
   }
 
-  Widget _buildIdentityTier(int tierLevel) {
+  Widget _buildIdentityTier(BuildContext context, int tierLevel) {
     bool isUnlocked = level >= tierLevel;
 
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha:0.05),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isUnlocked ? const Color(0xFFFFD700).withValues(alpha:0.3) : Colors.white10),
+        border: Border.all(color: isUnlocked ? const Color(0xFFFFD700).withValues(alpha:0.3) : AppTheme.hairline(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -247,7 +247,7 @@ class FamilyLevelScreen extends StatelessWidget {
               Text(
                 'Unlock at Lv.$tierLevel',
                 style: TextStyle(
-                  color: isUnlocked ? const Color(0xFFFFD700) : Colors.white38,
+                  color: isUnlocked ? const Color(0xFFFFD700) : AppTheme.fg(context, 0.38),
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),
@@ -256,17 +256,17 @@ class FamilyLevelScreen extends StatelessWidget {
               if (isUnlocked)
                 const Icon(Icons.check_circle, color: Colors.green, size: 18)
               else
-                const Icon(Icons.lock, color: Colors.white24, size: 16),
+                Icon(Icons.lock, color: AppTheme.fg(context, 0.24), size: 16),
             ],
           ),
           const SizedBox(height: 14),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: [
-              _buildPerkItem(Icons.label, 'Family Tag', isUnlocked),
-              _buildPerkItem(Icons.filter_vintage, 'Family Frame', isUnlocked),
-              _buildPerkItem(Icons.image, 'Custom BG', isUnlocked),
-              _buildPerkItem(Icons.military_tech, 'Family Medal', isUnlocked),
+              _buildPerkItem(context, Icons.label, 'Family Tag', isUnlocked),
+              _buildPerkItem(context, Icons.filter_vintage, 'Family Frame', isUnlocked),
+              _buildPerkItem(context, Icons.image, 'Custom BG', isUnlocked),
+              _buildPerkItem(context, Icons.military_tech, 'Family Medal', isUnlocked),
             ],
           ),
         ],
@@ -274,7 +274,7 @@ class FamilyLevelScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildPerkItem(IconData icon, String label, bool active) {
+  Widget _buildPerkItem(BuildContext context, IconData icon, String label, bool active) {
     return SizedBox(
       width: 70,
       child: Column(
@@ -283,25 +283,25 @@ class FamilyLevelScreen extends StatelessWidget {
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              color: active ? const Color(0xFF1E1410) : Colors.black26,
+              color: active ? AppTheme.themed(context, 0xFF1E1410, 0xFFFFF8E1) : (AppTheme.isDark(context) ? Colors.black26 : Colors.black12),
               shape: BoxShape.circle,
-              border: Border.all(color: active ? const Color(0xFFFFC107).withValues(alpha:0.5) : Colors.white10),
+              border: Border.all(color: active ? const Color(0xFFFFC107).withValues(alpha:0.5) : AppTheme.hairline(context)),
             ),
-            child: Icon(icon, color: active ? const Color(0xFFFFC107) : Colors.white12, size: 24),
+            child: Icon(icon, color: active ? const Color(0xFFFFC107) : AppTheme.fg(context, 0.12), size: 24),
           ),
           const SizedBox(height: 8),
           Text(
             label,
             textAlign: TextAlign.center,
             maxLines: 2,
-            style: TextStyle(color: active ? Colors.white70 : Colors.white12, fontSize: 10),
+            style: TextStyle(color: active ? AppTheme.fg(context, 0.7) : AppTheme.fg(context, 0.12), fontSize: 10),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildPrivilegesTable() {
+  Widget _buildPrivilegesTable(BuildContext context) {
     final privilegesData = [
       {'level': 1, 'members': 50, 'coLeaders': 5},
       {'level': 5, 'members': 300, 'coLeaders': 9},
@@ -311,9 +311,9 @@ class FamilyLevelScreen extends StatelessWidget {
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha:0.03),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white10),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: Column(
         children: [
@@ -321,7 +321,7 @@ class FamilyLevelScreen extends StatelessWidget {
           Container(
             padding: const EdgeInsets.symmetric(vertical: 12),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha:0.07),
+              color: AppTheme.isDark(context) ? Colors.white.withValues(alpha:0.07) : const Color(0xFFF1F1FA),
               borderRadius: const BorderRadius.only(
                 topLeft: Radius.circular(16),
                 topRight: Radius.circular(16),
@@ -339,14 +339,14 @@ class FamilyLevelScreen extends StatelessWidget {
           ...privilegesData.map((row) {
             return Container(
               padding: const EdgeInsets.symmetric(vertical: 12),
-              decoration: const BoxDecoration(
-                border: Border(bottom: BorderSide(color: Colors.white10, width: 0.5)),
+              decoration: BoxDecoration(
+                border: Border(bottom: BorderSide(color: AppTheme.hairline(context), width: 0.5)),
               ),
               child: Row(
                 children: [
-                  Expanded(child: Text('${row['level']}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70, fontSize: 14))),
-                  Expanded(child: Text('${row['members']}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600))),
-                  Expanded(child: Text('${row['coLeaders']}', textAlign: TextAlign.center, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600))),
+                  Expanded(child: Text('${row['level']}', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 14))),
+                  Expanded(child: Text('${row['members']}', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.fg(context), fontSize: 14, fontWeight: FontWeight.w600))),
+                  Expanded(child: Text('${row['coLeaders']}', textAlign: TextAlign.center, style: TextStyle(color: AppTheme.fg(context), fontSize: 14, fontWeight: FontWeight.w600))),
                 ],
               ),
             );

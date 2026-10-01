@@ -17,16 +17,16 @@ class GameListSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF15152A, 0xFFF8F7FE),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: const EdgeInsets.symmetric(vertical: 16),
       child: SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Padding(
-            padding: EdgeInsets.all(16),
-            child: Text('Select Game', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text('Select Game', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.fg(context))),
           ),
           ..._games.map((g) => ListTile(
                 leading: Icon(g['icon'] as IconData, color: g['color'] as Color),
@@ -95,14 +95,14 @@ class _CasinoGameSheetState extends State<CasinoGameSheet>
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF15152A, 0xFFF8F7FE),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: const EdgeInsets.all(24),
       child: SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Text('Casino Dice', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          Text('Casino Dice', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.fg(context))),
           const SizedBox(height: 24),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -174,14 +174,14 @@ class _TeenPattiGameSheetState extends State<TeenPattiGameSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: AppTheme.surface,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF15152A, 0xFFF8F7FE),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: const EdgeInsets.all(24),
       child: SafeArea(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
-          const Text('Teen Patti', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          Text('Teen Patti', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: AppTheme.fg(context))),
           const SizedBox(height: 24),
           if (_dealt)
             Row(

@@ -887,9 +887,9 @@ class _PkWaitingSheetState extends State<_PkWaitingSheet>
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(28),
-      decoration: const BoxDecoration(
-        color: Colors.black87,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xE0000000, 0xFFF8F7FE),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -899,7 +899,7 @@ class _PkWaitingSheetState extends State<_PkWaitingSheet>
             height: 5,
             margin: const EdgeInsets.only(bottom: 20),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.3),
+              color: AppTheme.fg(context, 0.3),
               borderRadius: BorderRadius.circular(3),
             ),
           ),
@@ -922,16 +922,16 @@ class _PkWaitingSheetState extends State<_PkWaitingSheet>
           const SizedBox(height: 16),
           Text(
             widget.hostName,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: AppTheme.fg(context),
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'Waiting for response...',
-            style: TextStyle(color: Colors.white70, fontSize: 14),
+            style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 14),
           ),
           const SizedBox(height: 8),
           const SizedBox(
@@ -995,9 +995,9 @@ void showPkResultSheet(
     builder:
         (ctx) => Container(
           padding: const EdgeInsets.all(28),
-          decoration: const BoxDecoration(
-            color: Colors.black87,
-            borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+          decoration: BoxDecoration(
+            color: AppTheme.themed(ctx, 0xE0000000, 0xFFF8F7FE),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
           ),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -1007,7 +1007,7 @@ void showPkResultSheet(
                 height: 5,
                 margin: const EdgeInsets.only(bottom: 20),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.3),
+                  color: AppTheme.fg(ctx, 0.3),
                   borderRadius: BorderRadius.circular(3),
                 ),
               ),
@@ -1015,8 +1015,8 @@ void showPkResultSheet(
               const SizedBox(height: 12),
               Text(
                 title,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: AppTheme.fg(ctx),
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1026,17 +1026,18 @@ void showPkResultSheet(
                 children: [
                   Expanded(
                     child: _buildScoreColumn(
+                      ctx,
                       host1Name ?? 'Host 1',
                       host1Score,
                       winner == 2,
                     ),
                   ),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(horizontal: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
                     child: Text(
                       'VS',
                       style: TextStyle(
-                        color: Colors.white54,
+                        color: AppTheme.fg(ctx, 0.54),
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1044,6 +1045,7 @@ void showPkResultSheet(
                   ),
                   Expanded(
                     child: _buildScoreColumn(
+                      ctx,
                       host2Name ?? 'Host 2',
                       host2Score,
                       winner == 1,
@@ -1058,7 +1060,7 @@ void showPkResultSheet(
                     child: OutlinedButton(
                       onPressed: () => Navigator.pop(ctx),
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: Colors.white70,
+                        foregroundColor: AppTheme.fg(ctx, 0.7),
                       ),
                       child: const Text('Close'),
                     ),
@@ -1101,13 +1103,18 @@ void showPkResultSheet(
   );
 }
 
-Widget _buildScoreColumn(String name, int score, bool isWinner) {
+Widget _buildScoreColumn(
+  BuildContext context,
+  String name,
+  int score,
+  bool isWinner,
+) {
   return Column(
     children: [
       Text(
         name,
         style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.7),
+          color: AppTheme.fg(context, 0.7),
           fontWeight: FontWeight.w600,
           fontSize: 13,
         ),
@@ -1127,7 +1134,7 @@ Widget _buildScoreColumn(String name, int score, bool isWinner) {
             style: TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
-              color: isWinner ? Colors.amber : Colors.white,
+              color: isWinner ? Colors.amber : AppTheme.fg(context),
             ),
           ),
         ],
@@ -1215,9 +1222,9 @@ class _AudioRoomPkOpponentSheetState extends State<_AudioRoomPkOpponentSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1226,11 +1233,11 @@ class _AudioRoomPkOpponentSheetState extends State<_AudioRoomPkOpponentSheet> {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                const Expanded(
+                Expanded(
                   child: Text(
                     'PK Battle — Select Opponent',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppTheme.fg(context),
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -1240,20 +1247,23 @@ class _AudioRoomPkOpponentSheetState extends State<_AudioRoomPkOpponentSheet> {
                   onPressed: () {
                     setState(() => _future = _loadRooms());
                   },
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.refresh,
-                    color: Colors.white70,
+                    color: AppTheme.fg(context, 0.7),
                     size: 18,
                   ),
-                  label: const Text(
+                  label: Text(
                     'Refresh',
-                    style: TextStyle(color: Colors.white70, fontSize: 12),
+                    style: TextStyle(
+                      color: AppTheme.fg(context, 0.7),
+                      fontSize: 12,
+                    ),
                   ),
                 ),
               ],
             ),
           ),
-          const Divider(color: Colors.white12),
+          Divider(color: AppTheme.hairline(context)),
           FutureBuilder<AudioRoomRoot>(
             future: _future,
             builder: (context, snap) {
@@ -1273,12 +1283,12 @@ class _AudioRoomPkOpponentSheetState extends State<_AudioRoomPkOpponentSheet> {
                       )
                       .toList();
               if (rooms.isEmpty) {
-                return const SizedBox(
+                return SizedBox(
                   height: 200,
                   child: Center(
                     child: Text(
                       'No active audio rooms',
-                      style: TextStyle(color: Colors.white70),
+                      style: TextStyle(color: AppTheme.fg(context, 0.7)),
                     ),
                   ),
                 );
@@ -1298,12 +1308,12 @@ class _AudioRoomPkOpponentSheetState extends State<_AudioRoomPkOpponentSheet> {
                       ),
                       title: Text(
                         room.name ?? 'Host',
-                        style: const TextStyle(color: Colors.white),
+                        style: TextStyle(color: AppTheme.fg(context)),
                       ),
                       subtitle: Text(
                         '${room.view} watching · ${room.roomName ?? 'Audio Room'}',
-                        style: const TextStyle(
-                          color: Colors.white54,
+                        style: TextStyle(
+                          color: AppTheme.fg(context, 0.54),
                           fontSize: 11,
                         ),
                       ),

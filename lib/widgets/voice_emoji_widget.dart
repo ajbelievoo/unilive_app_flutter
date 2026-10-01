@@ -33,6 +33,7 @@ import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 
 import '../services/api_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/log.dart';
 import 'preloader.dart';
 import 'svga_player_widget.dart';
@@ -279,7 +280,7 @@ class VoiceEmojiPicker extends StatefulWidget {
   }) {
     return showModalBottomSheet<void>(
       context: context,
-      backgroundColor: Colors.black87,
+      backgroundColor: AppTheme.themed(context, 0xE0000000, 0xFFF8F7FE),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -356,17 +357,17 @@ class _VoiceEmojiPickerState extends State<VoiceEmojiPicker> {
           children: [
             Row(
               children: [
-                const Text(
+                Text(
                   'Voice Emoji',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppTheme.fg(context),
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
                 const Spacer(),
                 IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white70),
+                  icon: Icon(Icons.close, color: AppTheme.fg(context, 0.7)),
                   onPressed: () => Navigator.of(context).pop(),
                 ),
               ],
@@ -425,7 +426,7 @@ class _EmojiCell extends StatelessWidget {
             Stack(
               alignment: Alignment.topLeft,
               children: [
-                _buildIcon(),
+                _buildIcon(context),
                 if (locked)
                   const Positioned(
                     right: 0,
@@ -437,7 +438,7 @@ class _EmojiCell extends StatelessWidget {
             const SizedBox(height: 4),
             Text(
               emoji.name,
-              style: const TextStyle(color: Colors.white70, fontSize: 11),
+              style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 11),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
@@ -447,7 +448,7 @@ class _EmojiCell extends StatelessWidget {
     );
   }
 
-  Widget _buildIcon() {
+  Widget _buildIcon(BuildContext context) {
     final url = emoji.iconUrl;
     final isNetwork = url.startsWith('http');
     return SizedBox(
@@ -461,15 +462,15 @@ class _EmojiCell extends StatelessWidget {
                 fit: BoxFit.cover,
                 placeholder: (_, __) => const Preloader(),
                 errorWidget: (_, __, ___) =>
-                    const Icon(Icons.emoji_emotions_outlined,
-                        color: Colors.white54, size: 32),
+                    Icon(Icons.emoji_emotions_outlined,
+                        color: AppTheme.fg(context, 0.54), size: 32),
               )
             : Image.asset(
                 url,
                 fit: BoxFit.cover,
                 errorBuilder: (_, __, ___) =>
-                    const Icon(Icons.emoji_emotions_outlined,
-                        color: Colors.white54, size: 32),
+                    Icon(Icons.emoji_emotions_outlined,
+                        color: AppTheme.fg(context, 0.54), size: 32),
               ),
       ),
     );

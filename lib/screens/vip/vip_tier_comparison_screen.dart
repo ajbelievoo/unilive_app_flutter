@@ -49,11 +49,14 @@ class _VipTierComparisonScreenState extends State<VipTierComparisonScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A1A1A), Color(0xFF0A0A0A)],
+            colors: AppTheme.bgGradient(
+              context,
+              const [Color(0xFF1A1A1A), Color(0xFF0A0A0A)],
+            ),
           ),
         ),
         child: SafeArea(
@@ -79,10 +82,10 @@ class _VipTierComparisonScreenState extends State<VipTierComparisonScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
         children: [
-          IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: () => context.pop()),
-          const Expanded(
+          IconButton(icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)), onPressed: () => context.pop()),
+          Expanded(
             child: Center(
-              child: Text('Compare VIP Tiers', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              child: Text('Compare VIP Tiers', style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 48),
@@ -96,9 +99,9 @@ class _VipTierComparisonScreenState extends State<VipTierComparisonScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.compare_arrows, color: Colors.white38, size: 64),
+          Icon(Icons.compare_arrows, color: AppTheme.fg(context, 0.38), size: 64),
           const SizedBox(height: 16),
-          const Text('No comparison data', style: TextStyle(color: Colors.white54, fontSize: 16)),
+          Text('No comparison data', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 16)),
           const SizedBox(height: 12),
           TextButton(onPressed: _load, child: const Text('Retry')),
         ],
@@ -149,7 +152,7 @@ class _VipTierComparisonScreenState extends State<VipTierComparisonScreen> {
           ...features.map((f) => Container(
                 margin: const EdgeInsets.only(bottom: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.04),
+                  color: AppTheme.cardBg(context),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -158,7 +161,7 @@ class _VipTierComparisonScreenState extends State<VipTierComparisonScreen> {
                       width: firstColWidth,
                       child: Padding(
                         padding: const EdgeInsets.all(10),
-                        child: Text(f.name ?? '', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                        child: Text(f.name ?? '', style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 12)),
                       ),
                     ),
                     ...tiers.map((t) {
@@ -170,7 +173,7 @@ class _VipTierComparisonScreenState extends State<VipTierComparisonScreen> {
                             padding: const EdgeInsets.all(10),
                             child: Icon(
                               hasFeature ? Icons.check_circle : Icons.remove_circle_outline,
-                              color: hasFeature ? const Color(0xFF27AE60) : Colors.white24,
+                              color: hasFeature ? const Color(0xFF27AE60) : AppTheme.fg(context, 0.24),
                               size: 18,
                             ),
                           ),

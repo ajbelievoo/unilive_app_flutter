@@ -145,11 +145,11 @@ class _BanAccountScreenState extends State<BanAccountScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A1A1A), Color(0xFF0A0A0A)],
+            colors: AppTheme.bgGradient(context, const [Color(0xFF1A1A1A), Color(0xFF0A0A0A)]),
           ),
         ),
         child: SafeArea(
@@ -197,12 +197,12 @@ class _BanAccountScreenState extends State<BanAccountScreen> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)),
             onPressed: () => context.pop(),
           ),
-          const Expanded(
+          Expanded(
             child: Center(
-              child: Text('Ban Account', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              child: Text('Ban Account', style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 48),
@@ -236,9 +236,9 @@ class _BanAccountScreenState extends State<BanAccountScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: Row(
         children: [
@@ -247,8 +247,8 @@ class _BanAccountScreenState extends State<BanAccountScreen> {
               width: 56, height: 56,
               child: (widget.targetUserImage != null && widget.targetUserImage!.isNotEmpty)
                   ? CachedNetworkImage(imageUrl: widget.targetUserImage!, fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => Container(color: Colors.grey.shade800, child: const Icon(Icons.person, color: Colors.white54)))
-                  : Container(color: Colors.grey.shade800, child: const Icon(Icons.person, color: Colors.white54)),
+                      errorWidget: (_, __, ___) => Container(color: AppTheme.themed(context, 0xFF424242, 0xFFE0E0E0), child: Icon(Icons.person, color: AppTheme.fg(context, 0.54))))
+                  : Container(color: AppTheme.themed(context, 0xFF424242, 0xFFE0E0E0), child: Icon(Icons.person, color: AppTheme.fg(context, 0.54))),
             ),
           ),
           const SizedBox(width: 12),
@@ -256,9 +256,9 @@ class _BanAccountScreenState extends State<BanAccountScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.targetUserName ?? 'Unknown User', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                Text(widget.targetUserName ?? 'Unknown User', style: TextStyle(color: AppTheme.fg(context), fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 2),
-                Text('ID: ${widget.targetUserId ?? 'N/A'}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                Text('ID: ${widget.targetUserId ?? 'N/A'}', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 12)),
               ],
             ),
           ),
@@ -323,16 +323,16 @@ class _BanAccountScreenState extends State<BanAccountScreen> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
         children: [
           Icon(icon, color: AppTheme.primary, size: 20),
           const SizedBox(height: 6),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+          Text(value, style: TextStyle(color: AppTheme.fg(context), fontSize: 14, fontWeight: FontWeight.bold)),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 10), textAlign: TextAlign.center),
+          Text(label, style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 10), textAlign: TextAlign.center),
         ],
       ),
     );
@@ -342,7 +342,7 @@ class _BanAccountScreenState extends State<BanAccountScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Ban History', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+        Text('Ban History', style: TextStyle(color: AppTheme.fg(context), fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
         ..._banInfo!.banHistory.map((h) => _historyItem(h)),
       ],
@@ -355,7 +355,7 @@ class _BanAccountScreenState extends State<BanAccountScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.04),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Row(
@@ -367,8 +367,8 @@ class _BanAccountScreenState extends State<BanAccountScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(h.action?.toUpperCase() ?? 'ACTION', style: TextStyle(color: isBan ? const Color(0xFFE74C3C) : const Color(0xFF27AE60), fontSize: 12, fontWeight: FontWeight.bold)),
-                if (h.reason != null) Text(h.reason!, style: const TextStyle(color: Colors.white54, fontSize: 11)),
-                if (h.date != null) Text(h.date!, style: const TextStyle(color: Colors.white38, fontSize: 10)),
+                if (h.reason != null) Text(h.reason!, style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 11)),
+                if (h.date != null) Text(h.date!, style: TextStyle(color: AppTheme.fg(context, 0.38), fontSize: 10)),
               ],
             ),
           ),
@@ -385,13 +385,13 @@ class _BanAccountScreenState extends State<BanAccountScreen> {
         if (!isBanned) ...[
           TextField(
             controller: _reasonCtrl,
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: AppTheme.fg(context)),
             maxLines: 2,
             decoration: InputDecoration(
               labelText: 'Ban Reason (optional)',
-              labelStyle: const TextStyle(color: Colors.white54),
+              labelStyle: TextStyle(color: AppTheme.fg(context, 0.54)),
               filled: true,
-              fillColor: Colors.white.withValues(alpha: 0.06),
+              fillColor: AppTheme.cardBg(context),
               border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
             ),
           ),

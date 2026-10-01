@@ -433,20 +433,20 @@ class _VipScreenState extends State<VipScreen> with TickerProviderStateMixin {
         final loading = provider.loading && tiers.isEmpty;
 
         if (loading) {
-          return const Scaffold(
-            backgroundColor: Colors.black,
-            body: Center(child: PremiumLoading()),
+          return Scaffold(
+            backgroundColor: AppTheme.themed(context, 0xFF000000, 0xFFF8F7FE),
+            body: const Center(child: PremiumLoading()),
           );
         }
 
         if (tiers.isEmpty) {
           return Scaffold(
-            backgroundColor: Colors.black,
+            backgroundColor: AppTheme.themed(context, 0xFF000000, 0xFFF8F7FE),
             appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
-            body: const Center(
+            body: Center(
               child: Text(
                 'No VIP tiers available',
-                style: TextStyle(color: Colors.white70),
+                style: TextStyle(color: AppTheme.fg(context, 0.7)),
               ),
             ),
           );
@@ -574,19 +574,19 @@ class _VipScreenState extends State<VipScreen> with TickerProviderStateMixin {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(
+            icon: Icon(
               Icons.arrow_back_ios_new_rounded,
-              color: Colors.white,
+              color: AppTheme.fg(context),
               size: 20,
             ),
             onPressed: () => Navigator.of(context).pop(),
           ),
-          const Expanded(
+          Expanded(
             child: Center(
               child: Text(
                 'VIP Store',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppTheme.fg(context),
                   fontSize: 17,
                   fontWeight: FontWeight.w700,
                   letterSpacing: 0.8,
@@ -602,25 +602,25 @@ class _VipScreenState extends State<VipScreen> with TickerProviderStateMixin {
             ),
           ),
           IconButton(
-            icon: const Icon(
+            icon: Icon(
               Icons.history_rounded,
-              color: Colors.white70,
+              color: AppTheme.fg(context, 0.7),
               size: 21,
             ),
             onPressed: () => context.pushNamed(AppRoutes.vipHistory),
           ),
           IconButton(
-            icon: const Icon(
+            icon: Icon(
               Icons.help_outline_rounded,
-              color: Colors.white70,
+              color: AppTheme.fg(context, 0.7),
               size: 21,
             ),
             onPressed: () => context.pushNamed(AppRoutes.svipRules),
           ),
           IconButton(
-            icon: const Icon(
+            icon: Icon(
               Icons.settings_outlined,
-              color: Colors.white70,
+              color: AppTheme.fg(context, 0.7),
               size: 21,
             ),
             onPressed: () => context.pushNamed(AppRoutes.vipSettings),
@@ -662,20 +662,14 @@ class _VipScreenState extends State<VipScreen> with TickerProviderStateMixin {
                             stroke.withValues(alpha: 0.1),
                           ],
                         )
-                        : LinearGradient(
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                          colors: [
-                            Colors.white.withValues(alpha: 0.10),
-                            Colors.white.withValues(alpha: 0.04),
-                          ],
-                        ),
+                        : null,
+                color: isSelected ? null : AppTheme.cardBg(context),
                 borderRadius: BorderRadius.circular(22),
                 border: Border.all(
                   color:
                       isSelected
                           ? stroke.withValues(alpha: 0.8)
-                          : Colors.white.withValues(alpha: 0.12),
+                          : AppTheme.hairline(context),
                   width: isSelected ? 1.4 : 1.0,
                 ),
                 boxShadow:
@@ -698,7 +692,7 @@ class _VipScreenState extends State<VipScreen> with TickerProviderStateMixin {
                       color:
                           isSelected
                               ? Colors.white
-                              : Colors.white.withValues(alpha: 0.5),
+                              : AppTheme.fg(context, 0.5),
                       fontSize: 13,
                       fontWeight:
                           isSelected ? FontWeight.w700 : FontWeight.w500,
@@ -744,6 +738,7 @@ class _VipScreenState extends State<VipScreen> with TickerProviderStateMixin {
             ? 'Your VIP $currentLevel is active'
             : (isVipActive ? 'Your VIP is active' : "You don't have VIP");
 
+    final isDark = AppTheme.isDark(context);
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       padding: const EdgeInsets.all(14),
@@ -751,10 +746,13 @@ class _VipScreenState extends State<VipScreen> with TickerProviderStateMixin {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withValues(alpha: 0.14),
-            Colors.white.withValues(alpha: 0.04),
-          ],
+          colors:
+              isDark
+                  ? [
+                    Colors.white.withValues(alpha: 0.14),
+                    Colors.white.withValues(alpha: 0.04),
+                  ]
+                  : const [Colors.white, Color(0xFFF4F3FB)],
         ),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: stroke.withValues(alpha: 0.4), width: 1.4),
@@ -796,8 +794,8 @@ class _VipScreenState extends State<VipScreen> with TickerProviderStateMixin {
                     children: [
                       Text(
                         statusTitle,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: AppTheme.fg(context),
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                         ),
@@ -806,7 +804,7 @@ class _VipScreenState extends State<VipScreen> with TickerProviderStateMixin {
                       Text(
                         'This Month: ${formatCount(monthPoints)} pts',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.6),
+                          color: AppTheme.fg(context, 0.6),
                           fontSize: 10,
                         ),
                       ),
@@ -860,7 +858,9 @@ class _VipScreenState extends State<VipScreen> with TickerProviderStateMixin {
                       color:
                           buttonEnabled
                               ? null
-                              : Colors.white.withValues(alpha: 0.08),
+                              : (isDark
+                                  ? Colors.white.withValues(alpha: 0.08)
+                                  : Colors.black.withValues(alpha: 0.06)),
                       borderRadius: BorderRadius.circular(14),
                       boxShadow:
                           buttonEnabled
@@ -889,7 +889,7 @@ class _VipScreenState extends State<VipScreen> with TickerProviderStateMixin {
                                 color:
                                     buttonEnabled
                                         ? Colors.white
-                                        : Colors.white.withValues(alpha: 0.3),
+                                        : AppTheme.fg(context, 0.3),
                                 fontSize: 13,
                                 fontWeight: FontWeight.w800,
                               ),
@@ -905,7 +905,7 @@ class _VipScreenState extends State<VipScreen> with TickerProviderStateMixin {
               child: LinearProgressIndicator(
                 value: progress,
                 minHeight: 5,
-                backgroundColor: Colors.white.withValues(alpha: 0.08),
+                backgroundColor: AppTheme.hairline(context),
                 valueColor: AlwaysStoppedAnimation<Color>(stroke),
               ),
             ),
@@ -917,7 +917,7 @@ class _VipScreenState extends State<VipScreen> with TickerProviderStateMixin {
                 Text(
                   '${formatCount(monthPoints)} pts',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
+                    color: AppTheme.fg(context, 0.6),
                     fontSize: 10,
                   ),
                 ),
@@ -928,8 +928,8 @@ class _VipScreenState extends State<VipScreen> with TickerProviderStateMixin {
                     const SizedBox(width: 3),
                     Text(
                       '${formatCount(userDiamonds)}',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: AppTheme.fg(context),
                         fontSize: 11,
                         fontWeight: FontWeight.w700,
                       ),
@@ -950,7 +950,7 @@ class _VipScreenState extends State<VipScreen> with TickerProviderStateMixin {
                 Text(
                   '${formatCount(monthTarget)} pts',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.6),
+                    color: AppTheme.fg(context, 0.6),
                     fontSize: 10,
                   ),
                 ),
@@ -965,20 +965,28 @@ class _VipScreenState extends State<VipScreen> with TickerProviderStateMixin {
   Widget _buildMiniAvatar() {
     final auth = context.read<AuthProvider>();
     final img = auth.user?.image;
+    final placeholderBg =
+        AppTheme.isDark(context)
+            ? Colors.grey.shade800
+            : Colors.grey.shade200;
     if (img != null && img.isNotEmpty) {
       return CachedNetworkImage(
         imageUrl: img,
         fit: BoxFit.cover,
         errorWidget:
             (_, __, ___) => Container(
-              color: Colors.grey.shade800,
-              child: const Icon(Icons.person, color: Colors.white54, size: 20),
+              color: placeholderBg,
+              child: Icon(
+                Icons.person,
+                color: AppTheme.fg(context, 0.54),
+                size: 20,
+              ),
             ),
       );
     }
     return Container(
-      color: Colors.grey.shade800,
-      child: const Icon(Icons.person, color: Colors.white54, size: 20),
+      color: placeholderBg,
+      child: Icon(Icons.person, color: AppTheme.fg(context, 0.54), size: 20),
     );
   }
 }
@@ -1092,12 +1100,7 @@ class _VipTierPageState extends State<VipTierPage> {
         margin: const EdgeInsets.symmetric(horizontal: 16),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              Colors.white.withValues(alpha: 0.08),
-              Colors.white.withValues(alpha: 0.02),
-            ],
-          ),
+          color: AppTheme.cardBg(context),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: stroke.withValues(alpha: 0.2), width: 1),
         ),
@@ -1119,7 +1122,7 @@ class _VipTierPageState extends State<VipTierPage> {
                   Text(
                     'VIP Vehicle / Ride',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppTheme.fg(context),
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                     ),
@@ -1128,7 +1131,7 @@ class _VipTierPageState extends State<VipTierPage> {
                   Text(
                     'Tap to preview entrance animation',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
+                      color: AppTheme.fg(context, 0.5),
                       fontSize: 10,
                     ),
                   ),
@@ -1157,7 +1160,10 @@ class _VipTierPageState extends State<VipTierPage> {
                 height: MediaQuery.of(ctx).size.height * 0.6,
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.black.withValues(alpha: 0.5),
+                  color:
+                      AppTheme.isDark(ctx)
+                          ? Colors.black.withValues(alpha: 0.5)
+                          : Colors.white.withValues(alpha: 0.92),
                   borderRadius: BorderRadius.circular(28),
                   border: Border.all(
                     color: stroke.withValues(alpha: 0.4),
@@ -1173,13 +1179,16 @@ class _VipTierPageState extends State<VipTierPage> {
                         Text(
                           'VIP Vehicle Preview',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: AppTheme.fg(ctx),
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
                         ),
                         IconButton(
-                          icon: const Icon(Icons.close, color: Colors.white54),
+                          icon: Icon(
+                            Icons.close,
+                            color: AppTheme.fg(ctx, 0.54),
+                          ),
                           onPressed: () => Navigator.pop(ctx),
                         ),
                       ],
@@ -1193,7 +1202,7 @@ class _VipTierPageState extends State<VipTierPage> {
                                 : CachedNetworkImage(
                                   imageUrl: url,
                                   fit: BoxFit.contain,
-                                  errorWidget: (_, __, ___) => const Icon(Icons.image_not_supported, color: Colors.white24),
+                                  errorWidget: (_, __, ___) => Icon(Icons.image_not_supported, color: AppTheme.fg(ctx, 0.24)),
                                 ),
                       ),
                     ),
@@ -1235,8 +1244,8 @@ class _VipTierPageState extends State<VipTierPage> {
           const SizedBox(height: 8),
           Text(
             tier.name ?? 'VIP$tierLvl',
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: AppTheme.fg(context),
               fontSize: 22,
               fontWeight: FontWeight.w800,
               letterSpacing: 1,
@@ -1309,14 +1318,7 @@ class _VipTierPageState extends State<VipTierPage> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withValues(alpha: 0.08),
-            Colors.white.withValues(alpha: 0.02),
-          ],
-        ),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: strokeColor.withValues(alpha: 0.15),
@@ -1341,7 +1343,7 @@ class _VipTierPageState extends State<VipTierPage> {
                 Text(
                   'Monthly Points',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.75),
+                    color: AppTheme.fg(context, 0.75),
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1373,7 +1375,7 @@ class _VipTierPageState extends State<VipTierPage> {
                   return LinearProgressIndicator(
                     value: value,
                     minHeight: 6,
-                    backgroundColor: Colors.white.withValues(alpha: 0.08),
+                    backgroundColor: AppTheme.hairline(context),
                     valueColor: AlwaysStoppedAnimation<Color>(strokeColor),
                   );
                 },
@@ -1394,14 +1396,7 @@ class _VipTierPageState extends State<VipTierPage> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withValues(alpha: 0.07),
-            Colors.white.withValues(alpha: 0.02),
-          ],
-        ),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: strokeColor.withValues(alpha: 0.18),
@@ -1456,14 +1451,7 @@ class _VipTierPageState extends State<VipTierPage> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withValues(alpha: 0.06),
-            Colors.white.withValues(alpha: 0.015),
-          ],
-        ),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: strokeColor.withValues(alpha: 0.18),
@@ -1487,7 +1475,7 @@ class _VipTierPageState extends State<VipTierPage> {
             Text(
               '${items.where((e) => !e.isLocked).length} unlocked',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.45),
+                color: AppTheme.fg(context, 0.45),
                 fontSize: 10,
               ),
             ),
@@ -1529,8 +1517,8 @@ class _VipTierPageState extends State<VipTierPage> {
         const SizedBox(width: 8),
         Text(
           title,
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: AppTheme.fg(context),
             fontSize: 15,
             fontWeight: FontWeight.w700,
           ),
@@ -1674,14 +1662,7 @@ class _VipTierPageState extends State<VipTierPage> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                Colors.white.withValues(alpha: 0.08),
-                Colors.white.withValues(alpha: 0.02),
-              ],
-            ),
+            color: AppTheme.cardBg(context),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: strokeColor.withValues(alpha: 0.2),
@@ -1707,8 +1688,8 @@ class _VipTierPageState extends State<VipTierPage> {
                 const SizedBox(height: 4),
                 Text(
                   label,
-                  style: const TextStyle(
-                    color: Colors.white70,
+                  style: TextStyle(
+                    color: AppTheme.fg(context, 0.7),
                     fontSize: 10,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1744,14 +1725,7 @@ class _PrivilegeCard extends StatelessWidget {
       onTap: () => _showPreview(context),
       child: Container(
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [
-              Colors.white.withValues(alpha: 0.08),
-              Colors.white.withValues(alpha: 0.02),
-            ],
-          ),
+          color: AppTheme.cardBg(context),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: strokeColor.withValues(alpha: 0.15),
@@ -1826,8 +1800,8 @@ class _PrivilegeCard extends StatelessWidget {
                 padding: const EdgeInsets.only(bottom: 8),
                 child: Text(
                   item.label,
-                  style: const TextStyle(
-                    color: Colors.white70,
+                  style: TextStyle(
+                    color: AppTheme.fg(context, 0.7),
                     fontSize: 9,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1860,10 +1834,13 @@ class _PrivilegeCard extends StatelessWidget {
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [
-                      Colors.white.withValues(alpha: 0.12),
-                      Colors.white.withValues(alpha: 0.04),
-                    ],
+                    colors:
+                        AppTheme.isDark(ctx)
+                            ? [
+                              Colors.white.withValues(alpha: 0.12),
+                              Colors.white.withValues(alpha: 0.04),
+                            ]
+                            : const [Colors.white, Color(0xFFF4F3FB)],
                   ),
                   borderRadius: BorderRadius.circular(28),
                   border: Border.all(
@@ -1888,16 +1865,16 @@ class _PrivilegeCard extends StatelessWidget {
                         children: [
                           Text(
                             item.label,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: AppTheme.fg(ctx),
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(
+                            icon: Icon(
                               Icons.close,
-                              color: Colors.white54,
+                              color: AppTheme.fg(ctx, 0.54),
                             ),
                             onPressed: () => Navigator.pop(ctx),
                           ),
@@ -1916,7 +1893,7 @@ class _PrivilegeCard extends StatelessWidget {
                             width: 200,
                             height: 200,
                             fit: BoxFit.contain,
-                            errorWidget: (_, __, ___) => const Icon(Icons.image_not_supported, color: Colors.white24, size: 48),
+                            errorWidget: (_, __, ___) => Icon(Icons.image_not_supported, color: AppTheme.fg(ctx, 0.24), size: 48),
                           ),
                       const SizedBox(height: 16),
                       Text(
@@ -1948,21 +1925,31 @@ class _ExclusiveCardWidget extends StatelessWidget {
     final url = item.imageUrl;
     final isSvga = SvgaHelper.isSvgaUrl(url);
 
+    final isDark = AppTheme.isDark(context);
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            Colors.white.withValues(alpha: item.isLocked ? 0.03 : 0.08),
-            Colors.white.withValues(alpha: item.isLocked ? 0.005 : 0.02),
-          ],
+          colors:
+              isDark
+                  ? [
+                    Colors.white.withValues(
+                      alpha: item.isLocked ? 0.03 : 0.08,
+                    ),
+                    Colors.white.withValues(
+                      alpha: item.isLocked ? 0.005 : 0.02,
+                    ),
+                  ]
+                  : item.isLocked
+                  ? const [Color(0xFFF1F0F7), Color(0xFFEDEBF4)]
+                  : const [Colors.white, Color(0xFFF7F6FC)],
         ),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color:
               item.isLocked
-                  ? Colors.white12
+                  ? AppTheme.hairline(context)
                   : strokeColor.withValues(alpha: 0.18),
           width: 1,
         ),
@@ -2006,7 +1993,7 @@ class _ExclusiveCardWidget extends StatelessWidget {
                                         item.icon ?? Icons.star,
                                         color:
                                             item.isLocked
-                                                ? Colors.white12
+                                                ? AppTheme.fg(context, 0.12)
                                                 : strokeColor,
                                         size: 26,
                                       ),
@@ -2014,7 +2001,9 @@ class _ExclusiveCardWidget extends StatelessWidget {
                             : Icon(
                               item.icon ?? Icons.star,
                               color:
-                                  item.isLocked ? Colors.white12 : strokeColor,
+                                  item.isLocked
+                                      ? AppTheme.fg(context, 0.12)
+                                      : strokeColor,
                               size: 28,
                             ),
                   ),
@@ -2029,7 +2018,10 @@ class _ExclusiveCardWidget extends StatelessWidget {
                     textAlign: TextAlign.center,
                     maxLines: 1,
                     style: TextStyle(
-                      color: item.isLocked ? Colors.white24 : Colors.white70,
+                      color:
+                          item.isLocked
+                              ? AppTheme.fg(context, 0.24)
+                              : AppTheme.fg(context, 0.7),
                       fontSize: 9,
                       fontWeight: FontWeight.w600,
                     ),
@@ -2038,13 +2030,13 @@ class _ExclusiveCardWidget extends StatelessWidget {
               ],
             ),
             if (item.isLocked)
-              const Positioned(
+              Positioned(
                 top: 6,
                 right: 6,
                 child: Icon(
                   Icons.lock_rounded,
                   size: 10,
-                  color: Colors.white24,
+                  color: AppTheme.fg(context, 0.24),
                 ),
               ),
           ],

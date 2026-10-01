@@ -155,10 +155,14 @@ class _MainScreenState extends State<MainScreen> {
           filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
           child: Container(
             decoration: BoxDecoration(
-              color: AppTheme.background.withValues(alpha: 0.78),
+              color: AppTheme.themed(
+                context,
+                0xFF121212,
+                0xFFFAFAFE,
+              ).withValues(alpha: 0.78),
               border: Border(
                 top: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.4),
+                  color: AppTheme.hairline(context),
                   width: 1.2,
                 ),
               ),
@@ -351,7 +355,7 @@ class _MainScreenState extends State<MainScreen> {
           width: 140,
           height: 48,
           decoration: BoxDecoration(
-            color: Colors.black87,
+            color: AppTheme.themed(context, 0xDD000000, 0xFFFFFFFF),
             borderRadius: BorderRadius.circular(24),
             border: Border.all(color: AppTheme.primary, width: 1.5),
             boxShadow: [
@@ -405,8 +409,8 @@ class _MainScreenState extends State<MainScreen> {
                     const SizedBox(height: 2),
                     Text(
                       user.name ?? 'Host',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: AppTheme.fg(context),
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
                       ),
@@ -446,7 +450,7 @@ class _MainScreenState extends State<MainScreen> {
               child: Container(
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: AppTheme.surface,
+                  color: AppTheme.themed(ctx, 0xFF1E1E2E, 0xFFFFFFFF),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
                     color: AppTheme.primary.withValues(alpha: 0.35),
@@ -490,21 +494,21 @@ class _MainScreenState extends State<MainScreen> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const Text(
+                    Text(
                       'Exit App',
                       style: TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
-                        color: AppTheme.textPrimary,
+                        color: AppTheme.fg(ctx),
                       ),
                     ),
                     const SizedBox(height: 10),
-                    const Text(
+                    Text(
                       'Are you sure you want to close the app?',
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: 14,
-                        color: AppTheme.textSecondary,
+                        color: AppTheme.fg(ctx, 0.65),
                         height: 1.4,
                       ),
                     ),
@@ -518,20 +522,22 @@ class _MainScreenState extends State<MainScreen> {
                               padding: const EdgeInsets.symmetric(vertical: 14),
                               decoration: BoxDecoration(
                                 borderRadius: BorderRadius.circular(16),
-                                color: AppTheme.surfaceLight,
+                                color: AppTheme.themed(
+                                  ctx,
+                                  0xFF2A2A3E,
+                                  0xFFF5F5FA,
+                                ),
                                 border: Border.all(
-                                  color: AppTheme.textTertiary.withValues(
-                                    alpha: 0.25,
-                                  ),
+                                  color: AppTheme.hairline(ctx),
                                 ),
                               ),
                               alignment: Alignment.center,
-                              child: const Text(
+                              child: Text(
                                 'No',
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
-                                  color: AppTheme.textPrimary,
+                                  color: AppTheme.fg(ctx),
                                 ),
                               ),
                             ),
@@ -597,17 +603,18 @@ class _MainScreenState extends State<MainScreen> {
               filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
               child: Container(
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
+                  gradient: LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
-                    colors: [Color(0xE61A1A2E), Color(0xF30D0D1A)],
+                    colors:
+                        AppTheme.isDark(ctx)
+                            ? const [Color(0xE61A1A2E), Color(0xF30D0D1A)]
+                            : const [Color(0xF2FFFFFF), Color(0xFAF8F7FE)],
                   ),
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(32),
                   ),
-                  border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.1),
-                  ),
+                  border: Border.all(color: AppTheme.hairline(ctx)),
                   boxShadow: [
                     BoxShadow(
                       color: AppTheme.primary.withValues(alpha: 0.3),
@@ -628,7 +635,7 @@ class _MainScreenState extends State<MainScreen> {
                             width: 44,
                             height: 4,
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.25),
+                              color: AppTheme.fg(ctx, 0.25),
                               borderRadius: BorderRadius.circular(2),
                             ),
                           ),
@@ -654,7 +661,7 @@ class _MainScreenState extends State<MainScreen> {
                           'What would you like to share today?',
                           style: TextStyle(
                             fontSize: 13,
-                            color: Colors.white.withValues(alpha: 0.55),
+                            color: AppTheme.fg(ctx, 0.55),
                           ),
                         ),
                         const SizedBox(height: 24),
@@ -745,15 +752,19 @@ class _MainScreenState extends State<MainScreen> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              Colors.white.withValues(alpha: 0.08),
-              Colors.white.withValues(alpha: 0.03),
-            ],
+            colors:
+                AppTheme.isDark(ctx)
+                    ? [
+                      Colors.white.withValues(alpha: 0.08),
+                      Colors.white.withValues(alpha: 0.03),
+                    ]
+                    : [
+                      const Color(0xFF1A1A2E).withValues(alpha: 0.05),
+                      const Color(0xFF1A1A2E).withValues(alpha: 0.02),
+                    ],
           ),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.12),
-          ),
+          border: Border.all(color: AppTheme.hairline(ctx)),
         ),
         child: Row(
           children: [
@@ -785,8 +796,8 @@ class _MainScreenState extends State<MainScreen> {
                 children: [
                   Text(
                     label,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: AppTheme.fg(ctx),
                       fontSize: 16,
                       fontWeight: FontWeight.w700,
                     ),
@@ -795,7 +806,7 @@ class _MainScreenState extends State<MainScreen> {
                   Text(
                     subtitle,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.55),
+                      color: AppTheme.fg(ctx, 0.55),
                       fontSize: 12,
                     ),
                   ),
@@ -805,12 +816,12 @@ class _MainScreenState extends State<MainScreen> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
+                color: AppTheme.fg(ctx, 0.08),
                 shape: BoxShape.circle,
               ),
-              child: const Icon(
+              child: Icon(
                 Icons.arrow_forward_ios,
-                color: Colors.white70,
+                color: AppTheme.fg(ctx, 0.7),
                 size: 14,
               ),
             ),

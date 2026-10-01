@@ -908,7 +908,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
   void _openVirtualBackground() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: AppTheme.themed(context, 0xFF1A1A2E),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -920,12 +920,12 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 12),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
                     child: Text(
                       'Virtual Background',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppTheme.fg(sheetCtx),
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -962,7 +962,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
           color:
               selected
                   ? AppTheme.primary.withValues(alpha: 0.25)
-                  : Colors.white.withValues(alpha: 0.08),
+                  : AppTheme.fg(context, 0.08),
           borderRadius: BorderRadius.circular(20),
           border:
               selected ? Border.all(color: AppTheme.primary, width: 1.5) : null,
@@ -970,7 +970,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : Colors.white70,
+            color: selected ? AppTheme.fg(context) : AppTheme.fg(context, 0.7),
             fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
@@ -1031,7 +1031,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
   void _openQualitySettings() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: AppTheme.themed(context, 0xFF1A1A2E),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -1043,12 +1043,12 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 12),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
                     child: Text(
                       'Video Quality',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppTheme.fg(sheetCtx),
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1085,7 +1085,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
           color:
               selected
                   ? AppTheme.primary.withValues(alpha: 0.25)
-                  : Colors.white.withValues(alpha: 0.08),
+                  : AppTheme.fg(context, 0.08),
           borderRadius: BorderRadius.circular(20),
           border:
               selected ? Border.all(color: AppTheme.primary, width: 1.5) : null,
@@ -1093,7 +1093,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : Colors.white70,
+            color: selected ? AppTheme.fg(context) : AppTheme.fg(context, 0.7),
             fontWeight: selected ? FontWeight.w600 : FontWeight.normal,
           ),
         ),
@@ -1130,7 +1130,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
     const emojis = ['❤️', '👍', '😂', '🔥', '👏', '😍', '🎉', '💯'];
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: AppTheme.themed(context, 0xFF1A1A2E),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -1142,12 +1142,12 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 12),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
                     child: Text(
                       'Send Emoji',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppTheme.fg(sheetCtx),
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1167,7 +1167,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
                               width: 52,
                               height: 52,
                               decoration: BoxDecoration(
-                                color: Colors.white.withValues(alpha: 0.08),
+                                color: AppTheme.fg(sheetCtx, 0.08),
                                 borderRadius: BorderRadius.circular(14),
                               ),
                               child: Center(
@@ -1357,7 +1357,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
     final presets = kVoiceChangerPresets;
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: AppTheme.themed(context, 0xFF1A1A2E),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -1369,12 +1369,12 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 12),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
                     child: Text(
                       'Voice Changer',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppTheme.fg(sheetCtx),
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1407,7 +1407,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
                             color:
                                 selected
                                     ? AppTheme.primary.withValues(alpha: 0.25)
-                                    : Colors.white.withValues(alpha: 0.08),
+                                    : AppTheme.fg(sheetCtx, 0.08),
                             borderRadius: BorderRadius.circular(20),
                             border:
                                 selected
@@ -1420,7 +1420,10 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
                           child: Text(
                             presets[i].label,
                             style: TextStyle(
-                              color: selected ? Colors.white : Colors.white70,
+                              color:
+                                  selected
+                                      ? AppTheme.fg(sheetCtx)
+                                      : AppTheme.fg(sheetCtx, 0.7),
                               fontWeight:
                                   selected
                                       ? FontWeight.w600
@@ -1445,7 +1448,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
     final otherName = widget.data.user2Name ?? 'User';
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: AppTheme.themed(context, 0xFF1A1A2E),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -1505,7 +1508,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
     final total = dice + dice2;
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: AppTheme.themed(context, 0xFF1A1A2E),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -1516,10 +1519,10 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
+                  Text(
                     'Dice Roll',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppTheme.fg(sheetCtx),
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -1596,7 +1599,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
   void _openCallThemes() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: AppTheme.themed(context, 0xFF1A1A2E),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -1608,12 +1611,12 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.only(bottom: 12),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 12),
                     child: Text(
                       'Call Theme',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppTheme.fg(sheetCtx),
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1641,11 +1644,12 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
                             borderRadius: BorderRadius.circular(16),
                             border:
                                 selected
-                                    ? Border.all(color: Colors.white, width: 2)
+                                    ? Border.all(
+                                      color: AppTheme.fg(sheetCtx),
+                                      width: 2,
+                                    )
                                     : Border.all(
-                                      color: Colors.white.withValues(
-                                        alpha: 0.2,
-                                      ),
+                                      color: AppTheme.hairline(sheetCtx),
                                       width: 1,
                                     ),
                           ),
@@ -1805,21 +1809,21 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
       context: context,
       builder:
           (ctx) => AlertDialog(
-            backgroundColor: const Color(0xFF1A1A2E),
-            title: const Text(
+            backgroundColor: AppTheme.themed(ctx, 0xFF1A1A2E),
+            title: Text(
               'Block User?',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppTheme.fg(ctx)),
             ),
             content: Text(
               'Block ${widget.data.user2Name ?? 'this user'}? They won\'t be able to call you or send you messages.',
-              style: const TextStyle(color: Colors.white70),
+              style: TextStyle(color: AppTheme.fg(ctx, 0.7)),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text(
+                child: Text(
                   'Cancel',
-                  style: TextStyle(color: Colors.white70),
+                  style: TextStyle(color: AppTheme.fg(ctx, 0.7)),
                 ),
               ),
               FilledButton(
@@ -3048,7 +3052,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
     final cfg = context.read<CallConfigProvider>();
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: AppTheme.themed(context, 0xFF1A1A2E),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -3064,15 +3068,15 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
                     width: 40,
                     height: 4,
                     decoration: BoxDecoration(
-                      color: Colors.white24,
+                      color: AppTheme.fg(sheetCtx, 0.24),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Text(
+                  Text(
                     'More Options',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppTheme.fg(sheetCtx),
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -3243,9 +3247,10 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: (active ? AppTheme.primary : Colors.white).withValues(
-                  alpha: active ? 0.2 : 0.1,
-                ),
+                color:
+                    active
+                        ? AppTheme.primary.withValues(alpha: 0.2)
+                        : AppTheme.fg(sheetCtx, 0.1),
                 shape: BoxShape.circle,
                 border:
                     active
@@ -3254,7 +3259,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
               ),
               child: Icon(
                 icon,
-                color: active ? AppTheme.primary : Colors.white,
+                color: active ? AppTheme.primary : AppTheme.fg(sheetCtx),
                 size: 22,
               ),
             ),
@@ -3264,7 +3269,7 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
               textAlign: TextAlign.center,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(color: Colors.white70, fontSize: 11),
+              style: TextStyle(color: AppTheme.fg(sheetCtx, 0.7), fontSize: 11),
             ),
           ],
         ),
@@ -3545,8 +3550,8 @@ class _ReportSheetState extends State<_ReportSheet> {
           children: [
             Text(
               'Report ${widget.userName}',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: AppTheme.fg(context),
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -3567,7 +3572,7 @@ class _ReportSheetState extends State<_ReportSheet> {
                     color:
                         selected
                             ? AppTheme.primary.withValues(alpha: 0.2)
-                            : Colors.white.withValues(alpha: 0.05),
+                            : AppTheme.fg(context, 0.05),
                     borderRadius: BorderRadius.circular(12),
                     border:
                         selected
@@ -3577,7 +3582,10 @@ class _ReportSheetState extends State<_ReportSheet> {
                   child: Text(
                     r,
                     style: TextStyle(
-                      color: selected ? Colors.white : Colors.white70,
+                      color:
+                          selected
+                              ? AppTheme.fg(context)
+                              : AppTheme.fg(context, 0.7),
                       fontWeight:
                           selected ? FontWeight.w600 : FontWeight.normal,
                     ),
@@ -3737,7 +3745,7 @@ Future<bool?> _showCallRatePreview(
     context: context,
     builder:
         (ctx) => AlertDialog(
-          backgroundColor: const Color(0xFF1A1A2E),
+          backgroundColor: AppTheme.themed(ctx, 0xFF1A1A2E),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(20),
           ),
@@ -3787,8 +3795,8 @@ Future<bool?> _showCallRatePreview(
               const SizedBox(height: 12),
               Text(
                 userName,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: AppTheme.fg(ctx),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -3799,14 +3807,14 @@ Future<bool?> _showCallRatePreview(
                 children: [
                   Icon(
                     isAudioCall ? Icons.phone : Icons.videocam,
-                    color: Colors.white.withValues(alpha: 0.6),
+                    color: AppTheme.fg(ctx, 0.6),
                     size: 16,
                   ),
                   const SizedBox(width: 6),
                   Text(
                     isAudioCall ? 'Audio Call' : 'Video Call',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
+                      color: AppTheme.fg(ctx, 0.6),
                       fontSize: 14,
                     ),
                   ),
@@ -3817,32 +3825,35 @@ Future<bool?> _showCallRatePreview(
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.05),
+                  color: AppTheme.fg(ctx, 0.05),
                   borderRadius: BorderRadius.circular(14),
                 ),
                 child: Column(
                   children: [
                     _previewRow(
+                      ctx,
                       'Call Rate',
                       '$rate diamonds/min',
                       Icons.diamond,
                       Colors.amber,
                     ),
-                    const Divider(color: Colors.white24, height: 16),
+                    Divider(color: AppTheme.hairline(ctx), height: 16),
                     _previewRow(
+                      ctx,
                       'Your Balance',
                       '$balance diamonds',
                       Icons.account_balance_wallet,
                       Colors.greenAccent,
                     ),
-                    const Divider(color: Colors.white24, height: 16),
+                    Divider(color: AppTheme.hairline(ctx), height: 16),
                     _previewRow(
+                      ctx,
                       'Estimated Time',
                       estimatedMinutes > 0
                           ? '$estimatedMinutes min'
                           : 'Insufficient balance',
                       Icons.timer,
-                      estimatedMinutes > 0 ? Colors.white : Colors.red,
+                      estimatedMinutes > 0 ? AppTheme.fg(ctx) : Colors.red,
                     ),
                   ],
                 ),
@@ -3861,9 +3872,9 @@ Future<bool?> _showCallRatePreview(
           actions: [
             TextButton(
               onPressed: () => Navigator.of(ctx).pop(false),
-              child: const Text(
+              child: Text(
                 'Cancel',
-                style: TextStyle(color: Colors.white70),
+                style: TextStyle(color: AppTheme.fg(ctx, 0.7)),
               ),
             ),
             FilledButton(
@@ -3884,7 +3895,13 @@ Future<bool?> _showCallRatePreview(
   );
 }
 
-Widget _previewRow(String label, String value, IconData icon, Color color) {
+Widget _previewRow(
+  BuildContext ctx,
+  String label,
+  String value,
+  IconData icon,
+  Color color,
+) {
   return Row(
     children: [
       Icon(icon, color: color, size: 18),
@@ -3892,10 +3909,7 @@ Widget _previewRow(String label, String value, IconData icon, Color color) {
       Expanded(
         child: Text(
           label,
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.6),
-            fontSize: 13,
-          ),
+          style: TextStyle(color: AppTheme.fg(ctx, 0.6), fontSize: 13),
         ),
       ),
       Text(

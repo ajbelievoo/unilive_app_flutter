@@ -74,11 +74,14 @@ class _VipTrialScreenState extends State<VipTrialScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A1A1A), Color(0xFF0A0A0A)],
+            colors: AppTheme.bgGradient(
+              context,
+              const [Color(0xFF1A1A1A), Color(0xFF0A0A0A)],
+            ),
           ),
         ),
         child: SafeArea(
@@ -102,10 +105,10 @@ class _VipTrialScreenState extends State<VipTrialScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
         children: [
-          IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: () => context.pop()),
-          const Expanded(
+          IconButton(icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)), onPressed: () => context.pop()),
+          Expanded(
             child: Center(
-              child: Text('VIP Trial', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              child: Text('VIP Trial', style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 48),
@@ -120,9 +123,9 @@ class _VipTrialScreenState extends State<VipTrialScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.hourglass_empty, color: Colors.white38, size: 64),
+            Icon(Icons.hourglass_empty, color: AppTheme.fg(context, 0.38), size: 64),
             const SizedBox(height: 16),
-            const Text('Trial not available', style: TextStyle(color: Colors.white54, fontSize: 16)),
+            Text('Trial not available', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 16)),
             const SizedBox(height: 12),
             TextButton(onPressed: _load, child: const Text('Retry')),
           ],
@@ -159,7 +162,7 @@ class _VipTrialScreenState extends State<VipTrialScreen> {
         ),
         const SizedBox(height: 24),
         // Benefits list
-        const Text('Trial Benefits', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        Text('Trial Benefits', style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
         _benefit('VIP badge & frame', Icons.badge),
         _benefit('Exclusive entrance animation', Icons.directions_car),
@@ -188,7 +191,7 @@ class _VipTrialScreenState extends State<VipTrialScreen> {
         children: [
           Icon(icon, color: const Color(0xFFFFD700), size: 20),
           const SizedBox(width: 12),
-          Expanded(child: Text(text, style: const TextStyle(color: Colors.white70, fontSize: 14))),
+          Expanded(child: Text(text, style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 14))),
           const Icon(Icons.check_circle, color: Color(0xFF27AE60), size: 18),
         ],
       ),
@@ -210,7 +213,7 @@ class _VipTrialScreenState extends State<VipTrialScreen> {
           const Text('Trial Active!', style: TextStyle(color: Color(0xFF27AE60), fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
           if (_trial!.trialExpiresAt != null)
-            Text('Expires: ${_trial!.trialExpiresAt}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+            Text('Expires: ${_trial!.trialExpiresAt}', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 12)),
         ],
       ),
     );
@@ -220,16 +223,16 @@ class _VipTrialScreenState extends State<VipTrialScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: const Column(
+      child: Column(
         children: [
-          Icon(Icons.check_circle, color: Colors.white38, size: 40),
-          SizedBox(height: 12),
-          Text('Trial Already Used', style: TextStyle(color: Colors.white54, fontSize: 18, fontWeight: FontWeight.bold)),
-          SizedBox(height: 4),
-          Text('You can only use the free trial once', style: TextStyle(color: Colors.white38, fontSize: 12)),
+          Icon(Icons.check_circle, color: AppTheme.fg(context, 0.38), size: 40),
+          const SizedBox(height: 12),
+          Text('Trial Already Used', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text('You can only use the free trial once', style: TextStyle(color: AppTheme.fg(context, 0.38), fontSize: 12)),
         ],
       ),
     );
@@ -262,16 +265,16 @@ class _VipTrialScreenState extends State<VipTrialScreen> {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: const Column(
+      child: Column(
         children: [
-          Icon(Icons.lock, color: Colors.white38, size: 40),
-          SizedBox(height: 12),
-          Text('Not Eligible', style: TextStyle(color: Colors.white54, fontSize: 18, fontWeight: FontWeight.bold)),
-          SizedBox(height: 4),
-          Text('Purchase VIP to unlock trial benefits', style: TextStyle(color: Colors.white38, fontSize: 12)),
+          Icon(Icons.lock, color: AppTheme.fg(context, 0.38), size: 40),
+          const SizedBox(height: 12),
+          Text('Not Eligible', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 4),
+          Text('Purchase VIP to unlock trial benefits', style: TextStyle(color: AppTheme.fg(context, 0.38), fontSize: 12)),
         ],
       ),
     );

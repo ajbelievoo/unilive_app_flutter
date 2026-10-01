@@ -24,6 +24,7 @@ import '../../models/pk_call_models.dart';
 import '../../services/api_service.dart';
 import '../../services/session_manager.dart';
 import '../../services/socket_service.dart';
+import '../../theme/app_theme.dart';
 import '../../utils/log.dart';
 import '../../utils/vip_privilege_helper.dart';
 import '../../widgets/big_gift_overlay.dart';
@@ -1384,17 +1385,20 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
         backgroundColor: Colors.black,
         body:
             !_engineReady
-                ? const Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Preloader(),
-                      SizedBox(height: 12),
-                      Text(
-                        'Starting PK battle...',
-                        style: TextStyle(color: Colors.white),
-                      ),
-                    ],
+                ? Container(
+                  color: AppTheme.themed(context, 0xFF000000),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Preloader(),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Starting PK battle...',
+                          style: TextStyle(color: AppTheme.fg(context)),
+                        ),
+                      ],
+                    ),
                   ),
                 )
                 : LayoutBuilder(
@@ -1454,14 +1458,14 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       context: context,
       builder:
           (ctx) => AlertDialog(
-            backgroundColor: Colors.black87,
-            title: const Text(
+            backgroundColor: AppTheme.themed(ctx, 0xFF1A1A2E),
+            title: Text(
               'Leave PK?',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppTheme.fg(ctx)),
             ),
-            content: const Text(
+            content: Text(
               'Do you want to exit the PK battle?',
-              style: TextStyle(color: Colors.white70),
+              style: TextStyle(color: AppTheme.fg(ctx, 0.7)),
             ),
             actions: [
               TextButton(
@@ -2457,9 +2461,9 @@ class PkInvitationSheet extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: const BoxDecoration(
-        color: Colors.black87,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF1A1A2E),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -2469,16 +2473,16 @@ class PkInvitationSheet extends StatelessWidget {
             height: 5,
             margin: const EdgeInsets.only(bottom: 20),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.3),
+              color: AppTheme.fg(context, 0.3),
               borderRadius: BorderRadius.circular(3),
             ),
           ),
-          const Text(
+          Text(
             'PK Battle Invitation',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.bold,
-              color: Colors.white,
+              color: AppTheme.fg(context),
             ),
           ),
           const SizedBox(height: 16),
@@ -2486,16 +2490,16 @@ class PkInvitationSheet extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             hostName,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 16,
               fontWeight: FontWeight.w600,
-              color: Colors.white,
+              color: AppTheme.fg(context),
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'wants to start a PK battle with you',
-            style: TextStyle(color: Colors.white70),
+            style: TextStyle(color: AppTheme.fg(context, 0.7)),
           ),
           const SizedBox(height: 24),
           Row(

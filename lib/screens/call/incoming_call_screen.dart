@@ -271,11 +271,14 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A0A2E), Color(0xFF0D0D1A)],
+            colors: AppTheme.bgGradient(context, const [
+              Color(0xFF1A0A2E),
+              Color(0xFF0D0D1A),
+            ]),
           ),
         ),
         child: SafeArea(
@@ -288,14 +291,14 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                 children: [
                   Icon(
                     _isAudioCall ? Icons.phone_in_talk : Icons.videocam,
-                    color: Colors.white.withValues(alpha: 0.6),
+                    color: AppTheme.fg(context, 0.6),
                     size: 18,
                   ),
                   const SizedBox(width: 8),
                   Text(
                     _isAudioCall ? 'Incoming Audio Call' : 'Incoming Video Call',
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.6),
+                      color: AppTheme.fg(context, 0.6),
                       fontSize: 15,
                       letterSpacing: 0.5,
                     ),
@@ -338,7 +341,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                               end: Alignment.bottomRight,
                               colors: [Color(0xFF7B61FF), Color(0xFF4F8DFD)],
                             ),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 3),
+                            border: Border.all(color: AppTheme.fg(context, 0.3), width: 3),
                             boxShadow: [
                               BoxShadow(
                                 color: AppTheme.primary.withValues(alpha: 0.4),
@@ -380,8 +383,8 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
               // Caller name
               Text(
                 _callerName,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: AppTheme.fg(context),
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
                   letterSpacing: 0.5,
@@ -392,7 +395,7 @@ class _IncomingCallScreenState extends State<IncomingCallScreen>
                 Text(
                   'Incoming call...',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.4),
+                    color: AppTheme.fg(context, 0.4),
                     fontSize: 14,
                   ),
                 ),
@@ -493,7 +496,7 @@ class _CallButton extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.7),
+              color: AppTheme.fg(context, 0.7),
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),

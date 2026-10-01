@@ -76,11 +76,11 @@ class _DailyBonusScreenState extends State<DailyBonusScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A1A1A), Color(0xFF0A0A0A)],
+            colors: AppTheme.bgGradient(context, const [Color(0xFF1A1A1A), Color(0xFF0A0A0A)]),
           ),
         ),
         child: SafeArea(
@@ -119,10 +119,10 @@ class _DailyBonusScreenState extends State<DailyBonusScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
         children: [
-          IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: () => context.pop()),
-          const Expanded(
+          IconButton(icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)), onPressed: () => context.pop()),
+          Expanded(
             child: Center(
-              child: Text('Daily Bonus', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              child: Text('Daily Bonus', style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 48),
@@ -140,7 +140,7 @@ class _DailyBonusScreenState extends State<DailyBonusScreen> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: canClaim ? AppTheme.goldGradient : LinearGradient(colors: [Colors.grey.shade800, Colors.grey.shade900]),
+        gradient: canClaim ? AppTheme.goldGradient : LinearGradient(colors: AppTheme.isDark(context) ? [Colors.grey.shade800, Colors.grey.shade900] : [Colors.grey.shade200, Colors.grey.shade300]),
         borderRadius: BorderRadius.circular(24),
         boxShadow: canClaim
             ? [BoxShadow(color: const Color(0xFFFFD700).withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 6))]
@@ -148,11 +148,11 @@ class _DailyBonusScreenState extends State<DailyBonusScreen> {
       ),
       child: Column(
         children: [
-          ImageIcon(const AssetImage("assets/gift/official_gift.png"), color: canClaim ? Colors.white : Colors.white38, size: 56),
+          ImageIcon(const AssetImage("assets/gift/official_gift.png"), color: canClaim ? Colors.white : AppTheme.fg(context, 0.38), size: 56),
           const SizedBox(height: 16),
           Text(
             todayClaimed ? 'Claimed Today!' : (canClaim ? 'Bonus Available!' : 'Come Back Tomorrow'),
-            style: TextStyle(color: canClaim ? Colors.white : Colors.white54, fontSize: 20, fontWeight: FontWeight.bold),
+            style: TextStyle(color: canClaim ? Colors.white : AppTheme.fg(context, 0.54), fontSize: 20, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 8),
           Row(
@@ -197,7 +197,7 @@ class _DailyBonusScreenState extends State<DailyBonusScreen> {
               children: [
                 const Icon(Icons.check_circle, color: Colors.green, size: 18),
                 const SizedBox(width: 6),
-                Text('See you tomorrow!', style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14)),
+                Text('See you tomorrow!', style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 14)),
               ],
             ),
         ],
@@ -211,13 +211,13 @@ class _DailyBonusScreenState extends State<DailyBonusScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('7-Day Streak Rewards', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+          Text('7-Day Streak Rewards', style: TextStyle(color: AppTheme.fg(context), fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -232,17 +232,17 @@ class _DailyBonusScreenState extends State<DailyBonusScreen> {
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: isClaimed ? AppTheme.goldGradient : null,
-                      color: isClaimed ? null : (isToday ? AppTheme.primary.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.05)),
+                      color: isClaimed ? null : (isToday ? AppTheme.primary.withValues(alpha: 0.3) : AppTheme.fg(context, 0.05)),
                       border: isToday ? Border.all(color: AppTheme.primary, width: 2) : null,
                     ),
                     child: Center(
                       child: isClaimed
                           ? const Icon(Icons.check, color: Colors.white, size: 18)
-                          : Text('$day', style: TextStyle(color: isToday ? AppTheme.primary : Colors.white38, fontSize: 12, fontWeight: FontWeight.bold)),
+                          : Text('$day', style: TextStyle(color: isToday ? AppTheme.primary : AppTheme.fg(context, 0.38), fontSize: 12, fontWeight: FontWeight.bold)),
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text('Day $day', style: TextStyle(color: Colors.white38, fontSize: 9)),
+                  Text('Day $day', style: TextStyle(color: AppTheme.fg(context, 0.38), fontSize: 9)),
                 ],
               );
             }),
@@ -266,13 +266,13 @@ class _DailyBonusScreenState extends State<DailyBonusScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Claim History', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+        Text('Claim History', style: TextStyle(color: AppTheme.fg(context), fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
         ..._bonus!.claimHistory.map((h) => Container(
               margin: const EdgeInsets.only(bottom: 8),
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.04),
+                color: AppTheme.cardBg(context),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
@@ -280,7 +280,7 @@ class _DailyBonusScreenState extends State<DailyBonusScreen> {
                   const Icon(Icons.redeem, color: Color(0xFFFFD700), size: 20),
                   const SizedBox(width: 10),
                   Expanded(
-                    child: Text(h.date ?? '', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                    child: Text(h.date ?? '', style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 13)),
                   ),
                   Text('+${formatCount(h.points)}', style: const TextStyle(color: Color(0xFFFFD700), fontSize: 14, fontWeight: FontWeight.bold)),
                 ],

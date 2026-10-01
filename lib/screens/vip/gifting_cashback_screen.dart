@@ -53,11 +53,11 @@ class _GiftingCashbackScreenState extends State<GiftingCashbackScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A1A1A), Color(0xFF0A0A0A)],
+            colors: AppTheme.bgGradient(context, const [Color(0xFF1A1A1A), Color(0xFF0A0A0A)]),
           ),
         ),
         child: SafeArea(
@@ -83,10 +83,10 @@ class _GiftingCashbackScreenState extends State<GiftingCashbackScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
         children: [
-          IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: () => context.pop()),
-          const Expanded(
+          IconButton(icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)), onPressed: () => context.pop()),
+          Expanded(
             child: Center(
-              child: Text('Gifting Cashback', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              child: Text('Gifting Cashback', style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 48),
@@ -100,9 +100,9 @@ class _GiftingCashbackScreenState extends State<GiftingCashbackScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.redeem_outlined, color: Colors.white38, size: 64),
+          Icon(Icons.redeem_outlined, color: AppTheme.fg(context, 0.38), size: 64),
           const SizedBox(height: 16),
-          const Text('Cashback not available', style: TextStyle(color: Colors.white54, fontSize: 16)),
+          Text('Cashback not available', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 16)),
           const SizedBox(height: 12),
           TextButton(onPressed: _load, child: const Text('Retry')),
         ],
@@ -161,14 +161,14 @@ class _GiftingCashbackScreenState extends State<GiftingCashbackScreen> {
         const SizedBox(height: 24),
         // Monthly cap progress
         if (cb.maxMonthlyCashback > 0) ...[
-          const Text('Monthly Cap Progress', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+          Text('Monthly Cap Progress', style: TextStyle(color: AppTheme.fg(context), fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 12),
           ClipRRect(
             borderRadius: BorderRadius.circular(8),
             child: LinearProgressIndicator(
               value: monthlyProgress,
               minHeight: 8,
-              backgroundColor: Colors.white.withValues(alpha: 0.08),
+              backgroundColor: AppTheme.fg(context, 0.08),
               valueColor: const AlwaysStoppedAnimation<Color>(Color(0xFFFFD700)),
             ),
           ),
@@ -176,8 +176,8 @@ class _GiftingCashbackScreenState extends State<GiftingCashbackScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text('${formatCount(cb.monthlyCashbackEarned)} earned', style: const TextStyle(color: Colors.white54, fontSize: 12)),
-              Text('${formatCount(cb.maxMonthlyCashback)} max', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+              Text('${formatCount(cb.monthlyCashbackEarned)} earned', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 12)),
+              Text('${formatCount(cb.maxMonthlyCashback)} max', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 12)),
             ],
           ),
           const SizedBox(height: 24),
@@ -196,11 +196,11 @@ class _GiftingCashbackScreenState extends State<GiftingCashbackScreen> {
         // How it works
         Container(
           padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(16)),
+          decoration: BoxDecoration(color: AppTheme.cardBg(context), borderRadius: BorderRadius.circular(16)),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('How It Works', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+              Text('How It Works', style: TextStyle(color: AppTheme.fg(context), fontSize: 16, fontWeight: FontWeight.bold)),
               const SizedBox(height: 12),
               const _HowItWorksRow(icon: Icons.card_giftcard, text: 'Send gifts to hosts in live rooms'),
               const SizedBox(height: 8),
@@ -219,14 +219,14 @@ class _GiftingCashbackScreenState extends State<GiftingCashbackScreen> {
   Widget _statCard(String label, String value, IconData icon) {
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: AppTheme.cardBg(context), borderRadius: BorderRadius.circular(12)),
       child: Column(
         children: [
           Icon(icon, color: const Color(0xFFFFD700), size: 20),
           const SizedBox(height: 6),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+          Text(value, style: TextStyle(color: AppTheme.fg(context), fontSize: 14, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 10), textAlign: TextAlign.center),
+          Text(label, style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 10), textAlign: TextAlign.center),
         ],
       ),
     );
@@ -244,7 +244,7 @@ class _HowItWorksRow extends StatelessWidget {
       children: [
         Icon(icon, color: const Color(0xFFFFD700), size: 18),
         const SizedBox(width: 10),
-        Expanded(child: Text(text, style: const TextStyle(color: Colors.white70, fontSize: 13))),
+        Expanded(child: Text(text, style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 13))),
       ],
     );
   }

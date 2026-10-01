@@ -51,11 +51,11 @@ class IncomingCallBanner extends StatelessWidget {
           child: Material(
             elevation: 8,
             borderRadius: BorderRadius.circular(28),
-            color: Colors.white,
+            color: AppTheme.cardBg(context),
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppTheme.cardBg(context),
                 borderRadius: BorderRadius.circular(28),
                 boxShadow: [
                   BoxShadow(
@@ -107,8 +107,8 @@ class IncomingCallBanner extends StatelessWidget {
                           title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
-                            color: Colors.black87,
+                          style: TextStyle(
+                            color: AppTheme.fg(context, 0.87),
                             fontSize: 16,
                             fontWeight: FontWeight.w700,
                           ),
@@ -126,8 +126,8 @@ class IncomingCallBanner extends StatelessWidget {
                               subtitle,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
-                              style: const TextStyle(
-                                color: Colors.black54,
+                              style: TextStyle(
+                                color: AppTheme.fg(context, 0.54),
                                 fontSize: 12,
                               ),
                             ),

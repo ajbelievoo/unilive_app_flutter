@@ -33,6 +33,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
 import '../../services/session_manager.dart';
 import '../../services/rewarded_ad_service.dart';
+import '../../theme/app_theme.dart';
 import '../../utils/format_utils.dart';
 import '../../utils/log.dart';
 import '../../widgets/currency_icon.dart';
@@ -41,14 +42,8 @@ import 'package:belive/widgets/preloader.dart';
 
 const String _tag = 'FreeCoins';
 
-// ---- Colours matching the native dark theme ----------------------------------
-const Color _bg = Color(0xFF0A0A1A);
-const Color _cardBg = Color(0xFF15151F);
-const Color _cardBg2 = Color(0xFF1A1A2E);
-const Color _divider = Color(0xFF2A2A40);
-const Color _textWhite = Colors.white;
-const Color _textLavender = Color(0xFFB0B0D0);
-const Color _textMuted = Color(0xFF8A8AA8);
+// ---- Accent colours (fixed in both themes) -----------------------------------
+const Color _onGold = Color(0xFF0A0A1A);
 const Color _gold = Color(0xFFFFD700);
 const Color _goldDark = Color(0xFFFFB300);
 const Color _purple = Color(0xFF6A4CFE);
@@ -651,6 +646,15 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
 
   // ---- Build -----------------------------------------------------------------
 
+  // ---- Theme-aware palette (dark-first design) -------------------------------
+  Color get _bg => AppTheme.themed(context, 0xFF0A0A1A, 0xFFF8F7FE);
+  Color get _cardBg => AppTheme.themed(context, 0xFF15151F, 0xFFFFFFFF);
+  Color get _cardBg2 => AppTheme.themed(context, 0xFF1A1A2E, 0xFFF1F1FA);
+  Color get _divider => AppTheme.themed(context, 0xFF2A2A40, 0xFFE8E8F0);
+  Color get _textWhite => AppTheme.fg(context);
+  Color get _textLavender => AppTheme.themed(context, 0xFFB0B0D0, 0xFF6B6B80);
+  Color get _textMuted => AppTheme.themed(context, 0xFF8A8AA8, 0xFF9A9AB0);
+
   @override
   Widget build(BuildContext context) {
     final session = context.read<SessionManager>();
@@ -664,8 +668,8 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
       appBar: AppBar(
         backgroundColor: _bg,
         elevation: 0,
-        title: const Text('Free Diamonds', style: TextStyle(color: _textWhite)),
-        iconTheme: const IconThemeData(color: _textWhite),
+        title: Text('Free Diamonds', style: TextStyle(color: _textWhite)),
+        iconTheme: IconThemeData(color: _textWhite),
       ),
       body: SafeArea(
         child: SingleChildScrollView(
@@ -716,7 +720,7 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
         children: [
           const Text(
             'Your Diamond Balance',
-            style: TextStyle(color: _textLavender, fontSize: 11, letterSpacing: 0.5),
+            style: TextStyle(color: Color(0xFFB0B0D0), fontSize: 11, letterSpacing: 0.5),
           ),
           const SizedBox(height: 6),
           Row(
@@ -735,16 +739,16 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
             ],
           ),
           const SizedBox(height: 10),
-          Container(height: 0.5, color: _divider),
+          Container(height: 0.5, color: const Color(0xFF2A2A40)),
           const SizedBox(height: 10),
           const Text(
             'Earn Free Diamonds',
-            style: TextStyle(color: _textWhite, fontSize: 15, fontWeight: FontWeight.bold),
+            style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
           ),
           const SizedBox(height: 4),
           const Text(
             'Watch ads & invite friends to get rewarded',
-            style: TextStyle(color: _textLavender, fontSize: 11),
+            style: TextStyle(color: Color(0xFFB0B0D0), fontSize: 11),
             textAlign: TextAlign.center,
           ),
         ],
@@ -759,9 +763,9 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('How It Works', style: TextStyle(color: _textWhite, fontSize: 15, fontWeight: FontWeight.bold)),
+          Text('How It Works', style: TextStyle(color: _textWhite, fontSize: 15, fontWeight: FontWeight.bold)),
           const SizedBox(height: 2),
-          const Text('Simple steps to earn free diamonds', style: TextStyle(color: _textMuted, fontSize: 11)),
+          Text('Simple steps to earn free diamonds', style: TextStyle(color: _textMuted, fontSize: 11)),
           const SizedBox(height: 14),
           _howItWorksStep('1', 'Watch Video Ads', 'Watch video ads to get instant diamonds'),
           const SizedBox(height: 10),
@@ -785,15 +789,15 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
             shape: BoxShape.circle,
           ),
           alignment: Alignment.center,
-          child: Text(num, style: const TextStyle(color: _bg, fontSize: 12, fontWeight: FontWeight.bold)),
+          child: Text(num, style: const TextStyle(color: _onGold, fontSize: 12, fontWeight: FontWeight.bold)),
         ),
         const SizedBox(width: 10),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(color: _textWhite, fontSize: 12, fontWeight: FontWeight.bold)),
-              Text(subtitle, style: const TextStyle(color: _textMuted, fontSize: 10)),
+              Text(title, style: TextStyle(color: _textWhite, fontSize: 12, fontWeight: FontWeight.bold)),
+              Text(subtitle, style: TextStyle(color: _textMuted, fontSize: 10)),
             ],
           ),
         ),
@@ -866,18 +870,18 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          const Text('Watch Video Ads',
+          Text('Watch Video Ads',
               style: TextStyle(
                   color: _textWhite, fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
-          const Text('Complete watching an ad and earn diamonds instantly',
+          Text('Complete watching an ad and earn diamonds instantly',
               style: TextStyle(color: _textMuted, fontSize: 11)),
           const SizedBox(height: 14),
           // Progress
           Row(
             children: [
               Text(progressText,
-                  style: const TextStyle(color: _textLavender, fontSize: 12)),
+                  style: TextStyle(color: _textLavender, fontSize: 12)),
               const Spacer(),
               if (_claiming)
                 const SizedBox(
@@ -932,16 +936,16 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
                               width: 18,
                               height: 18,
                               child: Preloader(
-                                  strokeWidth: 2, color: _textWhite)),
+                                  strokeWidth: 2, color: Colors.white)),
                           SizedBox(width: 10),
                           Text('Loading ad...',
-                              style: TextStyle(color: _textWhite)),
+                              style: TextStyle(color: Colors.white)),
                         ],
                       )
                     : Text(
                         reached ? 'Daily Limit Reached' : 'Watch & Earn +$reward',
                         style: TextStyle(
-                          color: reached ? _textMuted : _textWhite,
+                          color: reached ? _textMuted : Colors.white,
                           fontSize: 15,
                           fontWeight: FontWeight.bold,
                         ),
@@ -954,7 +958,7 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
             Center(
               child: Text(
                 'Watch $adsUntilInHouse more ad${adsUntilInHouse == 1 ? '' : 's'} for in-house reward',
-                style: const TextStyle(
+                style: TextStyle(
                     color: _textLavender, fontSize: 11, fontWeight: FontWeight.w500),
               ),
             ),
@@ -993,7 +997,7 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
           const SizedBox(height: 10),
         Text(
           ad.title ?? 'Sponsored',
-          style: const TextStyle(
+          style: TextStyle(
               color: _textWhite, fontSize: 14, fontWeight: FontWeight.bold),
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
@@ -1001,7 +1005,7 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
         const SizedBox(height: 4),
         Text(
           ad.description ?? 'Watch this ad to earn diamonds',
-          style: const TextStyle(color: _textMuted, fontSize: 10),
+          style: TextStyle(color: _textMuted, fontSize: 10),
           maxLines: 2,
           overflow: TextOverflow.ellipsis,
         ),
@@ -1016,7 +1020,7 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
             const SizedBox(width: 6),
             Text(
               '${ad.durationSec}s • ${ad.isUnlimited ? 'Unlimited' : '${ad.dailyLimit}/day'}',
-              style: const TextStyle(color: _textLavender, fontSize: 10),
+              style: TextStyle(color: _textLavender, fontSize: 10),
             ),
           ],
         ),
@@ -1041,7 +1045,7 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
             children: [
               const Icon(Icons.history, color: _purple, size: 18),
               const SizedBox(width: 8),
-              const Text('Ad History',
+              Text('Ad History',
                   style: TextStyle(
                       color: _textWhite,
                       fontSize: 15,
@@ -1066,8 +1070,8 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
           ),
           const SizedBox(height: 12),
           if (items.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(vertical: 12),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 12),
               child: Center(
                 child: Text('No ad history yet',
                     style: TextStyle(color: _textMuted, fontSize: 12)),
@@ -1098,7 +1102,7 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
                     fontWeight: FontWeight.bold)),
             const SizedBox(height: 2),
             Text(label,
-                style: const TextStyle(color: _textMuted, fontSize: 10)),
+                style: TextStyle(color: _textMuted, fontSize: 10)),
           ],
         ),
       ),
@@ -1135,7 +1139,7 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
               children: [
                 Text(
                   item.adTitle ?? defaultTitle,
-                  style: const TextStyle(
+                  style: TextStyle(
                       color: _textWhite, fontSize: 12, fontWeight: FontWeight.w600),
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
@@ -1186,13 +1190,13 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
             ],
           ),
           const SizedBox(height: 12),
-          const Text('Refer & Earn', style: TextStyle(color: _textWhite, fontSize: 16, fontWeight: FontWeight.bold)),
+          Text('Refer & Earn', style: TextStyle(color: _textWhite, fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
-          const Text('Invite friends and both of you get rewarded', style: TextStyle(color: _textMuted, fontSize: 11)),
+          Text('Invite friends and both of you get rewarded', style: TextStyle(color: _textMuted, fontSize: 11)),
           const SizedBox(height: 16),
 
           // Referral code
-          const Text('Your Referral Code', style: TextStyle(color: _textLavender, fontSize: 12, fontWeight: FontWeight.bold)),
+          Text('Your Referral Code', style: TextStyle(color: _textLavender, fontSize: 12, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           _glassRow(
             child: Text(
@@ -1200,14 +1204,14 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
               style: const TextStyle(color: _gold, fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 2),
             ),
             trailing: IconButton(
-              icon: const Icon(Icons.copy, color: _textLavender, size: 20),
+              icon: Icon(Icons.copy, color: _textLavender, size: 20),
               onPressed: referralCode.isEmpty ? null : () => _copyToClipboard(referralCode, 'Referral Code Copied!'),
             ),
           ),
           const SizedBox(height: 16),
 
           // Referral link
-          const Text('Your Referral Link', style: TextStyle(color: _textLavender, fontSize: 12, fontWeight: FontWeight.bold)),
+          Text('Your Referral Link', style: TextStyle(color: _textLavender, fontSize: 12, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           _glassRow(
             child: Expanded(
@@ -1224,11 +1228,11 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 IconButton(
-                  icon: const Icon(Icons.share, color: _textLavender, size: 20),
+                  icon: Icon(Icons.share, color: _textLavender, size: 20),
                   onPressed: referralCode.isEmpty ? null : () => _shareReferral(referralCode),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.copy, color: _textLavender, size: 20),
+                  icon: Icon(Icons.copy, color: _textLavender, size: 20),
                   onPressed: referralCode.isEmpty
                       ? null
                       : () => _copyToClipboard(
@@ -1244,7 +1248,7 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
           // Info text
           Text(
             'Invite your Friends! For each payout of invited friends, you and your friend both will receive $_referralBonus Diamonds.',
-            style: const TextStyle(color: Color(0xFFA0A0C0), fontSize: 11, height: 1.5),
+            style: TextStyle(color: AppTheme.themed(context, 0xFFA0A0C0, 0xFF6B6B80), fontSize: 11, height: 1.5),
             textAlign: TextAlign.center,
           ),
           const SizedBox(height: 16),
@@ -1268,14 +1272,14 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
               ),
             ),
           ] else ...[
-            const Text('Have a Referral Code?', style: TextStyle(color: _textLavender, fontSize: 12, fontWeight: FontWeight.bold)),
+            Text('Have a Referral Code?', style: TextStyle(color: _textLavender, fontSize: 12, fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
             TextField(
               controller: _referralCtrl,
-              style: const TextStyle(color: _textWhite, fontSize: 13),
+              style: TextStyle(color: _textWhite, fontSize: 13),
               decoration: InputDecoration(
                 hintText: 'Enter Referral code here',
-                hintStyle: const TextStyle(color: Color(0xFF666688), fontSize: 13),
+                hintStyle: TextStyle(color: AppTheme.themed(context, 0xFF666688, 0xFF9A9AB0), fontSize: 13),
                 filled: true,
                 fillColor: _cardBg2,
                 contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
@@ -1307,7 +1311,7 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
                   ),
                   child: const Text(
                     'Claim Reward',
-                    style: TextStyle(color: _bg, fontSize: 15, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: _onGold, fontSize: 15, fontWeight: FontWeight.bold),
                   ),
                 ),
               ),
@@ -1338,8 +1342,8 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Your Referrals', style: TextStyle(color: _textWhite, fontSize: 14, fontWeight: FontWeight.bold)),
-                Text('You have $count referrals', style: const TextStyle(color: _textMuted, fontSize: 11)),
+                Text('Your Referrals', style: TextStyle(color: _textWhite, fontSize: 14, fontWeight: FontWeight.bold)),
+                Text('You have $count referrals', style: TextStyle(color: _textMuted, fontSize: 11)),
               ],
             ),
           ),
@@ -1349,7 +1353,7 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
               gradient: const LinearGradient(colors: [_gold, _goldDark]),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Text('+$_referralBonus / Friend', style: const TextStyle(color: _bg, fontSize: 11, fontWeight: FontWeight.bold)),
+            child: Text('+$_referralBonus / Friend', style: const TextStyle(color: _onGold, fontSize: 11, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
@@ -1363,7 +1367,7 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Why Earn With Us?', style: TextStyle(color: _textWhite, fontSize: 15, fontWeight: FontWeight.bold)),
+          Text('Why Earn With Us?', style: TextStyle(color: _textWhite, fontSize: 15, fontWeight: FontWeight.bold)),
           const SizedBox(height: 14),
           _featureItem(Icons.diamond, 'Instant Rewards', 'Diamonds credited immediately after watching ads'),
           const SizedBox(height: 12),
@@ -1392,8 +1396,8 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(color: _textWhite, fontSize: 12, fontWeight: FontWeight.bold)),
-              Text(subtitle, style: const TextStyle(color: _textMuted, fontSize: 10)),
+              Text(title, style: TextStyle(color: _textWhite, fontSize: 12, fontWeight: FontWeight.bold)),
+              Text(subtitle, style: TextStyle(color: _textMuted, fontSize: 10)),
             ],
           ),
         ),
@@ -1408,11 +1412,11 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Good to Know', style: TextStyle(color: _textWhite, fontSize: 15, fontWeight: FontWeight.bold)),
+          Text('Good to Know', style: TextStyle(color: _textWhite, fontSize: 15, fontWeight: FontWeight.bold)),
           const SizedBox(height: 10),
           Container(height: 0.5, color: _divider),
           const SizedBox(height: 10),
-          const Text(
+          Text(
             '• Diamond rewards are credited instantly to your wallet after completing each activity.\n\n'
             '• Referral rewards are given when your referred friend makes their first purchase.\n\n'
             '• Ad availability depends on regional ad inventory and daily limits.\n\n'
@@ -1428,7 +1432,7 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
   // ---- Footer ----------------------------------------------------------------
 
   Widget _footer() {
-    return const Column(
+    return Column(
       children: [
         CurrencyIcon(CurrencyType.diamond, size: 28),
         SizedBox(height: 6),
@@ -1461,7 +1465,7 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
         gradient: const LinearGradient(colors: [_gold, _goldDark]),
         borderRadius: BorderRadius.circular(6),
       ),
-      child: Text(text, style: const TextStyle(color: _bg, fontSize: 11, fontWeight: FontWeight.bold)),
+      child: Text(text, style: const TextStyle(color: _onGold, fontSize: 11, fontWeight: FontWeight.bold)),
     );
   }
 

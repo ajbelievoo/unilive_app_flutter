@@ -106,11 +106,11 @@ class _VipThemeGalleryScreenState extends State<VipThemeGalleryScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A1A1A), Color(0xFF0A0A0A)],
+            colors: AppTheme.bgGradient(context, const [Color(0xFF1A1A1A), Color(0xFF0A0A0A)]),
           ),
         ),
         child: SafeArea(
@@ -155,15 +155,15 @@ class _VipThemeGalleryScreenState extends State<VipThemeGalleryScreen> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)),
             onPressed: () => context.pop(),
           ),
-          const Expanded(
+          Expanded(
             child: Center(
               child: Text(
                 'VIP Themes',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppTheme.fg(context),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -181,11 +181,11 @@ class _VipThemeGalleryScreenState extends State<VipThemeGalleryScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.palette_outlined, color: Colors.white38, size: 64),
+          Icon(Icons.palette_outlined, color: AppTheme.fg(context, 0.38), size: 64),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'No themes available',
-            style: TextStyle(color: Colors.white54, fontSize: 16),
+            style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 16),
           ),
           const SizedBox(height: 12),
           TextButton(onPressed: _load, child: const Text('Refresh')),
@@ -205,8 +205,8 @@ class _VipThemeGalleryScreenState extends State<VipThemeGalleryScreen> {
                 isEquipped
                     ? AppTheme.primary
                     : (isLocked
-                        ? Colors.white12
-                        : Colors.white.withValues(alpha: 0.1)),
+                        ? AppTheme.hairline(context)
+                        : AppTheme.hairline(context)),
             width: isEquipped ? 2 : 1,
           ),
         ),
@@ -223,24 +223,24 @@ class _VipThemeGalleryScreenState extends State<VipThemeGalleryScreen> {
                   fit: BoxFit.cover,
                   placeholder:
                       (_, __) => Container(
-                        color: Colors.white.withValues(alpha: 0.05),
+                        color: AppTheme.fg(context, 0.05),
                       ),
                   errorWidget:
                       (_, __, ___) => Container(
-                        color: Colors.white.withValues(alpha: 0.05),
-                        child: const Icon(
+                        color: AppTheme.fg(context, 0.05),
+                        child: Icon(
                           Icons.palette,
-                          color: Colors.white24,
+                          color: AppTheme.fg(context, 0.24),
                           size: 32,
                         ),
                       ),
                 )
               else
                 Container(
-                  color: Colors.white.withValues(alpha: 0.05),
-                  child: const Icon(
+                  color: AppTheme.fg(context, 0.05),
+                  child: Icon(
                     Icons.palette,
-                    color: Colors.white24,
+                    color: AppTheme.fg(context, 0.24),
                     size: 32,
                   ),
                 ),

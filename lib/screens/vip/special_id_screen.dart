@@ -142,11 +142,14 @@ class _SpecialIdScreenState extends State<SpecialIdScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A1A1A), Color(0xFF0A0A0A)],
+            colors: AppTheme.bgGradient(
+              context,
+              const [Color(0xFF1A1A1A), Color(0xFF0A0A0A)],
+            ),
           ),
         ),
         child: SafeArea(
@@ -194,10 +197,10 @@ class _SpecialIdScreenState extends State<SpecialIdScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
         children: [
-          IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: () => context.pop()),
-          const Expanded(
+          IconButton(icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)), onPressed: () => context.pop()),
+          Expanded(
             child: Center(
-              child: Text('Special ID', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              child: Text('Special ID', style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 48),
@@ -257,14 +260,14 @@ class _SpecialIdScreenState extends State<SpecialIdScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           gradient: selected ? AppTheme.goldGradient : null,
-          color: selected ? null : Colors.white.withValues(alpha: 0.06),
+          color: selected ? null : AppTheme.cardBg(context),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: selected ? Colors.transparent : Colors.white.withValues(alpha: 0.1)),
+          border: Border.all(color: selected ? Colors.transparent : AppTheme.hairline(context)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text(name, style: TextStyle(color: selected ? Colors.white : Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+            Text(name, style: TextStyle(color: selected ? Colors.white : AppTheme.fg(context, 0.7), fontSize: 13, fontWeight: FontWeight.w600)),
             const SizedBox(width: 6),
             Text('$price', style: TextStyle(color: selected ? Colors.white : const Color(0xFFFFB800), fontSize: 11, fontWeight: FontWeight.bold)),
           ],
@@ -276,19 +279,19 @@ class _SpecialIdScreenState extends State<SpecialIdScreen> {
   Widget _buildIdInput() {
     return TextField(
       controller: _idCtrl,
-      style: const TextStyle(color: Colors.white),
+      style: TextStyle(color: AppTheme.fg(context)),
       decoration: InputDecoration(
         labelText: 'Enter desired ID',
-        labelStyle: const TextStyle(color: Colors.white54),
+        labelStyle: TextStyle(color: AppTheme.fg(context, 0.54)),
         hintText: 'e.g. king123',
-        hintStyle: const TextStyle(color: Colors.white38),
+        hintStyle: TextStyle(color: AppTheme.fg(context, 0.38)),
         filled: true,
-        fillColor: Colors.white.withValues(alpha: 0.06),
+        fillColor: AppTheme.cardBg(context),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-        prefixIcon: const Icon(Icons.alternate_email, color: Colors.white54),
+        prefixIcon: Icon(Icons.alternate_email, color: AppTheme.fg(context, 0.54)),
         suffixIcon: _checking
-            ? const SizedBox(width: 20, height: 20, child: Center(child: Preloader(strokeWidth: 2, color: Colors.white)))
-            : IconButton(icon: const Icon(Icons.search, color: Colors.white54), onPressed: _checkAvailability),
+            ? SizedBox(width: 20, height: 20, child: Center(child: Preloader(strokeWidth: 2, color: AppTheme.fg(context))))
+            : IconButton(icon: Icon(Icons.search, color: AppTheme.fg(context, 0.54)), onPressed: _checkAvailability),
       ),
       onChanged: (_) {
         if (_available != null) setState(() => _available = null);
@@ -315,7 +318,7 @@ class _SpecialIdScreenState extends State<SpecialIdScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Popular Suggestions', style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600)),
+        Text('Popular Suggestions', style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 13, fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         Wrap(
           spacing: 8,
@@ -328,7 +331,7 @@ class _SpecialIdScreenState extends State<SpecialIdScreen> {
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.08), borderRadius: BorderRadius.circular(16)),
+                decoration: BoxDecoration(color: AppTheme.cardBg(context), borderRadius: BorderRadius.circular(16)),
                 child: Text('@$s', style: const TextStyle(color: AppTheme.primary, fontSize: 12, fontWeight: FontWeight.w600)),
               ),
             );
@@ -349,19 +352,19 @@ class _SpecialIdScreenState extends State<SpecialIdScreen> {
       ),
       child: Column(
         children: [
-          const Text('Preview', style: TextStyle(color: Colors.white54, fontSize: 12)),
+          Text('Preview', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 12)),
           const SizedBox(height: 12),
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Icon(Icons.person, color: Colors.white54, size: 40),
+              Icon(Icons.person, color: AppTheme.fg(context, 0.54), size: 40),
               const SizedBox(width: 12),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
                     id.isEmpty ? '@your_id' : '@$id',
-                    style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
+                    style: TextStyle(color: AppTheme.fg(context), fontSize: 20, fontWeight: FontWeight.bold),
                   ),
                   const Text('Special ID Holder', style: TextStyle(color: AppTheme.primary, fontSize: 12)),
                 ],
@@ -376,16 +379,16 @@ class _SpecialIdScreenState extends State<SpecialIdScreen> {
   Widget _buildPriceCard() {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3))),
+      decoration: BoxDecoration(color: AppTheme.cardBg(context), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3))),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text('Price', style: TextStyle(color: Colors.white70, fontSize: 16)),
+          Text('Price', style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 16)),
           Row(
             children: [
               const Icon(Icons.diamond, color: Color(0xFFFFB800), size: 20),
               const SizedBox(width: 4),
-              Text('$_price diamonds', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('$_price diamonds', style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold)),
             ],
           ),
         ],
@@ -407,7 +410,7 @@ class _SpecialIdScreenState extends State<SpecialIdScreen> {
       'Note: Special IDs are unique and cannot be changed once purchased. '
       'Length: $_minLen-$_maxLen characters. '
       'Make sure to check availability before purchasing.',
-      style: const TextStyle(color: Colors.white38, fontSize: 12),
+      style: TextStyle(color: AppTheme.fg(context, 0.38), fontSize: 12),
       textAlign: TextAlign.center,
     );
   }

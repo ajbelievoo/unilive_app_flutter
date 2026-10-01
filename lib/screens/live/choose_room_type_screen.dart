@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
 import '../../services/session_manager.dart';
+import '../../theme/app_theme.dart';
 
 /// Room type option shown to the host.
 class RoomTypeOption {
@@ -74,15 +75,15 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
         }
       },
       child: Scaffold(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.themed(context, 0xFF121212, 0xFFFAFAFE),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.themed(context, 0xFF121212, 0xFFFAFAFE),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Choose room type', style: TextStyle(color: Colors.black, fontSize: 18)),
+        title: Text('Choose room type', style: TextStyle(color: AppTheme.fg(context), fontSize: 18)),
       ),
       body: Column(
         children: [
@@ -227,10 +228,16 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFE6FAF5) : const Color(0xFFF8F8F8),
+          color:
+              selected
+                  ? AppTheme.themed(context, 0xFF123C33, 0xFFE6FAF5)
+                  : AppTheme.themed(context, 0xFF1E1E1E, 0xFFF8F8F8),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: selected ? const Color(0xFF00D6A0) : Colors.transparent,
+            color:
+                selected
+                    ? const Color(0xFF00D6A0)
+                    : AppTheme.hairline(context),
           ),
         ),
         child: Row(
@@ -269,7 +276,7 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: selected ? FontWeight.bold : FontWeight.w600,
-                      color: selected ? const Color(0xFF00D6A0) : (unlocked ? Colors.black87 : Colors.black54),
+                      color: selected ? const Color(0xFF00D6A0) : (unlocked ? AppTheme.fg(context, 0.87) : AppTheme.fg(context, 0.54)),
                     ),
                   ),
                   if (!unlocked)
@@ -283,7 +290,7 @@ class _ChooseRoomTypeScreenState extends State<ChooseRoomTypeScreen> {
             if (selected && unlocked)
               const Icon(Icons.check_circle, color: Color(0xFF00D6A0)),
             if (!unlocked)
-              const Icon(Icons.lock, color: Colors.black38),
+              Icon(Icons.lock, color: AppTheme.fg(context, 0.38)),
           ],
         ),
       ),

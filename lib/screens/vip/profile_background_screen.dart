@@ -117,11 +117,14 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A1A1A), Color(0xFF0A0A0A)],
+            colors: AppTheme.bgGradient(
+              context,
+              const [Color(0xFF1A1A1A), Color(0xFF0A0A0A)],
+            ),
           ),
         ),
         child: SafeArea(
@@ -167,15 +170,15 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)),
             onPressed: () => context.pop(),
           ),
-          const Expanded(
+          Expanded(
             child: Center(
               child: Text(
                 'Profile Background',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppTheme.fg(context),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -193,11 +196,15 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.wallpaper_outlined, color: Colors.white38, size: 64),
+          Icon(
+            Icons.wallpaper_outlined,
+            color: AppTheme.fg(context, 0.38),
+            size: 64,
+          ),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'No backgrounds available',
-            style: TextStyle(color: Colors.white54, fontSize: 16),
+            style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 16),
           ),
           const SizedBox(height: 12),
           TextButton(onPressed: _load, child: const Text('Refresh')),
@@ -219,9 +226,7 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
             color:
                 isEquipped
                     ? AppTheme.primary
-                    : (isLocked
-                        ? Colors.white12
-                        : Colors.white.withValues(alpha: 0.1)),
+                    : AppTheme.hairline(context),
             width: isEquipped ? 2 : 1,
           ),
         ),
@@ -237,24 +242,24 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
                   fit: BoxFit.cover,
                   placeholder:
                       (_, __) => Container(
-                        color: Colors.white.withValues(alpha: 0.05),
+                        color: AppTheme.cardBg(context),
                       ),
                   errorWidget:
                       (_, __, ___) => Container(
-                        color: Colors.white.withValues(alpha: 0.05),
-                        child: const Icon(
+                        color: AppTheme.cardBg(context),
+                        child: Icon(
                           Icons.wallpaper,
-                          color: Colors.white24,
+                          color: AppTheme.fg(context, 0.24),
                           size: 32,
                         ),
                       ),
                 )
               else
                 Container(
-                  color: Colors.white.withValues(alpha: 0.05),
-                  child: const Icon(
+                  color: AppTheme.cardBg(context),
+                  child: Icon(
                     Icons.wallpaper,
-                    color: Colors.white24,
+                    color: AppTheme.fg(context, 0.24),
                     size: 32,
                   ),
                 ),

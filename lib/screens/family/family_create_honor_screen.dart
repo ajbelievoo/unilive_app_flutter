@@ -15,6 +15,7 @@ import 'package:provider/provider.dart';
 
 import '../../services/api_service.dart';
 import '../../services/session_manager.dart';
+import '../../theme/app_theme.dart';
 import '../../utils/log.dart';
 import 'package:belive/widgets/preloader.dart';
 
@@ -98,15 +99,15 @@ class _FamilyCreateHonorScreenState extends State<FamilyCreateHonorScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFDF8E8),
+      backgroundColor: AppTheme.themed(context, 0xFF121212, 0xFFFDF8E8),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFFDF8E8),
+        backgroundColor: AppTheme.themed(context, 0xFF121212, 0xFFFDF8E8),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.black87),
+          icon: Icon(Icons.arrow_back_ios, color: AppTheme.fg(context, 0.87)),
           onPressed: () => context.pop(),
         ),
-        title: const Text('Create Family', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600, fontSize: 18)),
+        title: Text('Create Family', style: TextStyle(color: AppTheme.fg(context, 0.87), fontWeight: FontWeight.w600, fontSize: 18)),
         centerTitle: true,
       ),
       body: Form(
@@ -142,7 +143,7 @@ class _FamilyCreateHonorScreenState extends State<FamilyCreateHonorScreen> {
               ),
             ),
             const SizedBox(height: 10),
-            const Center(child: Text('Tap to change family cover', style: TextStyle(color: Colors.black54, fontSize: 13))),
+            Center(child: Text('Tap to change family cover', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 13))),
             const SizedBox(height: 24),
 
             // Family Name
@@ -155,7 +156,7 @@ class _FamilyCreateHonorScreenState extends State<FamilyCreateHonorScreen> {
                 width: 140,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: const Color(0xFFFDF8E8),
+                  color: AppTheme.themed(context, 0xFF1E1E1E, 0xFFFDF8E8),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(color: const Color(0xFFE8D990)),
                 ),
@@ -208,11 +209,11 @@ class _FamilyCreateHonorScreenState extends State<FamilyCreateHonorScreen> {
             const SizedBox(height: 20),
 
             // Rules
-            const Text(
+            Text(
               '1.Only SVIP4 and above users can create a family for free\n'
               '2.The family will be automatically disbanded if the number of family members is 1 for 7 consecutive days\n'
               '3.The family portrait and family name can be modified only once a month',
-              style: TextStyle(color: Colors.black54, fontSize: 12, height: 1.5),
+              style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 12, height: 1.5),
             ),
             const SizedBox(height: 24),
           ],
@@ -231,18 +232,18 @@ class _FamilyCreateHonorScreenState extends State<FamilyCreateHonorScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(color: Colors.black87, fontSize: 15, fontWeight: FontWeight.w600)),
+        Text(label, style: TextStyle(color: AppTheme.fg(context, 0.87), fontSize: 15, fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         TextFormField(
           controller: controller,
           maxLength: maxLength,
           maxLines: maxLines,
           buildCounter: (_, {required currentLength, required isFocused, maxLength}) =>
-              Text('$currentLength/$maxLength', style: const TextStyle(color: Colors.black38, fontSize: 11)),
+              Text('$currentLength/$maxLength', style: TextStyle(color: AppTheme.fg(context, 0.38), fontSize: 11)),
           decoration: InputDecoration(
             hintText: hint,
             filled: true,
-            fillColor: const Color(0xFFF1F1F1),
+            fillColor: AppTheme.themed(context, 0xFF1E1E1E, 0xFFF1F1F1),
             border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
             contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
           ),
@@ -257,11 +258,11 @@ class _FamilyCreateHonorScreenState extends State<FamilyCreateHonorScreen> {
       onTap: onTap,
       child: Row(
         children: [
-          Text(label, style: const TextStyle(color: Colors.black87, fontSize: 15, fontWeight: FontWeight.w600)),
+          Text(label, style: TextStyle(color: AppTheme.fg(context, 0.87), fontSize: 15, fontWeight: FontWeight.w600)),
           const Spacer(),
-          Text(value, style: const TextStyle(color: Colors.black54, fontSize: 14)),
+          Text(value, style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 14)),
           const SizedBox(width: 4),
-          const Icon(Icons.chevron_right, color: Colors.black54, size: 20),
+          Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.54), size: 20),
         ],
       ),
     );

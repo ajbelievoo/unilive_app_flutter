@@ -110,11 +110,11 @@ class _UnbanAccountScreenState extends State<UnbanAccountScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A1A1A), Color(0xFF0A0A0A)],
+            colors: AppTheme.bgGradient(context, const [Color(0xFF1A1A1A), Color(0xFF0A0A0A)]),
           ),
         ),
         child: SafeArea(
@@ -165,10 +165,10 @@ class _UnbanAccountScreenState extends State<UnbanAccountScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
         children: [
-          IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: () => context.pop()),
-          const Expanded(
+          IconButton(icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)), onPressed: () => context.pop()),
+          Expanded(
             child: Center(
-              child: Text('Unban Account', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              child: Text('Unban Account', style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 48),
@@ -239,14 +239,14 @@ class _UnbanAccountScreenState extends State<UnbanAccountScreen> {
   Widget _statCard(String label, String value, IconData icon) {
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(12)),
+      decoration: BoxDecoration(color: AppTheme.cardBg(context), borderRadius: BorderRadius.circular(12)),
       child: Column(
         children: [
           Icon(icon, color: AppTheme.primary, size: 20),
           const SizedBox(height: 6),
-          Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold)),
+          Text(value, style: TextStyle(color: AppTheme.fg(context), fontSize: 14, fontWeight: FontWeight.bold)),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 10), textAlign: TextAlign.center),
+          Text(label, style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 10), textAlign: TextAlign.center),
         ],
       ),
     );
@@ -261,10 +261,10 @@ class _UnbanAccountScreenState extends State<UnbanAccountScreen> {
         children: [
           const Row(children: [Icon(Icons.warning, color: Colors.red, size: 18), SizedBox(width: 8), Text('Ban Reason', style: TextStyle(color: Colors.red, fontSize: 14, fontWeight: FontWeight.bold))]),
           const SizedBox(height: 8),
-          Text(_banInfo!.banReason!, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+          Text(_banInfo!.banReason!, style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 13)),
           if (_banInfo!.bannedAt != null) ...[
             const SizedBox(height: 4),
-            Text('Banned at: ${_banInfo!.bannedAt}', style: const TextStyle(color: Colors.white38, fontSize: 11)),
+            Text('Banned at: ${_banInfo!.bannedAt}', style: TextStyle(color: AppTheme.fg(context, 0.38), fontSize: 11)),
           ],
         ],
       ),
@@ -284,7 +284,7 @@ class _UnbanAccountScreenState extends State<UnbanAccountScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text('Cooldown Active', style: TextStyle(color: Colors.orange, fontSize: 14, fontWeight: FontWeight.bold)),
-                Text('Try after: ${_banInfo!.cooldownUntil}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                Text('Try after: ${_banInfo!.cooldownUntil}', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 12)),
               ],
             ),
           ),
@@ -297,14 +297,14 @@ class _UnbanAccountScreenState extends State<UnbanAccountScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Ban History', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+        Text('Ban History', style: TextStyle(color: AppTheme.fg(context), fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
         ..._banInfo!.banHistory.map((h) {
           final isBan = h.action?.toLowerCase() == 'ban';
           return Container(
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.04), borderRadius: BorderRadius.circular(10)),
+            decoration: BoxDecoration(color: AppTheme.cardBg(context), borderRadius: BorderRadius.circular(10)),
             child: Row(
               children: [
                 Icon(isBan ? Icons.block : Icons.lock_open, color: isBan ? const Color(0xFFE74C3C) : const Color(0xFF27AE60), size: 20),
@@ -314,8 +314,8 @@ class _UnbanAccountScreenState extends State<UnbanAccountScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(h.action?.toUpperCase() ?? 'ACTION', style: TextStyle(color: isBan ? const Color(0xFFE74C3C) : const Color(0xFF27AE60), fontSize: 12, fontWeight: FontWeight.bold)),
-                      if (h.reason != null) Text(h.reason!, style: const TextStyle(color: Colors.white54, fontSize: 11)),
-                      if (h.date != null) Text(h.date!, style: const TextStyle(color: Colors.white38, fontSize: 10)),
+                      if (h.reason != null) Text(h.reason!, style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 11)),
+                      if (h.date != null) Text(h.date!, style: TextStyle(color: AppTheme.fg(context, 0.38), fontSize: 10)),
                     ],
                   ),
                 ),
@@ -337,7 +337,7 @@ class _UnbanAccountScreenState extends State<UnbanAccountScreen> {
         style: ElevatedButton.styleFrom(
           backgroundColor: AppTheme.green,
           foregroundColor: Colors.white,
-          disabledBackgroundColor: Colors.white.withValues(alpha: 0.08),
+          disabledBackgroundColor: AppTheme.fg(context, 0.10),
           minimumSize: const Size.fromHeight(50),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),

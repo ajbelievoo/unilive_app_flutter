@@ -40,8 +40,7 @@ class _EffectSettingsScreenState extends State<EffectSettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? AppTheme.surface : AppTheme.lightSurface;
+    final bg = AppTheme.themed(context, 0xFF121212, 0xFFFAFAFE);
     return Scaffold(
       backgroundColor: bg,
       appBar: AppBar(
@@ -49,13 +48,13 @@ class _EffectSettingsScreenState extends State<EffectSettingsScreen> {
         elevation: 0,
         centerTitle: true,
         leading: IconButton(
-          icon: Icon(Icons.arrow_back, color: isDark ? AppTheme.textPrimary : AppTheme.lightTextPrimary),
+          icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)),
           onPressed: () => Navigator.pop(context),
         ),
         title: Text(
           'Effect Settings',
           style: TextStyle(
-            color: isDark ? AppTheme.textPrimary : AppTheme.lightTextPrimary,
+            color: AppTheme.fg(context),
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -212,7 +211,7 @@ class _EffectSettingsScreenState extends State<EffectSettingsScreen> {
               Expanded(
                 child: Text(
                   label,
-                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: Theme.of(context).brightness == Brightness.dark ? AppTheme.textPrimary : AppTheme.lightTextPrimary),
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.fg(context)),
                 ),
               ),
               Switch(

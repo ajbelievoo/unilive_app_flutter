@@ -14,6 +14,7 @@ import 'dart:math' as math;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
 import '../utils/media_utils.dart';
 
 class VipAnimatedBackground extends StatefulWidget {
@@ -73,8 +74,12 @@ class _VipAnimatedBackgroundState extends State<VipAnimatedBackground>
   @override
   Widget build(BuildContext context) {
     final size = MediaQuery.sizeOf(context);
+    final isDark = AppTheme.isDark(context);
     final base = widget.gradientColors;
     final stroke = widget.strokeColor;
+    // In light mode the dark backdrop becomes a soft off-white veil so the
+    // colorful tier wash still reads while dark foreground text stays legible.
+    final overlayColor = isDark ? Colors.black : Colors.white;
 
     return RepaintBoundary(
       child: Stack(
@@ -89,10 +94,14 @@ class _VipAnimatedBackgroundState extends State<VipAnimatedBackground>
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  base.isNotEmpty ? base[0] : const Color(0xFF1A0B2E),
-                  base.length > 1 ? base[1] : const Color(0xFF0D0420),
-                  const Color(0xFF0A0A0A),
-                  const Color(0xFF000000),
+                  base.isNotEmpty
+                      ? base[0]
+                      : AppTheme.themed(context, 0xFF1A0B2E, 0xFFF4F2FF),
+                  base.length > 1
+                      ? base[1]
+                      : AppTheme.themed(context, 0xFF0D0420, 0xFFFBFAFF),
+                  AppTheme.themed(context, 0xFF0A0A0A, 0xFFFBFAFF),
+                  AppTheme.themed(context, 0xFF000000, 0xFFFFFFFF),
                 ],
               ),
             ),
@@ -182,9 +191,9 @@ class _VipAnimatedBackgroundState extends State<VipAnimatedBackground>
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
                 colors: [
-                  Colors.black.withValues(alpha: widget.overlayOpacity * 0.7),
-                  Colors.black.withValues(alpha: widget.overlayOpacity * 1.1),
-                  Colors.black.withValues(alpha: widget.overlayOpacity * 1.3),
+                  overlayColor.withValues(alpha: widget.overlayOpacity * 0.7),
+                  overlayColor.withValues(alpha: widget.overlayOpacity * 1.1),
+                  overlayColor.withValues(alpha: widget.overlayOpacity * 1.3),
                 ],
               ),
             ),

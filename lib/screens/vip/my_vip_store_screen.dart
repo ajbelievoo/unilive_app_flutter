@@ -413,11 +413,14 @@ class _MyVipStoreScreenState extends State<MyVipStoreScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A1A1A), Color(0xFF0A0A0A)],
+            colors: AppTheme.bgGradient(
+              context,
+              const [Color(0xFF1A1A1A), Color(0xFF0A0A0A)],
+            ),
           ),
         ),
         child: SafeArea(
@@ -464,15 +467,15 @@ class _MyVipStoreScreenState extends State<MyVipStoreScreen> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)),
             onPressed: () => context.pop(),
           ),
-          const Expanded(
+          Expanded(
             child: Center(
               child: Text(
                 'My VIP Store',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppTheme.fg(context),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -480,11 +483,11 @@ class _MyVipStoreScreenState extends State<MyVipStoreScreen> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.history, color: Colors.white),
+            icon: Icon(Icons.history, color: AppTheme.fg(context)),
             onPressed: () => context.pushNamed(AppRoutes.vipHistory),
           ),
           IconButton(
-            icon: const Icon(Icons.settings, color: Colors.white),
+            icon: Icon(Icons.settings, color: AppTheme.fg(context)),
             onPressed: () => context.pushNamed(AppRoutes.vipSettings),
           ),
         ],
@@ -497,11 +500,11 @@ class _MyVipStoreScreenState extends State<MyVipStoreScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.lock_outline, color: Colors.white38, size: 64),
+          Icon(Icons.lock_outline, color: AppTheme.fg(context, 0.38), size: 64),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'No VIP Active',
-            style: TextStyle(color: Colors.white54, fontSize: 18),
+            style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 18),
           ),
           const SizedBox(height: 24),
           ElevatedButton(
@@ -668,9 +671,9 @@ class _MyVipStoreScreenState extends State<MyVipStoreScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -711,9 +714,13 @@ class _MyVipStoreScreenState extends State<MyVipStoreScreen> {
       child: Container(
         decoration: BoxDecoration(
           color:
-              item.isActive
-                  ? Colors.white.withValues(alpha: 0.12)
-                  : Colors.white.withValues(alpha: 0.04),
+              AppTheme.isDark(context)
+                  ? (item.isActive
+                      ? Colors.white.withValues(alpha: 0.12)
+                      : Colors.white.withValues(alpha: 0.04))
+                  : (item.isActive
+                      ? Colors.white
+                      : const Color(0xFFF3F2F9)),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color:
@@ -748,9 +755,9 @@ class _MyVipStoreScreenState extends State<MyVipStoreScreen> {
                             width: 48,
                             height: 48,
                             errorWidget:
-                                (_, __, ___) => const Icon(
+                                (_, __, ___) => Icon(
                                   Icons.image,
-                                  color: Colors.white38,
+                                  color: AppTheme.fg(context, 0.38),
                                   size: 32,
                                 ),
                           ),
@@ -779,7 +786,7 @@ class _MyVipStoreScreenState extends State<MyVipStoreScreen> {
               item.name,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: item.isActive ? Colors.white : Colors.white38,
+                color: item.isActive ? AppTheme.fg(context) : AppTheme.fg(context, 0.38),
                 fontSize: 11,
               ),
               maxLines: 2,
@@ -796,17 +803,17 @@ class _MyVipStoreScreenState extends State<MyVipStoreScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Exclusive Privileges',
             style: TextStyle(
-              color: Colors.white,
+              color: AppTheme.fg(context),
               fontSize: 18,
               fontWeight: FontWeight.w600,
             ),
@@ -832,7 +839,7 @@ class _MyVipStoreScreenState extends State<MyVipStoreScreen> {
   Widget _buildExclusiveCard(_ExclusiveItem item) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.08),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Column(
@@ -843,7 +850,7 @@ class _MyVipStoreScreenState extends State<MyVipStoreScreen> {
           Text(
             item.name,
             textAlign: TextAlign.center,
-            style: const TextStyle(color: Colors.white70, fontSize: 11),
+            style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 11),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -888,18 +895,18 @@ class _MyVipStoreScreenState extends State<MyVipStoreScreen> {
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           if (_diceSkins.isNotEmpty) ...[
-            const Text(
+            Text(
               'Dice Skins',
               style: TextStyle(
-                color: Colors.white,
+                color: AppTheme.fg(context),
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -926,23 +933,23 @@ class _MyVipStoreScreenState extends State<MyVipStoreScreen> {
                                     width: 56,
                                     height: 56,
                                     fit: BoxFit.cover,
-                                    errorWidget: (_, __, ___) => const Icon(Icons.casino, color: Colors.white54),
+                                    errorWidget: (_, __, ___) => Icon(Icons.casino, color: AppTheme.fg(context, 0.54)),
                                   )
                                   : Container(
                                     width: 56,
                                     height: 56,
-                                    color: Colors.white12,
-                                    child: const Icon(
+                                    color: AppTheme.cardBg(context),
+                                    child: Icon(
                                       Icons.casino,
-                                      color: Colors.white54,
+                                      color: AppTheme.fg(context, 0.54),
                                     ),
                                   ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           skin['name']?.toString() ?? '',
-                          style: const TextStyle(
-                            color: Colors.white70,
+                          style: TextStyle(
+                            color: AppTheme.fg(context, 0.7),
                             fontSize: 10,
                           ),
                         ),
@@ -955,10 +962,10 @@ class _MyVipStoreScreenState extends State<MyVipStoreScreen> {
           ],
           if (_vipThemes.isNotEmpty) ...[
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'VIP Themes',
               style: TextStyle(
-                color: Colors.white,
+                color: AppTheme.fg(context),
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -985,23 +992,23 @@ class _MyVipStoreScreenState extends State<MyVipStoreScreen> {
                                     width: 56,
                                     height: 56,
                                     fit: BoxFit.cover,
-                                    errorWidget: (_, __, ___) => const Icon(Icons.palette, color: Colors.white54),
+                                    errorWidget: (_, __, ___) => Icon(Icons.palette, color: AppTheme.fg(context, 0.54)),
                                   )
                                   : Container(
                                     width: 56,
                                     height: 56,
-                                    color: Colors.white12,
-                                    child: const Icon(
+                                    color: AppTheme.cardBg(context),
+                                    child: Icon(
                                       Icons.palette,
-                                      color: Colors.white54,
+                                      color: AppTheme.fg(context, 0.54),
                                     ),
                                   ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           theme['name']?.toString() ?? '',
-                          style: const TextStyle(
-                            color: Colors.white70,
+                          style: TextStyle(
+                            color: AppTheme.fg(context, 0.7),
                             fontSize: 10,
                           ),
                         ),

@@ -87,7 +87,7 @@ class _FamilyTreasuryScreenState extends State<FamilyTreasuryScreen> {
                       borderRadius: BorderRadius.circular(15),
                     ),
                     filled: true,
-                    fillColor: Colors.grey.shade50,
+                    fillColor: AppTheme.themed(context, 0xFF1E1E1E, 0xFFFAFAFA),
                   ),
                 ),
               ],
@@ -138,15 +138,15 @@ class _FamilyTreasuryScreenState extends State<FamilyTreasuryScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7FB),
+      backgroundColor: AppTheme.themed(context, 0xFF121212, 0xFFF7F7FB),
       appBar: AppBar(
         title: const Text(
           'Family Treasury',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
         ),
         centerTitle: true,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        backgroundColor: AppTheme.themed(context, 0xFF1E1E1E, 0xFFFFFFFF),
+        foregroundColor: AppTheme.fg(context, 0.87),
         elevation: 0.5,
         actions: [
           IconButton(
@@ -172,12 +172,12 @@ class _FamilyTreasuryScreenState extends State<FamilyTreasuryScreen> {
                       const SizedBox(height: 24),
                       _buildStatsRow(),
                       const SizedBox(height: 24),
-                      const Text(
+                      Text(
                         'Top Supporters',
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                          color: AppTheme.fg(context, 0.87),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -196,12 +196,12 @@ class _FamilyTreasuryScreenState extends State<FamilyTreasuryScreen> {
                             .take(5)
                             .map((m) => _buildContributorTile(m)),
                       const SizedBox(height: 24),
-                      const Text(
+                      Text(
                         'Family Perks',
                         style: TextStyle(
                           fontSize: 17,
                           fontWeight: FontWeight.bold,
-                          color: Colors.black87,
+                          color: AppTheme.fg(context, 0.87),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -305,7 +305,7 @@ class _FamilyTreasuryScreenState extends State<FamilyTreasuryScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -338,7 +338,7 @@ class _FamilyTreasuryScreenState extends State<FamilyTreasuryScreen> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(
@@ -423,9 +423,9 @@ class _FamilyTreasuryScreenState extends State<FamilyTreasuryScreen> {
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.white,
+                    color: AppTheme.cardBg(context),
                     borderRadius: BorderRadius.circular(16),
-                    border: Border.all(color: Colors.grey.shade100),
+                    border: Border.all(color: AppTheme.hairline(context)),
                   ),
                   child: Row(
                     children: [
@@ -547,9 +547,9 @@ class _FamilyTreasuryScreenState extends State<FamilyTreasuryScreen> {
   Widget _buildBottomBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF1E1E1E, 0xFFFFFFFF),
+        boxShadow: const [
           BoxShadow(
             color: Colors.black12,
             blurRadius: 10,

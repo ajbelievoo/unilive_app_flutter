@@ -124,11 +124,13 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
           end: Alignment.bottomRight,
           colors: isVip
               ? const [Color(0xFF3D2B00), Color(0xFF1A1405)]
-              : const [Color(0xFF23232B), Color(0xFF141419)],
+              : (AppTheme.isDark(context)
+                  ? const [Color(0xFF23232B), Color(0xFF141419)]
+                  : const [Colors.white, Color(0xFFF4F3FB)]),
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isVip ? const Color(0x66FFD700) : Colors.white.withValues(alpha: 0.08),
+          color: isVip ? const Color(0x66FFD700) : AppTheme.hairline(context),
         ),
         boxShadow: isVip
             ? [
@@ -182,7 +184,7 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
                         isVip ? 'VIP $_userVipLevel Active' : 'No VIP',
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: isVip ? const Color(0xFFFFD700) : Colors.white70,
+                          color: isVip ? const Color(0xFFFFD700) : AppTheme.fg(context, 0.7),
                           fontSize: 17,
                           fontWeight: FontWeight.w800,
                           letterSpacing: 0.4,
@@ -206,7 +208,11 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
                       ? (_vipExpiryText.isNotEmpty ? _vipExpiryText : 'Membership active')
                       : 'Upgrade to unlock VIP privileges',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.55),
+                    // Gold VIP card stays dark in both themes — keep its
+                    // subtitle white; only the neutral card goes light.
+                    color: isVip
+                        ? Colors.white.withValues(alpha: 0.55)
+                        : AppTheme.fg(context, 0.55),
                     fontSize: 12,
                   ),
                 ),
@@ -243,11 +249,13 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
       height: 44,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: isVip ? const Color(0xFF3D2B00) : Colors.white12,
+        color: isVip
+            ? const Color(0xFF3D2B00)
+            : AppTheme.hairline(context),
       ),
       child: Icon(
         Icons.person,
-        color: isVip ? const Color(0xFFFFD700) : Colors.white38,
+        color: isVip ? const Color(0xFFFFD700) : AppTheme.fg(context, 0.38),
         size: 26,
       ),
     );
@@ -437,11 +445,14 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A1A1A), Color(0xFF0A0A0A)],
+            colors: AppTheme.bgGradient(
+              context,
+              const [Color(0xFF1A1A1A), Color(0xFF0A0A0A)],
+            ),
           ),
         ),
         child: SafeArea(
@@ -473,15 +484,15 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)),
             onPressed: () => Navigator.of(context).pop(),
           ),
-          const Expanded(
+          Expanded(
             child: Center(
               child: Text(
                 'VIP Settings',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppTheme.fg(context),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -498,7 +509,7 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(12),
       ),
       child: TabBar(
@@ -510,7 +521,7 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
         ),
         indicatorSize: TabBarIndicatorSize.tab,
         labelColor: Colors.black,
-        unselectedLabelColor: Colors.white70,
+        unselectedLabelColor: AppTheme.fg(context, 0.7),
         labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
         tabs: const [
           Tab(text: 'Privileges'),
@@ -760,10 +771,10 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isUnlocked ? const Color(0x40FFD700) : Colors.white.withValues(alpha: 0.05),
+          color: isUnlocked ? const Color(0x40FFD700) : AppTheme.hairline(context),
         ),
       ),
       child: Column(
@@ -776,10 +787,10 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
                 height: 44,
                 decoration: BoxDecoration(
                   gradient: isUnlocked ? AppTheme.goldGradient : null,
-                  color: isUnlocked ? null : Colors.white10,
+                  color: isUnlocked ? null : AppTheme.hairline(context),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(icon, color: isUnlocked ? Colors.black : Colors.white24, size: 24),
+                child: Icon(icon, color: isUnlocked ? Colors.black : AppTheme.fg(context, 0.24), size: 24),
               ),
               const SizedBox(width: 16),
               Expanded(
@@ -796,7 +807,7 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.bold,
-                              color: isUnlocked ? Colors.white : Colors.white38,
+                              color: isUnlocked ? AppTheme.fg(context) : AppTheme.fg(context, 0.38),
                             ),
                           ),
                         ),
@@ -807,7 +818,7 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
                       desc,
                       style: TextStyle(
                         fontSize: 12,
-                        color: isUnlocked ? Colors.white70 : Colors.white24,
+                        color: isUnlocked ? AppTheme.fg(context, 0.7) : AppTheme.fg(context, 0.24),
                       ),
                     ),
                   ],
@@ -853,16 +864,20 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
         onTap: onTap,
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        tileColor: Colors.white.withValues(alpha: 0.05),
+        tileColor: AppTheme.cardBg(context),
         leading: Container(
           width: 44,
           height: 44,
           decoration: BoxDecoration(
             gradient: isUnlocked ? AppTheme.purpleGradient : null,
-            color: isUnlocked ? null : Colors.white10,
+            color: isUnlocked ? null : AppTheme.hairline(context),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(icon, color: Colors.white, size: 24),
+          child: Icon(
+            icon,
+            color: isUnlocked ? Colors.white : AppTheme.fg(context, 0.38),
+            size: 24,
+          ),
         ),
         title: Row(
           children: [
@@ -874,23 +889,23 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
                 style: TextStyle(
                   fontSize: 15,
                   fontWeight: FontWeight.bold,
-                  color: isUnlocked ? Colors.white : Colors.white38,
+                  color: isUnlocked ? AppTheme.fg(context) : AppTheme.fg(context, 0.38),
                 ),
               ),
             ),
           ],
         ),
         trailing: isUnlocked
-            ? const Icon(Icons.chevron_right, color: Colors.white54)
+            ? Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.54))
             : Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: Colors.white10,
+                  color: AppTheme.hairline(context),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
                   'Lv $requiredLevel',
-                  style: const TextStyle(fontSize: 10, color: Colors.white38, fontWeight: FontWeight.bold),
+                  style: TextStyle(fontSize: 10, color: AppTheme.fg(context, 0.38), fontWeight: FontWeight.bold),
                 ),
               ),
       ),
@@ -916,9 +931,9 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -940,7 +955,7 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
               Expanded(
                 child: Text(
                   tier.name ?? 'VIP Tier',
-                  style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white),
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.fg(context)),
                 ),
               ),
             ],
@@ -996,12 +1011,12 @@ class _VipSettingsScreenState extends State<VipSettingsScreen>
       child: Row(
         children: [
           Icon(has ? Icons.check_circle : Icons.remove_circle_outline,
-              size: 18, color: has ? const Color(0xFF00FF00) : Colors.white24),
+              size: 18, color: has ? const Color(0xFF00FF00) : AppTheme.fg(context, 0.24)),
           const SizedBox(width: 12),
           Text(label,
               style: TextStyle(
                   fontSize: 13,
-                  color: has ? Colors.white : Colors.white38,
+                  color: has ? AppTheme.fg(context) : AppTheme.fg(context, 0.38),
                   fontWeight: has ? FontWeight.w500 : FontWeight.normal)),
         ],
       ),

@@ -132,7 +132,7 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
   void _showMoreOptionsMenu() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.themed(context, 0xFF1E1E1E),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
@@ -223,10 +223,10 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
               ),
             const Divider(height: 1),
             ListTile(
-              title: const Center(
+              title: Center(
                 child: Text(
                   'Cancel',
-                  style: TextStyle(color: Colors.black87, fontSize: 16, fontWeight: FontWeight.w500),
+                  style: TextStyle(color: AppTheme.fg(ctx, 0.87), fontSize: 16, fontWeight: FontWeight.w500),
                 ),
               ),
               onTap: () => Navigator.pop(ctx),
@@ -285,7 +285,7 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7FB),
+      backgroundColor: AppTheme.themed(context, 0xFF121212, 0xFFF7F7FB),
       body: _loading
           ? const Center(child: PremiumLoading())
           : _error != null
@@ -565,7 +565,7 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha:0.02), blurRadius: 10, offset: const Offset(0, 4))],
       ),
@@ -592,7 +592,7 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
             child: Icon(icon, color: AppTheme.primary, size: 24),
           ),
           const SizedBox(height: 8),
-          Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black87)),
+          Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.fg(context, 0.87))),
         ],
       ),
     );
@@ -605,7 +605,7 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -613,15 +613,15 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
         children: [
           Row(
             children: [
-              const Text('Task & Reward', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+              Text('Task & Reward', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.fg(context, 0.87))),
               const Spacer(),
               if (_isMember || _isLeader)
-                const Text('Daily Reset at 00:00', style: TextStyle(color: Colors.black45, fontSize: 11)),
+                Text('Daily Reset at 00:00', style: TextStyle(color: AppTheme.fg(context, 0.45), fontSize: 11)),
             ],
           ),
           const SizedBox(height: 12),
           if (_tasks.isEmpty)
-            const Text('No tasks available', style: TextStyle(color: Colors.black45, fontSize: 13))
+            Text('No tasks available', style: TextStyle(color: AppTheme.fg(context, 0.45), fontSize: 13))
           else
             ...displayTasks.take(3).map((task) => _buildTaskItem(task)),
         ],
@@ -634,7 +634,7 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
       decoration: BoxDecoration(
-        color: const Color(0xFFF8F8FB),
+        color: AppTheme.themed(context, 0xFF2A2A2A, 0xFFF8F8FB),
         borderRadius: BorderRadius.circular(15),
       ),
       child: Row(
@@ -654,7 +654,7 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(task.title ?? 'Task',
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87)),
+                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.fg(context, 0.87))),
                 const SizedBox(height: 2),
                 Text('Exp Reward: +${task.reward}',
                     style: const TextStyle(fontSize: 11, color: Colors.orange, fontWeight: FontWeight.w600)),
@@ -873,7 +873,7 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(20),
       ),
       child: Column(
@@ -889,10 +889,10 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
             },
             child: Row(
               children: [
-                const Text('Members ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+                Text('Members ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.fg(context, 0.87))),
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                  decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(10)),
+                  decoration: BoxDecoration(color: AppTheme.isDark(context) ? Colors.orange.withValues(alpha:0.15) : Colors.orange.shade50, borderRadius: BorderRadius.circular(10)),
                   child: Text('$totalCount/$maxCapacity', style: const TextStyle(fontSize: 12, color: Colors.orange, fontWeight: FontWeight.bold)),
                 ),
                 const Spacer(),
@@ -919,14 +919,14 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
                   ),
                 ),
                 const SizedBox(width: 8),
-                const Icon(Icons.chevron_right, color: Colors.black45),
+                Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.45)),
               ],
             ),
           ),
           const SizedBox(height: 16),
 
           if (members.isEmpty)
-            const Text('No members yet', style: TextStyle(color: Colors.black45, fontSize: 12))
+            Text('No members yet', style: TextStyle(color: AppTheme.fg(context, 0.45), fontSize: 12))
           else
             SizedBox(
               height: 110,
@@ -984,7 +984,7 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
                           Text(
                             (m.name == null || m.name!.isEmpty) ? 'Member' : m.name!,
                             maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center,
-                            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.black87),
+                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.fg(context, 0.87)),
                           ),
                         ],
                       ),
@@ -1004,20 +1004,20 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(color: AppTheme.cardBg(context), borderRadius: BorderRadius.circular(20)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Notice Board', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+          Text('Notice Board', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.fg(context, 0.87))),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade100)),
+            decoration: BoxDecoration(color: AppTheme.themed(context, 0xFF2A2A2A, 0xFFFAFAFA), borderRadius: BorderRadius.circular(12), border: Border.all(color: AppTheme.hairline(context))),
             child: Row(
               children: [
                 const Icon(Icons.campaign, color: Colors.orange, size: 24),
                 const SizedBox(width: 12),
-                Expanded(child: Text(notice, style: const TextStyle(color: Colors.black54, fontSize: 13, height: 1.4))),
+                Expanded(child: Text(notice, style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 13, height: 1.4))),
               ],
             ),
           ),
@@ -1038,11 +1038,11 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(color: AppTheme.cardBg(context), borderRadius: BorderRadius.circular(20)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Weekly Support', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+          Text('Weekly Support', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.fg(context, 0.87))),
           const SizedBox(height: 16),
           Container(
             padding: const EdgeInsets.all(16),
@@ -1054,28 +1054,28 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
                     Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text('Level Progression', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.black87, fontSize: 13)),
+                        const Text('Level Progression', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white, fontSize: 13)),
                         const SizedBox(height: 8),
                         SizedBox(
                           width: 180,
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(6),
-                            child: LinearProgressIndicator(value: progress, minHeight: 8, backgroundColor: Colors.white, valueColor: const AlwaysStoppedAnimation<Color>(AppTheme.primary)),
+                            child: LinearProgressIndicator(value: progress, minHeight: 8, backgroundColor: Colors.white.withValues(alpha:0.35), valueColor: const AlwaysStoppedAnimation<Color>(Colors.white)),
                           ),
                         ),
                         const SizedBox(height: 6),
-                        Text('${formatCount(totalCoin)} / ${formatCount(nextLevelTarget)}', style: const TextStyle(color: Colors.black45, fontSize: 10, fontWeight: FontWeight.bold)),
+                        Text('${formatCount(totalCoin)} / ${formatCount(nextLevelTarget)}', style: const TextStyle(color: Colors.white70, fontSize: 10, fontWeight: FontWeight.bold)),
                       ],
                     ),
                     const Spacer(),
                     Container(
                       padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha:0.05), blurRadius: 4)]),
+                      decoration: BoxDecoration(color: Colors.white.withValues(alpha:0.92), borderRadius: BorderRadius.circular(12), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha:0.05), blurRadius: 4)]),
                       child: Column(
                         children: [
                           const Icon(Icons.diamond, color: Colors.amber, size: 18),
                           const SizedBox(height: 2),
-                          Text(formatCount(f.totalCoin), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                          Text(formatCount(f.totalCoin), style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: AppTheme.textPrimary)),
                         ],
                       ),
                     ),
@@ -1123,13 +1123,13 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16),
       padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20)),
+      decoration: BoxDecoration(color: AppTheme.cardBg(context), borderRadius: BorderRadius.circular(20)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              const Text('Family Base', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+              Text('Family Base', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.fg(context, 0.87))),
               const Spacer(),
               if (_isMember || _isLeader) GestureDetector(onTap: _enterFamilyRoom, child: const Row(children: [Text('Enter ', style: TextStyle(color: AppTheme.primary, fontSize: 13, fontWeight: FontWeight.bold)), Icon(Icons.chevron_right, color: AppTheme.primary, size: 18)])),
             ],
@@ -1179,7 +1179,7 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.themed(context, 0xFF1E1E1E),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => _FamilyChallengePicker(onChallenge: (target) { Navigator.pop(ctx); _startFamilyBattle(target); }),
     );
@@ -1212,7 +1212,7 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.surface,
+      backgroundColor: AppTheme.themed(context, 0xFF1E1E1E),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => StatefulBuilder(
         builder: (_, setState) => Padding(
@@ -1230,7 +1230,7 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
                 },
                 child: Container(
                   width: 80, height: 80,
-                  decoration: const BoxDecoration(shape: BoxShape.circle, color: AppTheme.surfaceLight),
+                  decoration: BoxDecoration(shape: BoxShape.circle, color: AppTheme.themed(ctx, 0xFF2A2A2A, 0xFFF5F5FA)),
                   child: ClipOval(
                     child: newImagePath != null
                         ? Image.file(File(newImagePath!), fit: BoxFit.cover)
@@ -1306,8 +1306,8 @@ class _FamilyDetailScreenState extends State<FamilyDetailScreen>
                 child: SizedBox(
                   width: 40, height: 40,
                   child: m.image != null && m.image!.isNotEmpty
-                      ? CachedNetworkImage(imageUrl: m.image!, fit: BoxFit.cover, errorWidget: (_, __, ___) => Container(color: Colors.white12, child: const Icon(Icons.person, color: Colors.white60)))
-                      : Container(color: Colors.white12, child: const Icon(Icons.person, color: Colors.white60)),
+                      ? CachedNetworkImage(imageUrl: m.image!, fit: BoxFit.cover, errorWidget: (_, __, ___) => Container(color: AppTheme.themed(ctx, 0xFF2A2A2A, 0xFFF1F1FA), child: Icon(Icons.person, color: AppTheme.fg(ctx, 0.6))))
+                      : Container(color: AppTheme.themed(ctx, 0xFF2A2A2A, 0xFFF1F1FA), child: Icon(Icons.person, color: AppTheme.fg(ctx, 0.6))),
                 ),
               ),
               title: Text(m.name ?? 'â€”'),
@@ -1492,7 +1492,7 @@ class _FamilyChallengePickerState extends State<_FamilyChallengePicker> {
           const Text('Battle Challenge', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           TextField(
-            decoration: InputDecoration(hintText: 'Search family...', prefixIcon: const Icon(Icons.search), filled: true, fillColor: Colors.grey.shade100, border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none)),
+            decoration: InputDecoration(hintText: 'Search family...', prefixIcon: const Icon(Icons.search), filled: true, fillColor: AppTheme.themed(context, 0xFF2A2A2A, 0xFFF5F5F5), border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none)),
             onChanged: (v) => setState(() => _query = v),
           ),
           const SizedBox(height: 16),

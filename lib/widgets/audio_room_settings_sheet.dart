@@ -19,6 +19,7 @@ import '../screens/live/choose_room_type_screen.dart';
 import '../services/api_service.dart';
 import '../services/session_manager.dart';
 import '../services/socket_service.dart';
+import '../theme/app_theme.dart';
 import 'theme_picker_sheet.dart';
 
 /// Shows the audio room settings as a full-screen page.
@@ -278,7 +279,7 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
   }) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.themed(context, 0xFF15152A, 0xFFF8F7FE),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => SafeArea(
         child: Padding(
@@ -292,10 +293,10 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
                   width: 40,
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(2)),
+                  decoration: BoxDecoration(color: AppTheme.hairline(ctx), borderRadius: BorderRadius.circular(2)),
                 ),
               ),
-              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.fg(ctx))),
               const SizedBox(height: 16),
               ...options.map((o) {
                 final isSelected = o == selected;
@@ -308,10 +309,12 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
                     margin: const EdgeInsets.only(bottom: 10),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFFE6FAF5) : Colors.white,
+                      color: isSelected
+                          ? AppTheme.themed(ctx, 0xFF123C33, 0xFFE6FAF5)
+                          : AppTheme.cardBg(ctx),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected ? const Color(0xFF00D6A0) : Colors.black12,
+                        color: isSelected ? const Color(0xFF00D6A0) : AppTheme.hairline(ctx),
                       ),
                     ),
                     child: Row(
@@ -325,23 +328,23 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
                                 style: TextStyle(
                                   fontSize: 15,
                                   fontWeight: FontWeight.w600,
-                                  color: isSelected ? const Color(0xFF00D6A0) : Colors.black87,
+                                  color: isSelected ? const Color(0xFF00D6A0) : AppTheme.fg(ctx, 0.87),
                                 ),
                               ),
                               if (o == 'Anyone')
-                                const Text(
+                                Text(
                                   'Anyone can send room chat',
-                                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                                  style: TextStyle(fontSize: 12, color: AppTheme.fg(ctx, 0.54)),
                                 ),
                               if (o == 'Only Owner/Super Admin/Admin')
-                                const Text(
+                                Text(
                                   'Only admins can send room chat',
-                                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                                  style: TextStyle(fontSize: 12, color: AppTheme.fg(ctx, 0.54)),
                                 ),
                               if (o == 'Invite-only')
-                                const Text(
+                                Text(
                                   'Only the users you invite or the users whose requests you approve can take the mic.',
-                                  style: TextStyle(fontSize: 12, color: Colors.black54),
+                                  style: TextStyle(fontSize: 12, color: AppTheme.fg(ctx, 0.54)),
                                 ),
                             ],
                           ),
@@ -375,13 +378,13 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
   void _showEmptyListScreen(String title, String message, {IconData icon = Icons.inbox}) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (_) => Scaffold(
-          backgroundColor: Colors.white,
+        builder: (pageCtx) => Scaffold(
+          backgroundColor: AppTheme.themed(pageCtx, 0xFF121212, 0xFFFAFAFE),
           appBar: AppBar(
-            backgroundColor: Colors.white,
+            backgroundColor: AppTheme.themed(pageCtx, 0xFF121212, 0xFFFAFAFE),
             elevation: 0,
-            iconTheme: const IconThemeData(color: Colors.black),
-            title: Text(title, style: const TextStyle(color: Colors.black, fontSize: 18)),
+            iconTheme: IconThemeData(color: AppTheme.fg(pageCtx)),
+            title: Text(title, style: TextStyle(color: AppTheme.fg(pageCtx), fontSize: 18)),
           ),
           body: Center(
             child: Column(
@@ -389,7 +392,7 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
               children: [
                 Icon(icon, size: 80, color: const Color(0xFF00D6A0).withValues(alpha: 0.5)),
                 const SizedBox(height: 16),
-                Text(message, style: const TextStyle(color: Colors.black54, fontSize: 14)),
+                Text(message, style: TextStyle(color: AppTheme.fg(pageCtx, 0.54), fontSize: 14)),
               ],
             ),
           ),
@@ -409,25 +412,25 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
       }
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (_) => Scaffold(
-            backgroundColor: Colors.white,
+          builder: (pageCtx) => Scaffold(
+            backgroundColor: AppTheme.themed(pageCtx, 0xFF121212, 0xFFFAFAFE),
             appBar: AppBar(
-              backgroundColor: Colors.white,
+              backgroundColor: AppTheme.themed(pageCtx, 0xFF121212, 0xFFFAFAFE),
               elevation: 0,
-              iconTheme: const IconThemeData(color: Colors.black),
-              title: const Text('Blocked List', style: TextStyle(color: Colors.black, fontSize: 18)),
+              iconTheme: IconThemeData(color: AppTheme.fg(pageCtx)),
+              title: Text('Blocked List', style: TextStyle(color: AppTheme.fg(pageCtx), fontSize: 18)),
             ),
             body: ListView.builder(
               itemCount: res.users.length,
-              itemBuilder: (_, i) {
+              itemBuilder: (tileCtx, i) {
                 final u = res.users[i];
                 return ListTile(
                   leading: CircleAvatar(
                     backgroundImage: (u.image ?? '').isNotEmpty ? NetworkImage(u.image!) : null,
                     child: (u.image ?? '').isEmpty ? const Icon(Icons.person, color: Colors.white) : null,
                   ),
-                  title: Text(u.name ?? 'User', style: const TextStyle(color: Colors.black87)),
-                  subtitle: Text(u.uniqueId ?? '', style: const TextStyle(color: Colors.black54, fontSize: 11)),
+                  title: Text(u.name ?? 'User', style: TextStyle(color: AppTheme.fg(tileCtx, 0.87))),
+                  subtitle: Text(u.uniqueId ?? '', style: TextStyle(color: AppTheme.fg(tileCtx, 0.54), fontSize: 11)),
                   trailing: TextButton(
                     onPressed: () async {
                       await ApiService.blockUnblock(
@@ -484,15 +487,15 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
     final user = session.getUser();
 
     return Scaffold(
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.themed(context, 0xFF121212, 0xFFFAFAFE),
       appBar: AppBar(
-        backgroundColor: Colors.white,
+        backgroundColor: AppTheme.themed(context, 0xFF121212, 0xFFFAFAFE),
         elevation: 0,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black),
+          icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Settings', style: TextStyle(color: Colors.black, fontSize: 18)),
+        title: Text('Settings', style: TextStyle(color: AppTheme.fg(context), fontSize: 18)),
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -501,7 +504,7 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
           _settingsTile(
             leading: _buildAvatar(user?.image ?? ''),
             title: 'Profile',
-            trailing: const Icon(Icons.chevron_right, color: Colors.black38),
+            trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
             onTap: () {},
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
@@ -510,7 +513,7 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
           _settingsTile(
             title: 'Room Name',
             value: widget.roomUser.roomName ?? 'Room',
-            trailing: const Icon(Icons.chevron_right, color: Colors.black38),
+            trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
             onTap: () => _showEditDialog('Room Name', _nameCtrl, (v) => _nameCtrl.text = v),
           ),
 
@@ -518,7 +521,7 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
           _settingsTile(
             title: 'Announcement',
             value: widget.roomUser.roomWelcome ?? 'Welcome to my room...',
-            trailing: const Icon(Icons.chevron_right, color: Colors.black38),
+            trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
             onTap: () => _showEditDialog('Announcement', _welcomeCtrl, (v) => _welcomeCtrl.text = v),
           ),
 
@@ -526,7 +529,7 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
           _settingsTile(
             title: 'Who Can Send Room Chat',
             value: _chatPermission,
-            trailing: const Icon(Icons.chevron_right, color: Colors.black38),
+            trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
             onTap: _showChatPermissionDialog,
           ),
 
@@ -534,7 +537,7 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
           _settingsTile(
             title: 'Who Can Take The Mic',
             value: _micPermission,
-            trailing: const Icon(Icons.chevron_right, color: Colors.black38),
+            trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
             onTap: _showMicPermissionDialog,
           ),
 
@@ -542,7 +545,7 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
           _settingsTile(
             title: 'Number of Mic',
             value: '$_seatCount people',
-            trailing: const Icon(Icons.chevron_right, color: Colors.black38),
+            trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
             onTap: _showSeatCountDialog,
           ),
 
@@ -550,7 +553,7 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
           _settingsTile(
             title: 'Room Password',
             value: _passcodeCtrl.text.isEmpty ? 'Not set' : _passcodeCtrl.text,
-            trailing: const Icon(Icons.chevron_right, color: Colors.black38),
+            trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
             onTap: () => _showEditDialog(
               'Room Password',
               _passcodeCtrl,
@@ -638,28 +641,28 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
           // Room Theme
           _settingsTile(
             title: 'Room Theme',
-            trailing: const Icon(Icons.chevron_right, color: Colors.black38),
+            trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
             onTap: _showThemePicker,
           ),
 
           // Admins
           _settingsTile(
             title: 'Admins',
-            trailing: const Icon(Icons.chevron_right, color: Colors.black38),
+            trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
             onTap: () => _showEmptyListScreen('Admins', 'There is no room admin now'),
           ),
 
           // Blocked List
           _settingsTile(
             title: 'Blocked List',
-            trailing: const Icon(Icons.chevron_right, color: Colors.black38),
+            trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
             onTap: _showBannedUsers,
           ),
 
           // Kick History
           _settingsTile(
             title: 'Kick History',
-            trailing: const Icon(Icons.chevron_right, color: Colors.black38),
+            trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
             onTap: () => _showEmptyListScreen('Kick History', 'No Kick History'),
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
@@ -711,8 +714,8 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
   }) {
     return ListTile(
       leading: leading,
-      title: Text(title, style: TextStyle(color: titleColor ?? Colors.black87, fontSize: 15)),
-      subtitle: value != null ? Text(value, style: const TextStyle(color: Colors.black54, fontSize: 13)) : null,
+      title: Text(title, style: TextStyle(color: titleColor ?? AppTheme.fg(context, 0.87), fontSize: 15)),
+      subtitle: value != null ? Text(value, style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 13)) : null,
       trailing: trailing,
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
@@ -750,7 +753,7 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
   }) {
     final effectiveTrailing = trailing ??
         (onTap != null
-            ? const Icon(Icons.chevron_right, color: Colors.black38)
+            ? Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38))
             : null);
     return ListTile(
       leading: Container(
@@ -763,11 +766,11 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
         alignment: Alignment.center,
         child: customIcon ?? icon,
       ),
-      title: Text(title, style: const TextStyle(color: Colors.black87, fontSize: 15, fontWeight: FontWeight.w600)),
+      title: Text(title, style: TextStyle(color: AppTheme.fg(context, 0.87), fontSize: 15, fontWeight: FontWeight.w600)),
       subtitle: value != null
           ? Text(
               value,
-              style: const TextStyle(color: Colors.black54, fontSize: 13),
+              style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 13),
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
             )
@@ -868,7 +871,7 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
   }) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.white,
+      backgroundColor: AppTheme.themed(context, 0xFF15152A, 0xFFF8F7FE),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
       builder: (ctx) => SafeArea(
         child: Padding(
@@ -882,10 +885,10 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
                   width: 40,
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(color: Colors.black12, borderRadius: BorderRadius.circular(2)),
+                  decoration: BoxDecoration(color: AppTheme.hairline(ctx), borderRadius: BorderRadius.circular(2)),
                 ),
               ),
-              Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.fg(ctx))),
               const SizedBox(height: 16),
               ...options.map((o) {
                 final (minutes, label) = o;
@@ -899,10 +902,12 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
                     margin: const EdgeInsets.only(bottom: 10),
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                     decoration: BoxDecoration(
-                      color: isSelected ? const Color(0xFFE6FAF5) : Colors.white,
+                      color: isSelected
+                          ? AppTheme.themed(ctx, 0xFF123C33, 0xFFE6FAF5)
+                          : AppTheme.cardBg(ctx),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: isSelected ? const Color(0xFF00D6A0) : Colors.black12,
+                        color: isSelected ? const Color(0xFF00D6A0) : AppTheme.hairline(ctx),
                       ),
                     ),
                     child: Row(
@@ -913,7 +918,7 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
                             style: TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,
-                              color: isSelected ? const Color(0xFF00D6A0) : Colors.black87,
+                              color: isSelected ? const Color(0xFF00D6A0) : AppTheme.fg(ctx, 0.87),
                             ),
                           ),
                         ),
@@ -971,10 +976,10 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
             const SizedBox(height: 16),
             const Icon(Icons.mic, size: 60, color: Color(0xFF00D6A0)),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Unlock Super Mic on Recharge Event Page.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.black54),
+              style: TextStyle(color: AppTheme.fg(ctx, 0.54)),
             ),
             const SizedBox(height: 20),
             FilledButton(

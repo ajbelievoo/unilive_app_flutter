@@ -115,7 +115,7 @@ class _FamilySettingsScreenState extends State<FamilySettingsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF7F7FB),
+      backgroundColor: AppTheme.themed(context, 0xFF121212, 0xFFF7F7FB),
       appBar: AppBar(
         title: const Text('Family Settings', style: TextStyle(fontWeight: FontWeight.bold)),
         backgroundColor: AppTheme.primary,
@@ -221,14 +221,14 @@ class _FamilySettingsScreenState extends State<FamilySettingsScreen> {
       width: double.infinity,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(title, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.black87)),
+          Text(title, style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.fg(context, 0.87))),
           const SizedBox(height: 16),
           ...children,
         ],
@@ -254,7 +254,7 @@ class _FamilySettingsScreenState extends State<FamilySettingsScreen> {
         prefixIcon: Icon(icon, color: AppTheme.primary),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         filled: true,
-        fillColor: Colors.grey.shade50,
+        fillColor: AppTheme.themed(context, 0xFF1E1E1E, 0xFFFAFAFA),
       ),
     );
   }

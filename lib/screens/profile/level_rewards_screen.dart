@@ -17,23 +17,21 @@ import '../../models/user_root.dart';
 import '../../routes/app_routes.dart';
 import '../../services/api_service.dart';
 import '../../services/session_manager.dart';
+import '../../theme/app_theme.dart';
 import '../../utils/log.dart';
 import '../../widgets/store_widgets.dart';
 import 'package:belive/widgets/preloader.dart';
 
 const String _tag = 'LevelRewards';
 
-// ---- Premium dark palette --------------------------------------------------
+// ---- Premium palette -------------------------------------------------------
 const Color _bg = Color(0xFF0A0A15);
-const Color _cardBg = Color(0xFF151526);
-const Color _cardBorder = Color(0xFF2A2A40);
 const Color _gold = Color(0xFFFFB800);
 const Color _goldLight = Color(0xFFFFD700);
 const Color _cyan = Color(0xFF4ECDC4);
 const Color _purple = Color(0xFF9B6BFF);
 const Color _white = Colors.white;
 const Color _white70 = Colors.white70;
-const Color _white50 = Colors.white54;
 const Color _white24 = Colors.white24;
 
 class LevelRewardsScreen extends StatefulWidget {
@@ -99,7 +97,7 @@ class _LevelRewardsScreenState extends State<LevelRewardsScreen> {
     final user = session.getUser();
 
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: AppTheme.themed(context, 0xFF0A0A15, 0xFFF8F7FE),
       body: SafeArea(
         child: Column(
           children: [
@@ -111,12 +109,12 @@ class _LevelRewardsScreenState extends State<LevelRewardsScreen> {
                   : RefreshIndicator(
                       onRefresh: _load,
                       color: _gold,
-                      backgroundColor: _cardBg,
+                      backgroundColor: AppTheme.themed(context, 0xFF151526, 0xFFFFFFFF),
                       child: _groups.isEmpty
-                          ? const Center(
+                          ? Center(
                               child: Text(
                                 'No rewards available',
-                                style: TextStyle(color: _white50),
+                                style: TextStyle(color: AppTheme.fg(context, 0.5)),
                               ),
                             )
                           : _buildBody(user),
@@ -135,18 +133,18 @@ class _LevelRewardsScreenState extends State<LevelRewardsScreen> {
         children: [
           Container(
             decoration: BoxDecoration(
-              color: _cardBg,
+              color: AppTheme.themed(context, 0xFF151526, 0xFFFFFFFF),
               borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: _cardBorder),
+              border: Border.all(color: AppTheme.themed(context, 0xFF2A2A40, 0xFFE8E8F0)),
             ),
-            child: const BackButton(color: _white),
+            child: BackButton(color: AppTheme.fg(context)),
           ),
           const SizedBox(width: 12),
           Expanded(
             child: Text(
               '${widget.isHost ? 'Host ' : ''}Level Rewards',
-              style: const TextStyle(
-                color: _white,
+              style: TextStyle(
+                color: AppTheme.fg(context),
                 fontSize: 18,
                 fontWeight: FontWeight.w800,
               ),
@@ -356,19 +354,19 @@ class _LevelRewardsScreenState extends State<LevelRewardsScreen> {
                 gradient: isSelected
                     ? const LinearGradient(colors: [_goldLight, _gold])
                     : null,
-                color: isSelected ? null : _cardBg,
+                color: isSelected ? null : AppTheme.themed(context, 0xFF151526, 0xFFFFFFFF),
                 borderRadius: BorderRadius.circular(21),
                 border: isSelected
                     ? null
                     : Border.all(
-                        color: isLocked ? _cardBorder : _white24,
+                        color: isLocked ? AppTheme.themed(context, 0xFF2A2A40, 0xFFE8E8F0) : AppTheme.fg(context, 0.24),
                       ),
               ),
               child: Center(
                 child: Text(
                   group.name ?? 'Lv.${group.level}',
                   style: TextStyle(
-                    color: isSelected ? _bg : (isLocked ? _white50 : _white70),
+                    color: isSelected ? _bg : (isLocked ? AppTheme.fg(context, 0.5) : AppTheme.fg(context, 0.7)),
                     fontSize: 13,
                     fontWeight: FontWeight.w800,
                   ),
@@ -392,7 +390,7 @@ class _LevelRewardsScreenState extends State<LevelRewardsScreen> {
           padding: const EdgeInsets.symmetric(vertical: 40),
           child: Text(
             'No rewards for ${group.name ?? 'this level'}',
-            style: const TextStyle(color: _white50),
+            style: TextStyle(color: AppTheme.fg(context, 0.5)),
           ),
         ),
       );
@@ -403,8 +401,8 @@ class _LevelRewardsScreenState extends State<LevelRewardsScreen> {
       children: [
         Text(
           'Rewards · ${group.rewards.length}',
-          style: const TextStyle(
-            color: _white,
+          style: TextStyle(
+            color: AppTheme.fg(context),
             fontSize: 16,
             fontWeight: FontWeight.w800,
           ),
@@ -427,10 +425,10 @@ class _LevelRewardsScreenState extends State<LevelRewardsScreen> {
         margin: const EdgeInsets.only(bottom: 12),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: _cardBg,
+          color: AppTheme.themed(context, 0xFF151526, 0xFFFFFFFF),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
-            color: isUsableUnlocked ? _purple.withValues(alpha: 0.5) : _cardBorder,
+            color: isUsableUnlocked ? _purple.withValues(alpha: 0.5) : AppTheme.themed(context, 0xFF2A2A40, 0xFFE8E8F0),
           ),
         ),
         child: Row(
@@ -457,7 +455,7 @@ class _LevelRewardsScreenState extends State<LevelRewardsScreen> {
                         child: Text(
                           r.name ?? r.typeLabel,
                           style: TextStyle(
-                            color: isLocked ? _white50 : _white,
+                            color: isLocked ? AppTheme.fg(context, 0.5) : AppTheme.fg(context),
                             fontSize: 15,
                             fontWeight: FontWeight.w800,
                           ),
@@ -502,13 +500,13 @@ class _LevelRewardsScreenState extends State<LevelRewardsScreen> {
                           padding: const EdgeInsets.symmetric(
                               horizontal: 8, vertical: 3),
                           decoration: BoxDecoration(
-                            color: _cardBorder,
+                            color: AppTheme.themed(context, 0xFF2A2A40, 0xFFE8E8F0),
                             borderRadius: BorderRadius.circular(8),
                           ),
-                          child: const Text(
+                          child: Text(
                             'Locked',
                             style: TextStyle(
-                              color: _white50,
+                              color: AppTheme.fg(context, 0.5),
                               fontSize: 10,
                               fontWeight: FontWeight.w800,
                             ),
@@ -521,7 +519,7 @@ class _LevelRewardsScreenState extends State<LevelRewardsScreen> {
                     Text(
                       r.description!,
                       style: TextStyle(
-                        color: isLocked ? _white50.withValues(alpha: 0.7) : _white50,
+                        color: isLocked ? AppTheme.fg(context, 0.35) : AppTheme.fg(context, 0.5),
                         fontSize: 12,
                       ),
                       maxLines: 2,
@@ -534,7 +532,7 @@ class _LevelRewardsScreenState extends State<LevelRewardsScreen> {
             const SizedBox(width: 8),
             Icon(
               isUsableUnlocked ? Icons.arrow_forward : (isLocked ? Icons.lock : Icons.chevron_right),
-              color: isUsableUnlocked ? _gold : (isLocked ? _white24 : _white50),
+              color: isUsableUnlocked ? _gold : (isLocked ? AppTheme.fg(context, 0.24) : AppTheme.fg(context, 0.5)),
               size: 22,
             ),
           ],
@@ -625,9 +623,9 @@ class _LevelRewardsScreenState extends State<LevelRewardsScreen> {
       case 'privilege':
         return _purple;
       case 'rule':
-        return _white50;
+        return AppTheme.fg(context, 0.5);
       default:
-        return _white50;
+        return AppTheme.fg(context, 0.5);
     }
   }
 

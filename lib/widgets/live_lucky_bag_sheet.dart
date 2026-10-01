@@ -26,6 +26,7 @@ import '../services/api_service.dart';
 import '../services/lucky_bag_history_service.dart';
 import '../services/session_manager.dart';
 import '../services/socket_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/log.dart';
 import '../utils/media_utils.dart';
 import 'preloader.dart';
@@ -533,9 +534,9 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
   Widget build(BuildContext context) {
     final bottomPad = MediaQuery.of(context).viewPadding.bottom;
     return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       padding: EdgeInsets.fromLTRB(20, 20, 20, bottomPad),
       child: SafeArea(
@@ -561,16 +562,16 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
             children: [
               TextButton(
                 onPressed: _openRecord,
-                child: const Text(
+                child: Text(
                   'Record',
-                  style: TextStyle(color: Colors.white),
+                  style: TextStyle(color: AppTheme.fg(context)),
                 ),
               ),
               IconButton(
                 onPressed: _openRules,
-                icon: const Icon(
+                icon: Icon(
                   Icons.help_outline,
-                  color: Colors.white,
+                  color: AppTheme.fg(context),
                   size: 22,
                 ),
               ),
@@ -600,8 +601,8 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
             const SizedBox(width: 4),
             Text(
               '$_myCoins',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: AppTheme.fg(context),
                 fontWeight: FontWeight.bold,
               ),
             ),
@@ -647,9 +648,9 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
           ),
         ),
         const SizedBox(height: 6),
-        const Text(
+        Text(
           'Sent you a Lucky Bag',
-          style: TextStyle(color: Colors.white, fontSize: 16),
+          style: TextStyle(color: AppTheme.fg(context), fontSize: 16),
         ),
         const SizedBox(height: 30),
         // Red packet envelope with countdown / open button.
@@ -759,9 +760,9 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
         ),
         const SizedBox(height: 24),
         if (_claimed)
-          const Text(
+          Text(
             'Opening...',
-            style: TextStyle(color: Colors.white70, fontSize: 14),
+            style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 14),
           ),
       ],
     );
@@ -774,7 +775,7 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
         Text(
           'You got',
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.8),
+            color: AppTheme.fg(context, 0.8),
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
@@ -854,9 +855,9 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
       children: [
         Image.asset('assets/lucky/lucky_bag.png', width: 96, height: 96),
         const SizedBox(height: 16),
-        const Text(
+        Text(
           'No lucky bag active right now',
-          style: TextStyle(color: Colors.white70, fontSize: 14),
+          style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 14),
         ),
         const SizedBox(height: 12),
         TextButton.icon(
@@ -893,8 +894,8 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
             children: [
               Text(
                 title,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: AppTheme.fg(context),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -902,7 +903,7 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: const TextStyle(color: Colors.white70, fontSize: 13),
+                style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 13),
               ),
             ],
           ),
@@ -917,8 +918,8 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
       padding: const EdgeInsets.only(bottom: 8),
       child: Text(
         title,
-        style: const TextStyle(
-          color: Colors.white70,
+        style: TextStyle(
+          color: AppTheme.fg(context, 0.7),
           fontSize: 14,
           fontWeight: FontWeight.w600,
         ),
@@ -948,17 +949,23 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
                   color:
                       isSelected
                           ? const Color(0xFFFF5722)
-                          : Colors.white.withValues(alpha: 0.9),
+                          : AppTheme.cardBg(context),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: isSelected ? Colors.white : Colors.transparent,
+                    color:
+                        isSelected
+                            ? Colors.white
+                            : AppTheme.hairline(context),
                     width: 2,
                   ),
                 ),
                 child: Text(
                   _formatNumber(v),
                   style: TextStyle(
-                    color: isSelected ? Colors.white : Colors.black87,
+                    color:
+                        isSelected
+                            ? Colors.white
+                            : AppTheme.fg(context, 0.87),
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                     fontSize: 13,
                   ),

@@ -122,7 +122,7 @@ class LiveListScreenState extends State<LiveListScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: AppTheme.themed(context, 0xFF121212, 0xFFFAFAFE),
       body: SafeArea(
         child: Column(
           children: [
@@ -135,10 +135,8 @@ class LiveListScreenState extends State<LiveListScreen>
                       controller: _tab,
                       isScrollable: true,
                       dividerColor: Colors.transparent,
-                      labelColor: Colors.black,
-                      unselectedLabelColor: Colors.black.withValues(
-                        alpha: 0.45,
-                      ),
+                      labelColor: AppTheme.fg(context),
+                      unselectedLabelColor: AppTheme.fg(context, 0.45),
                       labelStyle: const TextStyle(
                         fontSize: 20,
                         fontWeight: FontWeight.w700,
@@ -171,17 +169,15 @@ class LiveListScreenState extends State<LiveListScreen>
                       width: 40,
                       height: 40,
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: AppTheme.cardBg(context),
                         borderRadius: BorderRadius.circular(22),
-                        border: Border.all(
-                          color: Colors.black.withValues(alpha: 0.06),
-                        ),
+                        border: Border.all(color: AppTheme.hairline(context)),
                         boxShadow: AppTheme.cardShadow,
                       ),
                       child: Icon(
                         Icons.search,
                         size: 20,
-                        color: Colors.black.withValues(alpha: 0.65),
+                        color: AppTheme.fg(context, 0.65),
                       ),
                     ),
                   ),
@@ -195,10 +191,10 @@ class LiveListScreenState extends State<LiveListScreen>
                           width: 40,
                           height: 40,
                           decoration: BoxDecoration(
-                            color: Colors.white,
+                            color: AppTheme.cardBg(context),
                             borderRadius: BorderRadius.circular(22),
                             border: Border.all(
-                              color: Colors.black.withValues(alpha: 0.06),
+                              color: AppTheme.hairline(context),
                             ),
                             boxShadow: AppTheme.cardShadow,
                           ),
@@ -208,7 +204,7 @@ class LiveListScreenState extends State<LiveListScreen>
                               Icon(
                                 Icons.notifications_outlined,
                                 size: 20,
-                                color: Colors.black.withValues(alpha: 0.65),
+                                color: AppTheme.fg(context, 0.65),
                               ),
                               if (notif.unreadCount > 0)
                                 Positioned(
@@ -529,9 +525,21 @@ class _DiscoveryTabState extends State<_DiscoveryTab>
                   imageUrl: banner.image!,
                   fit: BoxFit.cover,
                   placeholder:
-                      (_, __) => Container(color: Colors.grey.shade300),
+                      (_, __) => Container(
+                        color: AppTheme.themed(
+                          context,
+                          0xFF2A2A3E,
+                          0xFFE0E0E0,
+                        ),
+                      ),
                   errorWidget:
-                      (_, __, ___) => Container(color: Colors.grey.shade200),
+                      (_, __, ___) => Container(
+                        color: AppTheme.themed(
+                          context,
+                          0xFF2A2A3E,
+                          0xFFE0E0E0,
+                        ),
+                      ),
                 ),
               ),
             ),
@@ -625,13 +633,24 @@ class _DiscoveryTabState extends State<_DiscoveryTab>
                       width: double.infinity,
                       height: 160,
                       placeholder:
-                          (_, __) => Container(color: Colors.grey.shade300),
+                          (_, __) => Container(
+                            color: AppTheme.themed(
+                              context,
+                              0xFF2A2A3E,
+                              0xFFE0E0E0,
+                            ),
+                          ),
                       errorWidget:
-                          (_, __, ___) =>
-                              Container(color: Colors.grey.shade200),
+                          (_, __, ___) => Container(
+                            color: AppTheme.themed(
+                              context,
+                              0xFF2A2A3E,
+                              0xFFE0E0E0,
+                            ),
+                          ),
                     )
                     : Container(
-                      color: Colors.grey.shade300,
+                      color: AppTheme.themed(context, 0xFF2A2A3E, 0xFFE0E0E0),
                       width: double.infinity,
                       height: 160,
                     ),
@@ -712,9 +731,9 @@ class _DiscoveryTabState extends State<_DiscoveryTab>
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 11,
-                            color: Colors.black87,
+                            color: AppTheme.fg(context, 0.87),
                           ),
                         ),
                       ),
@@ -835,7 +854,14 @@ class _DiscoveryTabState extends State<_DiscoveryTab>
           _CountryChip(
             selected: _selectedCountryApi == 'All',
             label: 'All',
-            leading: const Icon(Icons.public, size: 16, color: Colors.white),
+            leading: Icon(
+              Icons.public,
+              size: 16,
+              color:
+                  _selectedCountryApi == 'All'
+                      ? Colors.white
+                      : AppTheme.fg(context, 0.65),
+            ),
             gradient: const LinearGradient(
               colors: [Color(0xFF6A4CFE), Color(0xFFFF1A79)],
             ),
@@ -906,14 +932,14 @@ class _DiscoveryTabState extends State<_DiscoveryTab>
               width: 40,
               height: 40,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppTheme.cardBg(context),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.black.withValues(alpha: 0.08)),
+                border: Border.all(color: AppTheme.hairline(context)),
               ),
               child: Icon(
                 Icons.menu,
                 size: 20,
-                color: Colors.black.withValues(alpha: 0.6),
+                color: AppTheme.fg(context, 0.6),
               ),
             ),
           ),
@@ -1012,7 +1038,7 @@ class _DiscoveryTabState extends State<_DiscoveryTab>
                     'Hot',
                     style: TextStyle(
                       fontSize: 10,
-                      color: Colors.black.withValues(alpha: 0.5),
+                      color: AppTheme.fg(context, 0.5),
                     ),
                   ),
                 ],
@@ -1361,11 +1387,25 @@ class _LiveGridTile extends StatelessWidget {
                   imageUrl: coverUrl,
                   fit: BoxFit.cover,
                   placeholder:
-                      (_, __) => Container(color: Colors.grey.shade300),
+                      (_, __) => Container(
+                        color: AppTheme.themed(
+                          context,
+                          0xFF2A2A3E,
+                          0xFFE0E0E0,
+                        ),
+                      ),
                   errorWidget:
-                      (_, __, ___) => Container(color: Colors.grey.shade200),
+                      (_, __, ___) => Container(
+                        color: AppTheme.themed(
+                          context,
+                          0xFF2A2A3E,
+                          0xFFE0E0E0,
+                        ),
+                      ),
                 )
-                : Container(color: Colors.grey.shade300),
+                : Container(
+                  color: AppTheme.themed(context, 0xFF2A2A3E, 0xFFE0E0E0),
+                ),
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -1530,7 +1570,6 @@ class _CountryChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bg = selected && gradient == null ? Colors.white : Colors.white;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
@@ -1539,9 +1578,9 @@ class _CountryChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 14),
         decoration: BoxDecoration(
           gradient: selected ? gradient : null,
-          color: selected ? null : bg,
+          color: selected ? null : AppTheme.cardBg(context),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.black.withValues(alpha: 0.08)),
+          border: Border.all(color: AppTheme.hairline(context)),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
@@ -1554,7 +1593,7 @@ class _CountryChip extends StatelessWidget {
                 color:
                     selected && gradient != null
                         ? Colors.white
-                        : Colors.black.withValues(alpha: 0.8),
+                        : AppTheme.fg(context, 0.8),
                 fontWeight: FontWeight.w600,
                 fontSize: 13,
               ),
@@ -1767,8 +1806,9 @@ class _HostCallCard extends StatelessWidget {
       },
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.cardBg(context),
           borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: AppTheme.hairline(context)),
           boxShadow: AppTheme.cardShadow,
         ),
         child: Column(
@@ -1789,11 +1829,21 @@ class _HostCallCard extends StatelessWidget {
                               fit: BoxFit.cover,
                               width: double.infinity,
                               placeholder:
-                                  (_, __) =>
-                                      Container(color: AppTheme.surfaceLight),
+                                  (_, __) => Container(
+                                    color:
+                                        AppTheme.themed(
+                                          context,
+                                          0xFF2A2A3E,
+                                          0xFFF5F5FA,
+                                        ),
+                                  ),
                               errorWidget:
                                   (_, __, ___) => Container(
-                                    color: AppTheme.surfaceLight,
+                                    color: AppTheme.themed(
+                                      context,
+                                      0xFF2A2A3E,
+                                      0xFFF5F5FA,
+                                    ),
                                     child: const Icon(
                                       Icons.person,
                                       size: 40,
@@ -1802,7 +1852,11 @@ class _HostCallCard extends StatelessWidget {
                                   ),
                             )
                             : Container(
-                              color: AppTheme.surfaceLight,
+                              color: AppTheme.themed(
+                                context,
+                                0xFF2A2A3E,
+                                0xFFF5F5FA,
+                              ),
                               child: const Icon(
                                 Icons.person,
                                 size: 40,

@@ -187,9 +187,10 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
 
   Future<void> _pickCover() async {
     final picker = ImagePicker();
+    final sheetBg = AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE);
     final source = await showModalBottomSheet<Object?>(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: sheetBg,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -198,12 +199,12 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Padding(
-                  padding: EdgeInsets.all(16),
+                Padding(
+                  padding: const EdgeInsets.all(16),
                   child: Text(
                     'Cover Photo',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppTheme.fg(ctx),
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -214,9 +215,9 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                     Icons.photo_library,
                     color: Color(0xFF7E3FF2),
                   ),
-                  title: const Text(
+                  title: Text(
                     'Choose from Gallery',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppTheme.fg(ctx)),
                   ),
                   onTap: () => Navigator.pop(ctx, ImageSource.gallery),
                 ),
@@ -225,9 +226,9 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
                     Icons.photo_camera,
                     color: Color(0xFF7E3FF2),
                   ),
-                  title: const Text(
+                  title: Text(
                     'Take a Photo',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppTheme.fg(ctx)),
                   ),
                   onTap: () => Navigator.pop(ctx, ImageSource.camera),
                 ),
@@ -546,7 +547,7 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
   void _showBeautySheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: Colors.black87,
+      backgroundColor: AppTheme.themed(context, 0xFF0F0F1E, 0xFFF8F7FE),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -886,7 +887,7 @@ class _GoLiveScreenState extends State<GoLiveScreen> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Colors.black87,
+      backgroundColor: AppTheme.themed(context, 0xFF0F0F1E, 0xFFF8F7FE),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -1526,7 +1527,7 @@ class _GoLiveBeautySheetState extends State<_GoLiveBeautySheet> {
       children: [
         Text(
           label,
-          style: const TextStyle(color: Colors.white70, fontSize: 14),
+          style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 14),
         ),
         Slider(
           value: value,
@@ -1559,14 +1560,17 @@ class _GoLiveBeautySheetState extends State<_GoLiveBeautySheet> {
                       colors: [Color(0xFF7E3FF2), Color(0xFF00E5FF)],
                     )
                     : null,
-            color: selected ? null : Colors.white.withValues(alpha: 0.1),
+            color:
+                selected
+                    ? null
+                    : AppTheme.themed(context, 0x1AFFFFFF, 0x0F1A1A2E),
             borderRadius: BorderRadius.circular(14),
           ),
           child: Text(
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: selected ? Colors.white : Colors.white70,
+              color: selected ? Colors.white : AppTheme.fg(context, 0.7),
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -1580,9 +1584,9 @@ class _GoLiveBeautySheetState extends State<_GoLiveBeautySheet> {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-      decoration: const BoxDecoration(
-        color: Color(0xFF0F0F1E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF0F0F1E, 0xFFF8F7FE),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1594,7 +1598,7 @@ class _GoLiveBeautySheetState extends State<_GoLiveBeautySheet> {
               height: 4,
               margin: const EdgeInsets.only(bottom: 20),
               decoration: BoxDecoration(
-                color: Colors.white24,
+                color: AppTheme.hairline(context),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -1614,10 +1618,10 @@ class _GoLiveBeautySheetState extends State<_GoLiveBeautySheet> {
                 ),
               ),
               const SizedBox(width: 12),
-              const Text(
+              Text(
                 'Beauty Filters',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppTheme.fg(context),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1628,14 +1632,14 @@ class _GoLiveBeautySheetState extends State<_GoLiveBeautySheet> {
           Text(
             'Effects will be applied when you go live',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.4),
+              color: AppTheme.fg(context, 0.4),
               fontSize: 12,
             ),
           ),
           const SizedBox(height: 20),
-          const Text(
+          Text(
             'Lightening Contrast',
-            style: TextStyle(color: Colors.white70, fontSize: 14),
+            style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 14),
           ),
           const SizedBox(height: 10),
           Row(
@@ -1685,10 +1689,8 @@ class _GoLiveBeautySheetState extends State<_GoLiveBeautySheet> {
                     _notify();
                   },
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.white70,
-                    side: BorderSide(
-                      color: Colors.white.withValues(alpha: 0.15),
-                    ),
+                    foregroundColor: AppTheme.fg(context, 0.7),
+                    side: BorderSide(color: AppTheme.hairline(context)),
                     padding: const EdgeInsets.symmetric(vertical: 14),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -1745,10 +1747,10 @@ class _GoLiveOptionsSheetState extends State<_GoLiveOptionsSheet> {
     return InputDecoration(
       labelText: label.isNotEmpty ? label : null,
       hintText: hint.isNotEmpty ? hint : null,
-      labelStyle: const TextStyle(color: Colors.white70),
-      hintStyle: const TextStyle(color: Colors.white38),
+      labelStyle: TextStyle(color: AppTheme.fg(context, 0.7)),
+      hintStyle: TextStyle(color: AppTheme.fg(context, 0.38)),
       filled: true,
-      fillColor: Colors.white.withValues(alpha: 0.08),
+      fillColor: AppTheme.themed(context, 0x14FFFFFF, 0x0D1A1A2E),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide.none,
@@ -1769,7 +1771,10 @@ class _GoLiveOptionsSheetState extends State<_GoLiveOptionsSheet> {
                     colors: [Color(0xFF7E3FF2), Color(0xFF00E5FF)],
                   )
                   : null,
-          color: selected ? null : Colors.white.withValues(alpha: 0.1),
+          color:
+              selected
+                  ? null
+                  : AppTheme.themed(context, 0x1AFFFFFF, 0x0F1A1A2E),
           borderRadius: BorderRadius.circular(18),
           boxShadow:
               selected
@@ -1785,7 +1790,7 @@ class _GoLiveOptionsSheetState extends State<_GoLiveOptionsSheet> {
         child: Text(
           label,
           style: TextStyle(
-            color: selected ? Colors.white : Colors.white70,
+            color: selected ? Colors.white : AppTheme.fg(context, 0.7),
             fontSize: 12,
             fontWeight: FontWeight.w600,
           ),
@@ -1804,9 +1809,9 @@ class _GoLiveOptionsSheetState extends State<_GoLiveOptionsSheet> {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.fromLTRB(24, 16, 24, 32),
-      decoration: const BoxDecoration(
-        color: Color(0xFF0F0F1E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF0F0F1E, 0xFFF8F7FE),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -1818,7 +1823,7 @@ class _GoLiveOptionsSheetState extends State<_GoLiveOptionsSheet> {
               height: 4,
               margin: const EdgeInsets.only(bottom: 20),
               decoration: BoxDecoration(
-                color: Colors.white24,
+                color: AppTheme.hairline(context),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
@@ -1834,10 +1839,10 @@ class _GoLiveOptionsSheetState extends State<_GoLiveOptionsSheet> {
                 child: const Icon(Icons.tune, color: Colors.white, size: 18),
               ),
               const SizedBox(width: 12),
-              const Text(
+              Text(
                 'Live Settings',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppTheme.fg(context),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -1847,22 +1852,22 @@ class _GoLiveOptionsSheetState extends State<_GoLiveOptionsSheet> {
           const SizedBox(height: 20),
           TextField(
             controller: widget.titleCtrl,
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: AppTheme.fg(context)),
             decoration: _darkInput('Room Title', 'Give your live a title...'),
           ),
           const SizedBox(height: 10),
           TextField(
             controller: widget.welcomeCtrl,
-            style: const TextStyle(color: Colors.white),
+            style: TextStyle(color: AppTheme.fg(context)),
             decoration: _darkInput('Welcome Message', 'Welcome to my live!'),
           ),
           const SizedBox(height: 12),
           Row(
             children: [
-              const Text(
+              Text(
                 'Privacy',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppTheme.fg(context),
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1885,7 +1890,7 @@ class _GoLiveOptionsSheetState extends State<_GoLiveOptionsSheet> {
             TextField(
               controller: widget.passcodeCtrl,
               keyboardType: TextInputType.number,
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: AppTheme.fg(context)),
               decoration: _darkInput('Room Passcode', 'Enter a passcode'),
             ),
           ],

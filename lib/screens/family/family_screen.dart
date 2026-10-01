@@ -222,15 +222,12 @@ class _FamilyScreenState extends State<FamilyScreen>
   @override
   Widget build(BuildContext context) {
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: SystemUiOverlayStyle.light.copyWith(
+      value: (AppTheme.isDark(context) ? SystemUiOverlayStyle.light : SystemUiOverlayStyle.dark).copyWith(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-        systemNavigationBarColor: const Color(0xFF0A0A18),
-        systemNavigationBarIconBrightness: Brightness.light,
+        systemNavigationBarColor: AppTheme.themed(context, 0xFF0A0A18, 0xFFFFFFFF),
       ),
       child: Scaffold(
-        backgroundColor: const Color(0xFF0A0A18),
+        backgroundColor: AppTheme.themed(context, 0xFF0A0A18, 0xFFF8F7FE),
         body: NestedScrollView(
           headerSliverBuilder: (context, _) => [
             SliverAppBar(
@@ -238,19 +235,19 @@ class _FamilyScreenState extends State<FamilyScreen>
               pinned: true,
               floating: true,
               centerTitle: false,
-              iconTheme: const IconThemeData(color: Colors.white),
-              foregroundColor: Colors.white,
-              backgroundColor: const Color(0xFF0A0A18),
-              title: const Text(
+              iconTheme: IconThemeData(color: AppTheme.fg(context)),
+              foregroundColor: AppTheme.fg(context),
+              backgroundColor: AppTheme.themed(context, 0xFF0A0A18, 0xFFF8F7FE),
+              title: Text(
                 'Family',
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: Colors.white),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20, color: AppTheme.fg(context)),
               ),
               flexibleSpace: Container(
-                decoration: const BoxDecoration(
+                decoration: BoxDecoration(
                   gradient: LinearGradient(
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
-                    colors: [Color(0xFF1A1240), Color(0xFF0F0B22), Color(0xFF0A0A18)],
+                    colors: AppTheme.bgGradient(context, const [Color(0xFF1A1240), Color(0xFF0F0B22), Color(0xFF0A0A18)]),
                   ),
                 ),
                 child: Stack(
@@ -284,7 +281,7 @@ class _FamilyScreenState extends State<FamilyScreen>
               ),
               actions: [
                 IconButton(
-                  icon: const Icon(Icons.help_outline, color: Colors.white70),
+                  icon: Icon(Icons.help_outline, color: AppTheme.fg(context, 0.7)),
                   tooltip: 'Family Rules',
                   onPressed: () => context.pushNamed(AppRoutes.familyRules),
                 ),
@@ -297,7 +294,7 @@ class _FamilyScreenState extends State<FamilyScreen>
                   ),
                 ),
                 labelColor: Colors.amber,
-                unselectedLabelColor: Colors.white60,
+                unselectedLabelColor: AppTheme.fg(context, 0.6),
                 labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
                 tabs: const [
                   Tab(text: 'All'),
@@ -331,7 +328,7 @@ class _FamilyScreenState extends State<FamilyScreen>
     return RefreshIndicator(
       onRefresh: _loadFamilies,
       color: Colors.amber,
-      backgroundColor: const Color(0xFF1A1240),
+      backgroundColor: AppTheme.themed(context, 0xFF1A1240, 0xFFFFFFFF),
       child: CustomScrollView(
         slivers: [
           if (_ranking.isNotEmpty)
@@ -341,24 +338,24 @@ class _FamilyScreenState extends State<FamilyScreen>
               padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
               child: Container(
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1B32),
+                  color: AppTheme.themed(context, 0xFF1E1B32, 0xFFFFFFFF),
                   borderRadius: BorderRadius.circular(30),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                  border: Border.all(color: AppTheme.fg(context, 0.12)),
                 ),
                 child: TextField(
                   controller: _searchCtrl,
                   onChanged: _onSearch,
-                  style: const TextStyle(color: Colors.white),
+                  style: TextStyle(color: AppTheme.fg(context)),
                   decoration: InputDecoration(
                     filled: true,
                     fillColor: Colors.transparent,
                     hintText: 'Search family...',
-                    hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4)),
-                    prefixIcon: const Icon(Icons.search, color: Colors.white60),
+                    hintStyle: TextStyle(color: AppTheme.fg(context, 0.4)),
+                    prefixIcon: Icon(Icons.search, color: AppTheme.fg(context, 0.6)),
                     suffixIcon: _query.isEmpty
                         ? null
                         : IconButton(
-                            icon: const Icon(Icons.clear, color: Colors.white60),
+                            icon: Icon(Icons.clear, color: AppTheme.fg(context, 0.6)),
                             onPressed: () {
                               _searchCtrl.clear();
                               _onSearch('');
@@ -472,13 +469,16 @@ class _FamilyScreenState extends State<FamilyScreen>
       child: Container(
         margin: const EdgeInsets.only(bottom: 14),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [const Color(0xFF1E1B32), const Color(0xFF121026)],
-          ),
+          gradient: AppTheme.isDark(context)
+              ? const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [Color(0xFF1E1B32), Color(0xFF121026)],
+                )
+              : null,
+          color: AppTheme.isDark(context) ? null : Colors.white,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+          border: Border.all(color: AppTheme.hairline(context)),
           boxShadow: [
             BoxShadow(color: Colors.black.withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 6)),
           ],
@@ -515,7 +515,7 @@ class _FamilyScreenState extends State<FamilyScreen>
                         children: [
                           Flexible(
                             child: Text(item.name ?? 'Family',
-                                style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: Colors.white),
+                                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 16, color: AppTheme.fg(context)),
                                 maxLines: 1, overflow: TextOverflow.ellipsis),
                           ),
                           const SizedBox(width: 8),
@@ -533,10 +533,10 @@ class _FamilyScreenState extends State<FamilyScreen>
                       const SizedBox(height: 6),
                       Row(
                         children: [
-                          const Icon(Icons.people, size: 14, color: Colors.white70),
+                          Icon(Icons.people, size: 14, color: AppTheme.fg(context, 0.7)),
                           const SizedBox(width: 4),
                           Text('${item.memberCount} members',
-                              style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                              style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 12)),
                           const SizedBox(width: 12),
                           const Icon(Icons.diamond, size: 14, color: Colors.amber),
                           const SizedBox(width: 4),
@@ -548,7 +548,7 @@ class _FamilyScreenState extends State<FamilyScreen>
                         const SizedBox(height: 6),
                         Text(item.description!,
                             maxLines: 1, overflow: TextOverflow.ellipsis,
-                            style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 11)),
+                            style: TextStyle(color: AppTheme.fg(context, 0.5), fontSize: 11)),
                       ],
                     ],
                   ),
@@ -604,7 +604,7 @@ class _FamilyScreenState extends State<FamilyScreen>
     return RefreshIndicator(
       onRefresh: _loadRanking,
       color: Colors.amber,
-      backgroundColor: const Color(0xFF1A1240),
+      backgroundColor: AppTheme.themed(context, 0xFF1A1240, 0xFFFFFFFF),
       child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
@@ -674,13 +674,16 @@ class _FamilyScreenState extends State<FamilyScreen>
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 12),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [Color(0xFF1A1240), Color(0xFF0F0B22)],
-        ),
+        gradient: AppTheme.isDark(context)
+            ? const LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [Color(0xFF1A1240), Color(0xFF0F0B22)],
+              )
+            : null,
+        color: AppTheme.isDark(context) ? null : Colors.white,
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -723,12 +726,12 @@ class _FamilyScreenState extends State<FamilyScreen>
                 ),
                 child: CircleAvatar(
                   radius: place == 1 ? 34 : 28,
-                  backgroundColor: const Color(0xFF1A1240),
+                  backgroundColor: AppTheme.themed(context, 0xFF1A1240, 0xFFF1F1FA),
                   backgroundImage: item.image != null && item.image!.isNotEmpty
                       ? CachedNetworkImageProvider(item.image!)
                       : null,
                   child: item.image == null || item.image!.isEmpty
-                      ? const Icon(Icons.group, color: Colors.white)
+                      ? Icon(Icons.group, color: AppTheme.fg(context, 0.6))
                       : null,
                 ),
               ),
@@ -748,7 +751,7 @@ class _FamilyScreenState extends State<FamilyScreen>
           ),
           const SizedBox(height: 8),
           Text(item.name ?? 'Family',
-              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 12),
+              style: TextStyle(color: AppTheme.fg(context), fontWeight: FontWeight.w600, fontSize: 12),
               maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.center),
           const SizedBox(height: 4),
           Row(
@@ -779,17 +782,20 @@ class _FamilyScreenState extends State<FamilyScreen>
         ? const Color(0xFFD7A26E)
         : rank == 5
             ? const Color(0xFF90A4AE)
-            : Colors.white70;
+            : AppTheme.fg(context, 0.7);
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [const Color(0xFF1E1B32), const Color(0xFF121026)],
-        ),
+        gradient: AppTheme.isDark(context)
+            ? const LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Color(0xFF1E1B32), Color(0xFF121026)],
+              )
+            : null,
+        color: AppTheme.isDark(context) ? null : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: InkWell(
         borderRadius: BorderRadius.circular(16),
@@ -825,14 +831,14 @@ class _FamilyScreenState extends State<FamilyScreen>
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(item.name ?? 'Family',
-                        style: const TextStyle(fontWeight: FontWeight.w600, color: Colors.white, fontSize: 14),
+                        style: TextStyle(fontWeight: FontWeight.w600, color: AppTheme.fg(context), fontSize: 14),
                         maxLines: 1, overflow: TextOverflow.ellipsis),
                     const SizedBox(height: 4),
                     Row(
                       children: [
-                        const Icon(Icons.people, size: 12, color: Colors.white60),
+                        Icon(Icons.people, size: 12, color: AppTheme.fg(context, 0.6)),
                         const SizedBox(width: 4),
-                        Text('${item.memberCount}', style: const TextStyle(color: Colors.white60, fontSize: 11)),
+                        Text('${item.memberCount}', style: TextStyle(color: AppTheme.fg(context, 0.6), fontSize: 11)),
                         const SizedBox(width: 10),
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
@@ -860,7 +866,7 @@ class _FamilyScreenState extends State<FamilyScreen>
                           style: const TextStyle(fontWeight: FontWeight.w700, color: Colors.amber, fontSize: 13)),
                     ],
                   ),
-                  Text('diamonds', style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 10)),
+                  Text('diamonds', style: TextStyle(color: AppTheme.fg(context, 0.4), fontSize: 10)),
                 ],
               ),
             ],
@@ -886,7 +892,7 @@ class _FamilyScreenState extends State<FamilyScreen>
     return RefreshIndicator(
       onRefresh: _loadMyFamily,
       color: Colors.amber,
-      backgroundColor: const Color(0xFF1A1240),
+      backgroundColor: AppTheme.themed(context, 0xFF1A1240, 0xFFFFFFFF),
       child: CustomScrollView(
         slivers: [
           SliverToBoxAdapter(
@@ -1044,8 +1050,8 @@ class _FamilyScreenState extends State<FamilyScreen>
                             Share.share(msg);
                           },
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.white,
-                            side: BorderSide(color: Colors.white.withValues(alpha: 0.3)),
+                            foregroundColor: AppTheme.fg(context),
+                            side: BorderSide(color: AppTheme.fg(context, 0.3)),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                             padding: const EdgeInsets.symmetric(vertical: 12),
                           ),
@@ -1071,9 +1077,9 @@ class _FamilyScreenState extends State<FamilyScreen>
                   ),
                   const SizedBox(height: 20),
                   if (f.members.isNotEmpty) ...[
-                    const Align(
+                    Align(
                       alignment: Alignment.centerLeft,
-                      child: Text('Members', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                      child: Text('Members', style: TextStyle(color: AppTheme.fg(context), fontSize: 16, fontWeight: FontWeight.bold)),
                     ),
                     const SizedBox(height: 12),
                     ...f.members.take(5).map((m) => _memberRow(m)),
@@ -1117,9 +1123,9 @@ class _FamilyScreenState extends State<FamilyScreen>
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: Row(
         children: [
@@ -1129,13 +1135,13 @@ class _FamilyScreenState extends State<FamilyScreen>
               height: 40,
               child: m.image != null && m.image!.isNotEmpty
                   ? CachedNetworkImage(imageUrl: m.image!, fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => Container(color: const Color(0xFF1E1B32), child: const Icon(Icons.person, color: Colors.white54, size: 20)))
-                  : Container(color: const Color(0xFF1E1B32), child: const Icon(Icons.person, color: Colors.white54, size: 20)),
+                      errorWidget: (_, __, ___) => Container(color: AppTheme.themed(context, 0xFF1E1B32, 0xFFF1F1FA), child: Icon(Icons.person, color: AppTheme.fg(context, 0.54), size: 20)))
+                  : Container(color: AppTheme.themed(context, 0xFF1E1B32, 0xFFF1F1FA), child: Icon(Icons.person, color: AppTheme.fg(context, 0.54), size: 20)),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Text(m.name ?? '—', style: const TextStyle(fontWeight: FontWeight.w500, color: Colors.white)),
+            child: Text(m.name ?? '—', style: TextStyle(fontWeight: FontWeight.w500, color: AppTheme.fg(context))),
           ),
           if (m.role == 'leader')
             Container(
@@ -1170,7 +1176,7 @@ class _FamilyScreenState extends State<FamilyScreen>
               ),
             )
           else
-            const Text('Member', style: TextStyle(color: Colors.white60, fontSize: 12)),
+            Text('Member', style: TextStyle(color: AppTheme.fg(context, 0.6), fontSize: 12)),
         ],
       ),
     );

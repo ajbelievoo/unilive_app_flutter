@@ -34,17 +34,11 @@ const String _tag = 'Levels';
 // ---- Premium dark palette --------------------------------------------------
 const Color _bg = Color(0xFF050510);
 const Color _bgTop = Color(0xFF0A0A1E);
-const Color _cardBg = Color(0xFF0F0F1F);
-const Color _cardBgLight = Color(0xFF1A1A2E);
-const Color _cardBorder = Color(0xFF2A2A45);
 const Color _gold = Color(0xFFFFB800);
 const Color _goldLight = Color(0xFFFFE066);
 const Color _green = Color(0xFF00E676);
 const Color _white = Colors.white;
 const Color _white70 = Colors.white70;
-const Color _white50 = Colors.white54;
-const Color _white24 = Colors.white24;
-const Color _white10 = Colors.white10;
 const Color _blueGlow = Color(0xFF4F8DFD);
 const Color _purpleGlow = Color(0xFF7B61FF);
 
@@ -175,36 +169,40 @@ class _LevelsScreenState extends State<LevelsScreen>
     final showHostTab =
         widget.isHost || user?.isHost == true || _hostLevels.isNotEmpty;
 
+    final isDark = AppTheme.isDark(context);
     return AnnotatedRegion<SystemUiOverlayStyle>(
-      value: const SystemUiOverlayStyle(
+      value: SystemUiOverlayStyle(
         statusBarColor: Colors.transparent,
-        statusBarIconBrightness: Brightness.light,
-        statusBarBrightness: Brightness.dark,
-        systemNavigationBarColor: _bg,
-        systemNavigationBarIconBrightness: Brightness.light,
+        statusBarIconBrightness:
+            isDark ? Brightness.light : Brightness.dark,
+        statusBarBrightness: isDark ? Brightness.dark : Brightness.light,
+        systemNavigationBarColor:
+            isDark ? _bg : const Color(0xFFF8F7FE),
+        systemNavigationBarIconBrightness:
+            isDark ? Brightness.light : Brightness.dark,
       ),
       child: Scaffold(
-        backgroundColor: _bg,
+        backgroundColor: AppTheme.themed(context, 0xFF050510, 0xFFF8F7FE),
         appBar: AppBar(
-          backgroundColor: _bg,
+          backgroundColor: AppTheme.themed(context, 0xFF050510, 0xFFF8F7FE),
           elevation: 0,
           centerTitle: true,
-          leading: const BackButton(color: _white),
-          title: const Text(
+          leading: BackButton(color: AppTheme.fg(context)),
+          title: Text(
             'Levels',
             style: TextStyle(
-              color: _white,
+              color: AppTheme.fg(context),
               fontSize: 18,
               fontWeight: FontWeight.w800,
             ),
           ),
         ),
         body: Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [_bgTop, _bg],
+              colors: AppTheme.bgGradient(context, const [_bgTop, _bg]),
             ),
           ),
           child: SafeArea(
@@ -400,14 +398,14 @@ class _LevelsScreenState extends State<LevelsScreen>
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                _cardBg.withValues(alpha: 0.9),
-                _cardBg.withValues(alpha: 0.6),
+                AppTheme.themed(context, 0xFF0F0F1F).withValues(alpha: 0.9),
+                AppTheme.themed(context, 0xFF0F0F1F).withValues(alpha: 0.6),
               ],
             ),
             borderRadius: const BorderRadius.vertical(
               bottom: Radius.circular(32),
             ),
-            border: Border.all(color: _white10),
+            border: Border.all(color: AppTheme.fg(context, 0.1)),
             boxShadow: [
               BoxShadow(
                 color: _purpleGlow.withValues(alpha: 0.18),
@@ -458,8 +456,8 @@ class _LevelsScreenState extends State<LevelsScreen>
                             'Next: ${nextLevel.name}',
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: _white70,
+                            style: TextStyle(
+                              color: AppTheme.fg(context, 0.7),
                               fontSize: 14,
                               fontWeight: FontWeight.w600,
                             ),
@@ -554,7 +552,7 @@ class _LevelsScreenState extends State<LevelsScreen>
             child: CircularProgressIndicator(
               value: _displayProgress(progress),
               strokeWidth: 5,
-              backgroundColor: _cardBorder,
+              backgroundColor: AppTheme.themed(context, 0xFF2A2A45, 0xFFE8E8F0),
               color: isTop ? _green : _goldLight,
               strokeCap: StrokeCap.round,
             ),
@@ -565,8 +563,11 @@ class _LevelsScreenState extends State<LevelsScreen>
             height: 84,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              gradient: const LinearGradient(
-                colors: [_cardBgLight, _cardBg],
+              gradient: LinearGradient(
+                colors: [
+                  AppTheme.themed(context, 0xFF1A1A2E, 0xFFF1F1FA),
+                  AppTheme.themed(context, 0xFF0F0F1F, 0xFFE8E8F0),
+                ],
               ),
               boxShadow: [
                 BoxShadow(
@@ -585,7 +586,7 @@ class _LevelsScreenState extends State<LevelsScreen>
                   fit: BoxFit.cover,
                   errorWidget: (_, __, ___) => Icon(
                     isHost ? Icons.mic : Icons.emoji_events,
-                    color: _white50,
+                    color: AppTheme.fg(context, 0.5),
                     size: 34,
                   ),
                 ),
@@ -655,7 +656,7 @@ class _LevelsScreenState extends State<LevelsScreen>
               Container(
                 height: 10,
                 width: double.infinity,
-                color: _cardBorder,
+                color: AppTheme.themed(context, 0xFF2A2A45, 0xFFE8E8F0),
               ),
               LayoutBuilder(
                 builder: (context, constraints) {
@@ -682,8 +683,8 @@ class _LevelsScreenState extends State<LevelsScreen>
         const SizedBox(height: 6),
         Text(
           '$currentCoin / $nextCoin ${_isUser ? Const.coinName.toLowerCase() : Const.rCoinName.toLowerCase()} · $remaining left',
-          style: const TextStyle(
-            color: _white50,
+          style: TextStyle(
+            color: AppTheme.fg(context, 0.5),
             fontSize: 12,
           ),
         ),
@@ -701,9 +702,9 @@ class _LevelsScreenState extends State<LevelsScreen>
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 10),
         decoration: BoxDecoration(
-          color: _cardBg,
+          color: AppTheme.themed(context, 0xFF0F0F1F),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: _cardBorder),
+          border: Border.all(color: AppTheme.themed(context, 0xFF2A2A45, 0xFFE8E8F0)),
           boxShadow: [
             BoxShadow(
               color: color.withValues(alpha: 0.08),
@@ -729,8 +730,8 @@ class _LevelsScreenState extends State<LevelsScreen>
             const SizedBox(height: 2),
             Text(
               label,
-              style: const TextStyle(
-                color: _white50,
+              style: TextStyle(
+                color: AppTheme.fg(context, 0.5),
                 fontSize: 10,
               ),
             ),
@@ -750,9 +751,9 @@ class _LevelsScreenState extends State<LevelsScreen>
       child: Container(
         height: 44,
         decoration: BoxDecoration(
-          color: _cardBg,
+          color: AppTheme.themed(context, 0xFF0F0F1F),
           borderRadius: BorderRadius.circular(22),
-          border: Border.all(color: _cardBorder),
+          border: Border.all(color: AppTheme.themed(context, 0xFF2A2A45, 0xFFE8E8F0)),
         ),
         child: TabBar(
           controller: _tabController,
@@ -769,7 +770,7 @@ class _LevelsScreenState extends State<LevelsScreen>
           dividerColor: Colors.transparent,
           indicatorSize: TabBarIndicatorSize.tab,
           labelColor: _white,
-          unselectedLabelColor: _white50,
+          unselectedLabelColor: AppTheme.fg(context, 0.5),
           labelStyle: const TextStyle(fontWeight: FontWeight.w800),
           tabs: const [
             Tab(text: 'User Level'),
@@ -796,7 +797,7 @@ class _LevelsScreenState extends State<LevelsScreen>
     return RefreshIndicator(
       onRefresh: _load,
       color: _gold,
-      backgroundColor: _cardBg,
+      backgroundColor: AppTheme.themed(context, 0xFF0F0F1F),
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),
@@ -911,7 +912,7 @@ class _LevelsScreenState extends State<LevelsScreen>
     return RefreshIndicator(
       onRefresh: _load,
       color: _gold,
-      backgroundColor: _cardBg,
+      backgroundColor: AppTheme.themed(context, 0xFF0F0F1F),
       child: SingleChildScrollView(
         physics: const BouncingScrollPhysics(
           parent: AlwaysScrollableScrollPhysics(),
@@ -1045,7 +1046,7 @@ class _LevelsScreenState extends State<LevelsScreen>
         ? _green
         : isCurrent
             ? _gold
-            : _white50;
+            : AppTheme.fg(context, 0.5);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
@@ -1055,16 +1056,16 @@ class _LevelsScreenState extends State<LevelsScreen>
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  _cardBgLight.withValues(alpha: 0.9),
-                  _cardBg.withValues(alpha: 0.9),
+                  AppTheme.themed(context, 0xFF1A1A2E).withValues(alpha: 0.9),
+                  AppTheme.themed(context, 0xFF0F0F1F).withValues(alpha: 0.9),
                 ],
               )
             : LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
                 colors: [
-                  _cardBg.withValues(alpha: 0.85),
-                  _cardBg.withValues(alpha: 0.6),
+                  AppTheme.themed(context, 0xFF0F0F1F).withValues(alpha: 0.85),
+                  AppTheme.themed(context, 0xFF0F0F1F).withValues(alpha: 0.6),
                 ],
               ),
         borderRadius: BorderRadius.circular(22),
@@ -1073,7 +1074,7 @@ class _LevelsScreenState extends State<LevelsScreen>
                 color: _gold.withValues(alpha: 0.5),
                 width: 1.5,
               )
-            : Border.all(color: _cardBorder),
+            : Border.all(color: AppTheme.themed(context, 0xFF2A2A45, 0xFFE8E8F0)),
         boxShadow: isCurrent
             ? [
                 BoxShadow(
@@ -1110,7 +1111,7 @@ class _LevelsScreenState extends State<LevelsScreen>
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
-                                    color: isUnlocked ? _white : _white70,
+                                    color: isUnlocked ? AppTheme.fg(context) : AppTheme.fg(context, 0.7),
                                     fontSize: 17,
                                     fontWeight: FontWeight.w800,
                                   ),
@@ -1123,8 +1124,8 @@ class _LevelsScreenState extends State<LevelsScreen>
                           const SizedBox(height: 4),
                           Text(
                             coinLabel,
-                            style: const TextStyle(
-                              color: _white50,
+                            style: TextStyle(
+                              color: AppTheme.fg(context, 0.5),
                               fontSize: 13,
                             ),
                           ),
@@ -1142,7 +1143,7 @@ class _LevelsScreenState extends State<LevelsScreen>
                         ? '${_formatPercent(progress)} done · $remaining ${_isUser ? Const.coinName.toLowerCase() : Const.rCoinName.toLowerCase()} left'
                         : 'Need ${formatCount(remaining)} ${_isUser ? Const.coinName.toLowerCase() : Const.rCoinName.toLowerCase()} to unlock',
                     style: TextStyle(
-                      color: isCurrent ? _goldLight : _white50,
+                      color: isCurrent ? _goldLight : AppTheme.fg(context, 0.5),
                       fontSize: 12,
                       fontWeight: isCurrent ? FontWeight.w700 : FontWeight.w500,
                     ),
@@ -1222,7 +1223,7 @@ class _LevelsScreenState extends State<LevelsScreen>
         ? _green
         : isCurrent
             ? _gold
-            : _white24;
+            : AppTheme.fg(context, 0.24);
     final icon = isUnlocked
         ? Icons.check
         : isCurrent
@@ -1277,7 +1278,7 @@ class _LevelsScreenState extends State<LevelsScreen>
                   ),
                   child: Icon(
                     icon,
-                    color: _bg,
+                    color: AppTheme.isDark(context) ? _bg : Colors.white,
                     size: isCurrent ? 16 : 13,
                   ),
                 ),
@@ -1339,13 +1340,16 @@ class _LevelsScreenState extends State<LevelsScreen>
             ? const LinearGradient(colors: [_green, _goldLight])
             : isCurrent
                 ? const LinearGradient(colors: [_gold, _goldLight])
-                : const LinearGradient(colors: [_cardBgLight, _cardBg]),
+                : LinearGradient(colors: [
+                    AppTheme.themed(context, 0xFF1A1A2E, 0xFFF1F1FA),
+                    AppTheme.themed(context, 0xFF0F0F1F, 0xFFE8E8F0),
+                  ]),
         border: Border.all(
           color: isUnlocked
               ? _green
               : isCurrent
                   ? _gold
-                  : _white24,
+                  : AppTheme.fg(context, 0.24),
           width: 1.5,
         ),
         boxShadow: isCurrent
@@ -1364,10 +1368,10 @@ class _LevelsScreenState extends State<LevelsScreen>
             imageUrl: image,
             fit: BoxFit.cover,
             errorWidget: (_, __, ___) => Container(
-              color: _cardBg,
+              color: AppTheme.themed(context, 0xFF0F0F1F, 0xFFE8E8F0),
               child: Icon(
                 isUnlocked ? Icons.check : Icons.lock,
-                color: _white50,
+                color: AppTheme.fg(context, 0.5),
                 size: 22,
               ),
             ),
@@ -1387,7 +1391,10 @@ class _LevelsScreenState extends State<LevelsScreen>
             ? const LinearGradient(colors: [_green, _goldLight])
             : isCurrent
                 ? const LinearGradient(colors: [_gold, _goldLight])
-                : const LinearGradient(colors: [_cardBgLight, _cardBg]),
+                : LinearGradient(colors: [
+                    AppTheme.themed(context, 0xFF1A1A2E, 0xFFF1F1FA),
+                    AppTheme.themed(context, 0xFF0F0F1F, 0xFFE8E8F0),
+                  ]),
         boxShadow: isCurrent
             ? [
                 BoxShadow(
@@ -1404,10 +1411,10 @@ class _LevelsScreenState extends State<LevelsScreen>
             imageUrl: image,
             fit: BoxFit.cover,
             errorWidget: (_, __, ___) => Container(
-              color: _cardBg,
+              color: AppTheme.themed(context, 0xFF0F0F1F, 0xFFE8E8F0),
               child: Icon(
                 isUnlocked ? Icons.check : Icons.lock,
-                color: _white50,
+                color: AppTheme.fg(context, 0.5),
                 size: 40,
               ),
             ),
@@ -1426,7 +1433,7 @@ class _LevelsScreenState extends State<LevelsScreen>
           Container(
             height: 10,
             width: double.infinity,
-            color: _cardBorder,
+            color: AppTheme.themed(context, 0xFF2A2A45, 0xFFE8E8F0),
           ),
           LayoutBuilder(
             builder: (context, constraints) {
@@ -1438,7 +1445,7 @@ class _LevelsScreenState extends State<LevelsScreen>
                       ? const LinearGradient(colors: [_green, _goldLight])
                       : isCurrent
                           ? const LinearGradient(colors: [_goldLight, _gold])
-                          : const LinearGradient(colors: [_white24, _white50]),
+                          : LinearGradient(colors: [AppTheme.fg(context, 0.24), AppTheme.fg(context, 0.5)]),
                   borderRadius: BorderRadius.circular(6),
                   boxShadow: isCurrent
                       ? [
@@ -1485,23 +1492,26 @@ class _LevelsScreenState extends State<LevelsScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF2A2A40), Color(0xFF1A1A2E)],
+        gradient: LinearGradient(
+          colors: [
+            AppTheme.themed(context, 0xFF2A2A40, 0xFFF1F1FA),
+            AppTheme.themed(context, 0xFF1A1A2E, 0xFFE8E8F0),
+          ],
         ),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: _cardBorder),
+        border: Border.all(color: AppTheme.themed(context, 0xFF2A2A45, 0xFFE8E8F0)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
           if (icon != null) ...[
-            Icon(icon, color: _white70, size: 10),
+            Icon(icon, color: AppTheme.fg(context, 0.7), size: 10),
             const SizedBox(width: 4),
           ],
           Text(
             label,
-            style: const TextStyle(
-              color: _white70,
+            style: TextStyle(
+              color: AppTheme.fg(context, 0.7),
               fontSize: 9,
               fontWeight: FontWeight.w600,
             ),
@@ -1521,14 +1531,14 @@ class _LevelsScreenState extends State<LevelsScreen>
           decoration: BoxDecoration(
             color: _parseColor(color),
             shape: BoxShape.circle,
-            border: Border.all(color: _white24),
+            border: Border.all(color: AppTheme.fg(context, 0.24)),
           ),
         ),
         const SizedBox(width: 6),
         Text(
           '$label: $color',
-          style: const TextStyle(
-            color: _white50,
+          style: TextStyle(
+            color: AppTheme.fg(context, 0.5),
             fontSize: 10,
           ),
         ),
@@ -1540,12 +1550,12 @@ class _LevelsScreenState extends State<LevelsScreen>
     return Row(
       mainAxisSize: MainAxisSize.min,
       children: [
-        const Icon(Icons.shield, size: 11, color: _white50),
+        Icon(Icons.shield, size: 11, color: AppTheme.fg(context, 0.5)),
         const SizedBox(width: 6),
         Text(
           text,
-          style: const TextStyle(
-            color: _white50,
+          style: TextStyle(
+            color: AppTheme.fg(context, 0.5),
             fontSize: 10,
           ),
         ),
@@ -1580,12 +1590,12 @@ class _LevelsScreenState extends State<LevelsScreen>
             height: 30,
             margin: const EdgeInsets.only(left: 6),
             decoration: const BoxDecoration(shape: BoxShape.circle),
-            color: _cardBorder,
+            color: AppTheme.themed(context, 0xFF2A2A45, 0xFFE8E8F0),
             child: Center(
               child: Text(
                 '+$more',
-                style: const TextStyle(
-                  color: _white70,
+                style: TextStyle(
+                  color: AppTheme.fg(context, 0.7),
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
                 ),
@@ -1602,9 +1612,9 @@ class _LevelsScreenState extends State<LevelsScreen>
       height: 30,
       margin: const EdgeInsets.only(right: 6),
       decoration: BoxDecoration(
-        color: _cardBgLight,
+        color: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF1F1FA),
         shape: BoxShape.circle,
-        border: Border.all(color: _cardBorder),
+        border: Border.all(color: AppTheme.themed(context, 0xFF2A2A45, 0xFFE8E8F0)),
       ),
       child: ClipOval(
         child: reward.image != null && reward.image!.isNotEmpty
@@ -1642,7 +1652,7 @@ class _LevelsScreenState extends State<LevelsScreen>
       default:
         icon = Icons.card_giftcard;
     }
-    return Icon(icon, color: _white50, size: 14);
+    return Icon(icon, color: AppTheme.fg(context, 0.5), size: 14);
   }
 
   List<LevelReward> _allRewards(dynamic level) {
@@ -1807,14 +1817,14 @@ class _LevelsScreenState extends State<LevelsScreen>
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    _cardBg.withValues(alpha: 0.95),
-                    _cardBg.withValues(alpha: 0.85),
+                    AppTheme.themed(context, 0xFF0F0F1F).withValues(alpha: 0.95),
+                    AppTheme.themed(context, 0xFF0F0F1F).withValues(alpha: 0.85),
                   ],
                 ),
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(32),
                 ),
-                border: Border.all(color: _white10),
+                border: Border.all(color: AppTheme.fg(context, 0.1)),
                 boxShadow: [
                   BoxShadow(
                     color: _gold.withValues(alpha: 0.15),
@@ -1835,7 +1845,7 @@ class _LevelsScreenState extends State<LevelsScreen>
                           width: 40,
                           height: 4,
                           decoration: BoxDecoration(
-                            color: _cardBorder,
+                            color: AppTheme.themed(context, 0xFF2A2A45, 0xFFE8E8F0),
                             borderRadius: BorderRadius.circular(2),
                           ),
                         ),
@@ -1852,8 +1862,8 @@ class _LevelsScreenState extends State<LevelsScreen>
                               children: [
                                 Text(
                                   name,
-                                  style: const TextStyle(
-                                    color: _white,
+                                  style: TextStyle(
+                                    color: AppTheme.fg(context),
                                     fontSize: 20,
                                     fontWeight: FontWeight.w900,
                                   ),
@@ -1861,8 +1871,8 @@ class _LevelsScreenState extends State<LevelsScreen>
                                 const SizedBox(height: 6),
                                 Text(
                                   coinLabel,
-                                  style: const TextStyle(
-                                    color: _white50,
+                                  style: TextStyle(
+                                    color: AppTheme.fg(context, 0.5),
                                     fontSize: 14,
                                   ),
                                 ),
@@ -1877,7 +1887,7 @@ class _LevelsScreenState extends State<LevelsScreen>
                                       ? _green
                                       : isCurrent
                                           ? _gold
-                                          : _white50,
+                                          : AppTheme.fg(context, 0.5),
                                 ),
                               ],
                             ),
@@ -1898,7 +1908,7 @@ class _LevelsScreenState extends State<LevelsScreen>
                               ? _green
                               : isCurrent
                                   ? _goldLight
-                                  : _white50,
+                                  : AppTheme.fg(context, 0.5),
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                         ),
@@ -1941,12 +1951,12 @@ class _LevelsScreenState extends State<LevelsScreen>
       return Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: _cardBg,
+          color: AppTheme.themed(context, 0xFF0F0F1F),
           borderRadius: BorderRadius.circular(16),
         ),
-        child: const Text(
+        child: Text(
           'No rewards defined for this level.',
-          style: TextStyle(color: _white50, fontSize: 13),
+          style: TextStyle(color: AppTheme.fg(context, 0.5), fontSize: 13),
         ),
       );
     }
@@ -1956,8 +1966,8 @@ class _LevelsScreenState extends State<LevelsScreen>
       children: [
         Text(
           isLevelUnlocked ? 'Rewards Unlocked' : 'Rewards at this level',
-          style: const TextStyle(
-            color: _white,
+          style: TextStyle(
+            color: AppTheme.fg(context),
             fontSize: 15,
             fontWeight: FontWeight.w800,
           ),
@@ -1986,9 +1996,9 @@ class _LevelsScreenState extends State<LevelsScreen>
       width: 86,
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: _cardBg,
+        color: AppTheme.themed(context, 0xFF0F0F1F),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: locked ? _cardBorder : _gold.withValues(alpha: 0.4)),
+        border: Border.all(color: locked ? AppTheme.themed(context, 0xFF2A2A45, 0xFFE8E8F0) : _gold.withValues(alpha: 0.4)),
         boxShadow: locked
             ? null
             : [
@@ -2008,9 +2018,9 @@ class _LevelsScreenState extends State<LevelsScreen>
                 width: 44,
                 height: 44,
                 decoration: BoxDecoration(
-                  color: _cardBgLight,
+                  color: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF1F1FA),
                   shape: BoxShape.circle,
-                  border: Border.all(color: _cardBorder),
+                  border: Border.all(color: AppTheme.themed(context, 0xFF2A2A45, 0xFFE8E8F0)),
                 ),
                 child: ClipOval(
                   child: reward.image != null && reward.image!.isNotEmpty
@@ -2040,8 +2050,8 @@ class _LevelsScreenState extends State<LevelsScreen>
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
             textAlign: TextAlign.center,
-            style: const TextStyle(
-              color: _white,
+            style: TextStyle(
+              color: AppTheme.fg(context),
               fontSize: 11,
               fontWeight: FontWeight.w700,
             ),
@@ -2050,8 +2060,8 @@ class _LevelsScreenState extends State<LevelsScreen>
             const SizedBox(height: 3),
             Text(
               duration,
-              style: const TextStyle(
-                color: _white50,
+              style: TextStyle(
+                color: AppTheme.fg(context, 0.5),
                 fontSize: 10,
               ),
             ),

@@ -82,11 +82,11 @@ class _VipLeaderboardScreenState extends State<VipLeaderboardScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A1A1A), Color(0xFF0A0A0A)],
+            colors: AppTheme.bgGradient(context, const [Color(0xFF1A1A1A), Color(0xFF0A0A0A)]),
           ),
         ),
         child: SafeArea(
@@ -115,10 +115,10 @@ class _VipLeaderboardScreenState extends State<VipLeaderboardScreen>
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
       child: Row(
         children: [
-          IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: () => context.pop()),
-          const Expanded(
+          IconButton(icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)), onPressed: () => context.pop()),
+          Expanded(
             child: Center(
-              child: Text('VIP Leaderboard', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              child: Text('VIP Leaderboard', style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 48),
@@ -131,14 +131,14 @@ class _VipLeaderboardScreenState extends State<VipLeaderboardScreen>
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(12),
       ),
       child: TabBar(
         controller: _tab,
         indicator: BoxDecoration(borderRadius: BorderRadius.circular(10), gradient: AppTheme.goldGradient),
         labelColor: Colors.black,
-        unselectedLabelColor: Colors.white70,
+        unselectedLabelColor: AppTheme.fg(context, 0.7),
         tabs: const [Tab(text: 'This Month'), Tab(text: 'All Time')],
       ),
     );
@@ -151,9 +151,9 @@ class _VipLeaderboardScreenState extends State<VipLeaderboardScreen>
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.leaderboard_outlined, color: Colors.white38, size: 64),
+            Icon(Icons.leaderboard_outlined, color: AppTheme.fg(context, 0.38), size: 64),
             const SizedBox(height: 16),
-            const Text('No data available', style: TextStyle(color: Colors.white54, fontSize: 16)),
+            Text('No data available', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 16)),
             const SizedBox(height: 12),
             TextButton(onPressed: onRefresh, child: const Text('Refresh')),
           ],
@@ -183,9 +183,9 @@ class _VipLeaderboardScreenState extends State<VipLeaderboardScreen>
         gradient: isMe
             ? LinearGradient(colors: [AppTheme.primary.withValues(alpha: 0.2), Colors.transparent])
             : null,
-        color: isMe ? null : Colors.white.withValues(alpha: 0.05),
+        color: isMe ? null : AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: isMe ? AppTheme.primary.withValues(alpha: 0.4) : Colors.white.withValues(alpha: 0.06)),
+        border: Border.all(color: isMe ? AppTheme.primary.withValues(alpha: 0.4) : AppTheme.hairline(context)),
       ),
       child: Row(
         children: [
@@ -203,9 +203,9 @@ class _VipLeaderboardScreenState extends State<VipLeaderboardScreen>
                   ? CachedNetworkImage(
                       imageUrl: VideoUtil.getFullImageUrl(item.image),
                       fit: BoxFit.cover,
-                      errorWidget: (_, __, ___) => Container(color: Colors.grey.shade800, child: const Icon(Icons.person, color: Colors.white54)),
+                      errorWidget: (_, __, ___) => Container(color: AppTheme.themed(context, 0xFF424242, 0xFFE0E0E0), child: Icon(Icons.person, color: AppTheme.fg(context, 0.54))),
                     )
-                  : Container(color: Colors.grey.shade800, child: const Icon(Icons.person, color: Colors.white54)),
+                  : Container(color: AppTheme.themed(context, 0xFF424242, 0xFFE0E0E0), child: Icon(Icons.person, color: AppTheme.fg(context, 0.54))),
             ),
           ),
           const SizedBox(width: 12),
@@ -217,7 +217,7 @@ class _VipLeaderboardScreenState extends State<VipLeaderboardScreen>
                 Text(
                   item.name ?? 'Unknown',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppTheme.fg(context),
                     fontSize: 14,
                     fontWeight: FontWeight.w700,
                     decoration: isMe ? TextDecoration.underline : TextDecoration.none,
@@ -239,7 +239,7 @@ class _VipLeaderboardScreenState extends State<VipLeaderboardScreen>
             crossAxisAlignment: CrossAxisAlignment.end,
             children: [
               Text(formatCount(points), style: const TextStyle(color: Color(0xFFFFD700), fontSize: 16, fontWeight: FontWeight.w800)),
-              const Text('points', style: TextStyle(color: Colors.white38, fontSize: 10)),
+              Text('points', style: TextStyle(color: AppTheme.fg(context, 0.38), fontSize: 10)),
             ],
           ),
         ],
@@ -251,6 +251,6 @@ class _VipLeaderboardScreenState extends State<VipLeaderboardScreen>
     if (rank == 1) return const Icon(Icons.emoji_events, color: Color(0xFFFFD700), size: 32);
     if (rank == 2) return const Icon(Icons.emoji_events, color: Color(0xFFC0C0C0), size: 28);
     if (rank == 3) return const Icon(Icons.emoji_events, color: Color(0xFFCD7F32), size: 26);
-    return Text('$rank', style: const TextStyle(color: Colors.white54, fontSize: 16, fontWeight: FontWeight.bold));
+    return Text('$rank', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 16, fontWeight: FontWeight.bold));
   }
 }

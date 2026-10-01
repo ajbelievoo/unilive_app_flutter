@@ -142,11 +142,11 @@ class _DynamicAvatarScreenState extends State<DynamicAvatarScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1A1A1A), Color(0xFF0A0A0A)],
+            colors: AppTheme.bgGradient(context, const [Color(0xFF1A1A1A), Color(0xFF0A0A0A)]),
           ),
         ),
         child: SafeArea(
@@ -164,18 +164,18 @@ class _DynamicAvatarScreenState extends State<DynamicAvatarScreen> {
                       onPressed: _uploading ? null : _uploadGif,
                       icon:
                           _uploading
-                              ? const SizedBox(
+                              ? SizedBox(
                                 width: 18,
                                 height: 18,
                                 child: Preloader(
                                   strokeWidth: 2,
-                                  color: Colors.white,
+                                  color: AppTheme.fg(context),
                                 ),
                               )
-                              : const Icon(Icons.upload, color: Colors.white),
-                      label: const Text(
+                              : Icon(Icons.upload, color: AppTheme.fg(context)),
+                      label: Text(
                         'Upload Custom GIF',
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: AppTheme.fg(context)),
                       ),
                       style: OutlinedButton.styleFrom(
                         side: const BorderSide(color: AppTheme.primary),
@@ -229,15 +229,15 @@ class _DynamicAvatarScreenState extends State<DynamicAvatarScreen> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white),
+            icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)),
             onPressed: () => context.pop(),
           ),
-          const Expanded(
+          Expanded(
             child: Center(
               child: Text(
                 'Dynamic Avatar',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppTheme.fg(context),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -285,11 +285,11 @@ class _DynamicAvatarScreenState extends State<DynamicAvatarScreen> {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          const Icon(Icons.gif_box_outlined, color: Colors.white38, size: 64),
+          Icon(Icons.gif_box_outlined, color: AppTheme.fg(context, 0.38), size: 64),
           const SizedBox(height: 16),
-          const Text(
+          Text(
             'No avatars available',
-            style: TextStyle(color: Colors.white54, fontSize: 16),
+            style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 16),
           ),
           const SizedBox(height: 12),
           TextButton(onPressed: _loadData, child: const Text('Refresh')),
@@ -307,15 +307,13 @@ class _DynamicAvatarScreenState extends State<DynamicAvatarScreen> {
       onTap: isLocked ? null : () => _equipAvatar(avatar),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.06),
+          color: AppTheme.cardBg(context),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color:
                 isEquipped
                     ? AppTheme.primary
-                    : (isLocked
-                        ? Colors.white12
-                        : Colors.white.withValues(alpha: 0.1)),
+                    : AppTheme.hairline(context),
             width: isEquipped ? 2 : 1,
           ),
         ),
@@ -335,15 +333,15 @@ class _DynamicAvatarScreenState extends State<DynamicAvatarScreen> {
                                 fit: BoxFit.contain,
                                 placeholder: (_, __) => const Preloader(),
                                 errorWidget:
-                                    (_, __, ___) => const Icon(
+                                    (_, __, ___) => Icon(
                                       Icons.broken_image,
-                                      color: Colors.white24,
+                                      color: AppTheme.fg(context, 0.24),
                                       size: 32,
                                     ),
                               )
-                              : const Icon(
+                              : Icon(
                                 Icons.gif,
-                                color: Colors.white24,
+                                color: AppTheme.fg(context, 0.24),
                                 size: 32,
                               ),
                     ),
@@ -352,8 +350,8 @@ class _DynamicAvatarScreenState extends State<DynamicAvatarScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 6),
                     child: Text(
                       avatar.name ?? 'Avatar',
-                      style: const TextStyle(
-                        color: Colors.white70,
+                      style: TextStyle(
+                        color: AppTheme.fg(context, 0.7),
                         fontSize: 10,
                       ),
                       maxLines: 1,

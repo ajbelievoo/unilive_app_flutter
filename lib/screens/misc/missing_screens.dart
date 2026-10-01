@@ -55,6 +55,7 @@ class _HostLevelListScreenState extends State<HostLevelListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Host Levels'),
+        foregroundColor: Colors.white,
         flexibleSpace: Container(
           decoration: const BoxDecoration(gradient: AppTheme.brandGradient),
         ),
@@ -240,6 +241,7 @@ class _TalentLevelScreenState extends State<TalentLevelScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Talent Levels'),
+        foregroundColor: Colors.white,
         flexibleSpace: Container(
           decoration: const BoxDecoration(gradient: AppTheme.purpleGradient),
         ),
@@ -411,6 +413,7 @@ class WearMedalScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('My Medals'),
+        foregroundColor: Colors.white,
         flexibleSpace: Container(
           decoration: const BoxDecoration(gradient: AppTheme.brandGradient),
         ),
@@ -718,6 +721,7 @@ class _ForwardUserListScreenState extends State<ForwardUserListScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Forward to...'),
+        foregroundColor: Colors.white,
         flexibleSpace: Container(
           decoration: const BoxDecoration(gradient: AppTheme.brandGradient),
         ),
@@ -733,7 +737,7 @@ class _ForwardUserListScreenState extends State<ForwardUserListScreen> {
                 hintText: 'Search contacts...',
                 prefixIcon: const Icon(Icons.search),
                 filled: true,
-                fillColor: AppTheme.surfaceLight,
+                fillColor: AppTheme.themed(context, 0xFF1E1E1E, 0xFFF5F5FA),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
                   borderSide: BorderSide.none,
@@ -1270,6 +1274,7 @@ class FakeChatScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Demo Chat'),
+        foregroundColor: Colors.white,
         flexibleSpace: Container(
           decoration: const BoxDecoration(gradient: AppTheme.brandGradient),
         ),

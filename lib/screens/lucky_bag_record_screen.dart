@@ -111,9 +111,8 @@ class _LuckyBagRecordScreenState extends State<LuckyBagRecordScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bg = isDark ? AppTheme.surface : AppTheme.lightSurface;
-    final text = isDark ? AppTheme.textPrimary : AppTheme.lightTextPrimary;
+    final bg = AppTheme.themed(context, 0xFF121212, 0xFFFAFAFE);
+    final text = AppTheme.fg(context);
     return Scaffold(
       backgroundColor: bg,
       appBar: AppBar(

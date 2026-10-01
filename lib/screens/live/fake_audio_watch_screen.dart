@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 
+import '../../theme/app_theme.dart';
+
 class FakeAudioWatchScreen extends StatelessWidget {
   const FakeAudioWatchScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: AppTheme.themed(context, 0xFF000000, 0xFFFAFAFE),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
-        title: const Text('Demo Audio Room', style: TextStyle(color: Colors.white)),
-        iconTheme: const IconThemeData(color: Colors.white),
+        title: Text('Demo Audio Room', style: TextStyle(color: AppTheme.fg(context))),
+        iconTheme: IconThemeData(color: AppTheme.fg(context)),
       ),
       body: Center(
         child: Column(
@@ -26,14 +28,14 @@ class FakeAudioWatchScreen extends StatelessWidget {
               child: const Icon(Icons.mic, color: Colors.white, size: 48),
             ),
             const SizedBox(height: 24),
-            const Text(
+            Text(
               'Demo Audio Room',
-              style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+              style: TextStyle(color: AppTheme.fg(context), fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'For testing only',
-              style: TextStyle(color: Colors.white54, fontSize: 14),
+              style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 14),
             ),
             const SizedBox(height: 32),
             Row(

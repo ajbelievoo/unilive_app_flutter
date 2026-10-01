@@ -106,12 +106,12 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF8F8FB),
+      backgroundColor: AppTheme.themed(context, 0xFF121212, 0xFFF8F8FB),
       appBar: AppBar(
         title: Text(widget.familyName ?? 'Family Members', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
         centerTitle: true,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        backgroundColor: AppTheme.themed(context, 0xFF1E1E1E, 0xFFFFFFFF),
+        foregroundColor: AppTheme.fg(context, 0.87),
         elevation: 0.5,
         actions: [
           IconButton(
@@ -148,7 +148,7 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
   Widget _buildSearchBar() {
     return Container(
       padding: const EdgeInsets.all(12),
-      color: Colors.white,
+      color: AppTheme.themed(context, 0xFF1E1E1E, 0xFFFFFFFF),
       child: TextField(
         controller: _searchCtrl,
         onChanged: (v) {
@@ -161,7 +161,7 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
           hintText: 'Search member by name...',
           prefixIcon: const Icon(Icons.search, size: 20),
           filled: true,
-          fillColor: Colors.grey.shade100,
+          fillColor: AppTheme.themed(context, 0xFF2A2A2A, 0xFFF5F5F5),
           contentPadding: EdgeInsets.zero,
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(25), borderSide: BorderSide.none),
         ),
@@ -191,7 +191,7 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha:0.03), blurRadius: 10, offset: const Offset(0, 4))],
       ),
@@ -241,7 +241,7 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
                 (m.name == null || m.name!.isEmpty) ? 'Member' : m.name!,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: isMe ? AppTheme.primary : Colors.black87),
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: isMe ? AppTheme.primary : AppTheme.fg(context, 0.87)),
               ),
             ),
             const SizedBox(width: 6),
@@ -272,7 +272,7 @@ class _FamilyMembersScreenState extends State<FamilyMembersScreen> {
           icon: const Icon(Icons.more_vert),
           onPressed: () => _showMemberActions(m),
         )
-            : const Icon(Icons.chevron_right, size: 18, color: Colors.black26),
+            : Icon(Icons.chevron_right, size: 18, color: AppTheme.fg(context, 0.26)),
       ),
     );
   }

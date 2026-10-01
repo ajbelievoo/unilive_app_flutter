@@ -58,6 +58,7 @@ import '../../services/host_features_service.dart';
 import '../../services/socket_handlers.dart';
 import '../../services/socket_service.dart';
 import '../../services/system_ui_service.dart';
+import '../../theme/app_theme.dart';
 import '../../utils/format_utils.dart' show diamondsToBeans, formatCount;
 import '../../utils/log.dart';
 import '../../utils/live_video_uid_resolver.dart';
@@ -351,9 +352,9 @@ class _GoLiveScreenState extends State<_GoLiveScreenOld> {
             child: Container(
               height: 180,
               decoration: BoxDecoration(
-                color: Colors.grey.shade100,
+                color: AppTheme.cardBg(context),
                 borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.grey.shade300),
+                border: Border.all(color: AppTheme.hairline(context)),
               ),
               child:
                   _coverImage == null
@@ -363,12 +364,12 @@ class _GoLiveScreenState extends State<_GoLiveScreenOld> {
                           Icon(
                             Icons.add_photo_alternate_outlined,
                             size: 48,
-                            color: Colors.grey.shade400,
+                            color: AppTheme.fg(context, 0.4),
                           ),
                           const SizedBox(height: 8),
                           Text(
                             'Room cover (optional)',
-                            style: TextStyle(color: Colors.grey.shade500),
+                            style: TextStyle(color: AppTheme.fg(context, 0.5)),
                           ),
                         ],
                       )
@@ -445,7 +446,11 @@ class _GoLiveScreenState extends State<_GoLiveScreenOld> {
                   child: DropdownButton<String>(
                     value: _category,
                     isDense: true,
-                    dropdownColor: Colors.grey.shade100,
+                    dropdownColor: AppTheme.themed(
+                      context,
+                      0xFF2A2A3E,
+                      0xFFF5F5FA,
+                    ),
                     items:
                         _categories
                             .map(
@@ -7579,14 +7584,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       barrierDismissible: false,
       builder:
           (dlgCtx) => AlertDialog(
-            backgroundColor: const Color(0xFF1A1A2E),
+            backgroundColor: AppTheme.themed(dlgCtx, 0xFF1A1A2E),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
-            title: const Text(
+            title: Text(
               'Call Request',
               style: TextStyle(
-                color: Colors.white,
+                color: AppTheme.fg(dlgCtx),
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
               ),
@@ -7599,7 +7604,10 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                 const SizedBox(height: 10),
                 Text(
                   '$name wants to join the call',
-                  style: const TextStyle(color: Colors.white70, fontSize: 14),
+                  style: TextStyle(
+                    color: AppTheme.fg(dlgCtx, 0.7),
+                    fontSize: 14,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 if (_joinRequests.length > 1)
@@ -7607,8 +7615,8 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                     padding: const EdgeInsets.only(top: 6),
                     child: Text(
                       '+${_joinRequests.length - 1} more request(s)',
-                      style: const TextStyle(
-                        color: Colors.white38,
+                      style: TextStyle(
+                        color: AppTheme.fg(dlgCtx, 0.38),
                         fontSize: 12,
                       ),
                     ),
@@ -7702,9 +7710,11 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             constraints: BoxConstraints(
               maxHeight: MediaQuery.of(ctx).size.height * 0.5,
             ),
-            decoration: const BoxDecoration(
-              color: Color(0xFF1A1A2E),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            decoration: BoxDecoration(
+              color: AppTheme.themed(ctx, 0xFF1A1A2E),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -7713,10 +7723,10 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                   padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
-                      const Text(
+                      Text(
                         'Join Requests',
                         style: TextStyle(
-                          color: Colors.white,
+                          color: AppTheme.fg(ctx),
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
@@ -7724,18 +7734,21 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                       const Spacer(),
                       GestureDetector(
                         onTap: () => Navigator.pop(ctx),
-                        child: const Icon(Icons.close, color: Colors.white54),
+                        child: Icon(
+                          Icons.close,
+                          color: AppTheme.fg(ctx, 0.54),
+                        ),
                       ),
                     ],
                   ),
                 ),
-                const Divider(color: Colors.white12),
+                Divider(color: AppTheme.hairline(ctx)),
                 if (_joinRequests.isEmpty)
-                  const Padding(
-                    padding: EdgeInsets.all(32),
+                  Padding(
+                    padding: const EdgeInsets.all(32),
                     child: Text(
                       'No join requests',
-                      style: TextStyle(color: Colors.white54),
+                      style: TextStyle(color: AppTheme.fg(ctx, 0.54)),
                     ),
                   )
                 else
@@ -7752,8 +7765,8 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                           ),
                           title: Text(
                             req['name']?.toString() ?? 'User',
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: AppTheme.fg(ctx),
                               fontSize: 14,
                             ),
                           ),
@@ -7822,9 +7835,11 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       backgroundColor: Colors.transparent,
       builder:
           (ctx) => Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF1A1A2E),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            decoration: BoxDecoration(
+              color: AppTheme.themed(ctx, 0xFF1A1A2E),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -7833,8 +7848,8 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                   padding: const EdgeInsets.all(16),
                   child: Text(
                     name,
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: AppTheme.fg(ctx),
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -7843,11 +7858,11 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                 ListTile(
                   leading: Icon(
                     isMuted ? Icons.mic_off : Icons.mic,
-                    color: Colors.white70,
+                    color: AppTheme.fg(ctx, 0.7),
                   ),
                   title: Text(
                     isMuted ? 'Unmute' : 'Mute',
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppTheme.fg(ctx)),
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -7917,7 +7932,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       barrierDismissible: false,
       builder:
           (ctx) => AlertDialog(
-            backgroundColor: const Color(0xFF1A1A2E),
+            backgroundColor: AppTheme.themed(ctx, 0xFF1A1A2E),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
@@ -7932,8 +7947,8 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                 Expanded(
                   child: Text(
                     '$hostName is inviting you to join the call',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: AppTheme.fg(ctx),
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -7941,16 +7956,16 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                 ),
               ],
             ),
-            content: const Text(
+            content: Text(
               'Join as a guest in the live video call?',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
+              style: TextStyle(color: AppTheme.fg(ctx, 0.7), fontSize: 14),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx, false),
-                child: const Text(
+                child: Text(
                   'Decline',
-                  style: TextStyle(color: Colors.white54),
+                  style: TextStyle(color: AppTheme.fg(ctx, 0.54)),
                 ),
               ),
               FilledButton.icon(
@@ -8552,7 +8567,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     Navigator.pop(context);
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF17172A),
+      backgroundColor: AppTheme.themed(context, 0xFF17172A),
       builder:
           (sheetContext) => SafeArea(
             child: Column(
@@ -8569,7 +8584,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                           : permission == 'admins'
                           ? 'Host and authorized admins'
                           : 'Friends can request songs',
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: AppTheme.fg(sheetContext)),
                     ),
                     onChanged: (value) {
                       if (value == null) return;
@@ -8781,9 +8796,11 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       backgroundColor: Colors.transparent,
       builder:
           (ctx) => Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF1A1A2E),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            decoration: BoxDecoration(
+              color: AppTheme.themed(ctx, 0xFF1A1A2E),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
             ),
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(ctx).viewInsets.bottom + 16,
@@ -8794,10 +8811,10 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   'Co-Watch',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppTheme.fg(ctx),
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -8805,22 +8822,22 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                 const SizedBox(height: 12),
                 TextField(
                   controller: urlCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
+                  style: TextStyle(color: AppTheme.fg(ctx)),
+                  decoration: InputDecoration(
                     labelText: 'Video URL',
                     hintText: 'https://...',
-                    labelStyle: TextStyle(color: Colors.white70),
-                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(color: AppTheme.fg(ctx, 0.7)),
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 12),
                 TextField(
                   controller: titleCtrl,
-                  style: const TextStyle(color: Colors.white),
-                  decoration: const InputDecoration(
+                  style: TextStyle(color: AppTheme.fg(ctx)),
+                  decoration: InputDecoration(
                     labelText: 'Title (optional)',
-                    labelStyle: TextStyle(color: Colors.white70),
-                    border: OutlineInputBorder(),
+                    labelStyle: TextStyle(color: AppTheme.fg(ctx, 0.7)),
+                    border: const OutlineInputBorder(),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -8892,18 +8909,20 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       backgroundColor: Colors.transparent,
       builder:
           (ctx) => Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF1A1A2E),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            decoration: BoxDecoration(
+              color: AppTheme.themed(ctx, 0xFF1A1A2E),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
             ),
             padding: const EdgeInsets.symmetric(vertical: 16),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
+                Text(
                   'Room Background',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppTheme.fg(ctx),
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -8990,18 +9009,20 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         backgroundColor: Colors.transparent,
         builder:
             (ctx) => Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF1A1A2E),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              decoration: BoxDecoration(
+                color: AppTheme.themed(ctx, 0xFF1A1A2E),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
               ),
               padding: const EdgeInsets.symmetric(vertical: 16),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
+                  Text(
                     'Translate to',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppTheme.fg(ctx),
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -9015,14 +9036,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                       return ListTile(
                         leading: Text(
                           lang.code,
-                          style: const TextStyle(
-                            color: Colors.white70,
+                          style: TextStyle(
+                            color: AppTheme.fg(ctx, 0.7),
                             fontSize: 12,
                           ),
                         ),
                         title: Text(
                           lang.name,
-                          style: const TextStyle(color: Colors.white),
+                          style: TextStyle(color: AppTheme.fg(ctx)),
                         ),
                         trailing:
                             _translationTargetLang == lang.code
@@ -9592,9 +9613,11 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       backgroundColor: Colors.transparent,
       builder:
           (ctx) => Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF1A1A2E),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            decoration: BoxDecoration(
+              color: AppTheme.themed(ctx, 0xFF1A1A2E),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -9603,11 +9626,11 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                   padding: const EdgeInsets.all(16),
                   child: Row(
                     children: [
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'VS / PK',
                           style: TextStyle(
-                            color: Colors.white,
+                            color: AppTheme.fg(ctx),
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
                           ),
@@ -9634,20 +9657,23 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                             Fluttertoast.showToast(msg: 'Random match failed');
                           }
                         },
-                        icon: const Icon(
+                        icon: Icon(
                           Icons.shuffle,
-                          color: Colors.white70,
+                          color: AppTheme.fg(ctx, 0.7),
                           size: 18,
                         ),
-                        label: const Text(
+                        label: Text(
                           'Random',
-                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                          style: TextStyle(
+                            color: AppTheme.fg(ctx, 0.7),
+                            fontSize: 12,
+                          ),
                         ),
                       ),
                     ],
                   ),
                 ),
-                const Divider(color: Colors.white12),
+                Divider(color: AppTheme.hairline(ctx)),
                 FutureBuilder<lur.LiveUserRoot>(
                   future: ApiService.getLiveUsers(
                     userId: myUserId,
@@ -9663,12 +9689,12 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                       );
                     }
                     if (snap.hasError) {
-                      return const SizedBox(
+                      return SizedBox(
                         height: 120,
                         child: Center(
                           child: Text(
                             'Failed to load',
-                            style: TextStyle(color: Colors.white70),
+                            style: TextStyle(color: AppTheme.fg(ctx, 0.7)),
                           ),
                         ),
                       );
@@ -9690,12 +9716,12 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                             .toList() ??
                         [];
                     if (users.isEmpty) {
-                      return const SizedBox(
+                      return SizedBox(
                         height: 120,
                         child: Center(
                           child: Text(
                             'No live hosts',
-                            style: TextStyle(color: Colors.white70),
+                            style: TextStyle(color: AppTheme.fg(ctx, 0.7)),
                           ),
                         ),
                       );
@@ -9714,12 +9740,12 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                             ),
                             title: Text(
                               u.name ?? 'Host',
-                              style: const TextStyle(color: Colors.white),
+                              style: TextStyle(color: AppTheme.fg(ctx)),
                             ),
                             subtitle: Text(
                               '${u.view} watching',
-                              style: const TextStyle(
-                                color: Colors.white54,
+                              style: TextStyle(
+                                color: AppTheme.fg(ctx, 0.54),
                                 fontSize: 11,
                               ),
                             ),
@@ -11339,21 +11365,21 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         context: context,
         builder:
             (ctx) => AlertDialog(
-              backgroundColor: const Color(0xFF1A1A2E),
-              title: const Text(
+              backgroundColor: AppTheme.themed(ctx, 0xFF1A1A2E),
+              title: Text(
                 'End Live?',
-                style: TextStyle(color: Colors.white),
+                style: TextStyle(color: AppTheme.fg(ctx)),
               ),
-              content: const Text(
+              content: Text(
                 'Are you sure you want to end this live stream? All viewers will be removed immediately.',
-                style: TextStyle(color: Colors.white70),
+                style: TextStyle(color: AppTheme.fg(ctx, 0.7)),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(ctx, false),
-                  child: const Text(
+                  child: Text(
                     'Cancel',
-                    style: TextStyle(color: Colors.white70),
+                    style: TextStyle(color: AppTheme.fg(ctx, 0.7)),
                   ),
                 ),
                 TextButton(
@@ -11518,14 +11544,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       context: context,
       builder:
           (ctx) => AlertDialog(
-            backgroundColor: Colors.black87,
+            backgroundColor: AppTheme.themed(ctx, 0xFF1A1A2E),
             title: Text(
               isHostInPk
                   ? 'Leave PK?'
                   : widget.isHost
                   ? 'Live options'
                   : 'Leave Live?',
-              style: const TextStyle(color: Colors.white),
+              style: TextStyle(color: AppTheme.fg(ctx)),
             ),
             content: Text(
               isHostInPk
@@ -11533,7 +11559,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                   : widget.isHost
                   ? 'Minimize to keep streaming while you use the app, or end the live for everyone.'
                   : 'Do you want to exit or minimize?',
-              style: const TextStyle(color: Colors.white70),
+              style: TextStyle(color: AppTheme.fg(ctx, 0.7)),
             ),
             actions: [
               TextButton(
@@ -12062,14 +12088,20 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         backgroundColor: Colors.black,
         body:
             !_engineReady
-                ? const Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Preloader(),
-                      SizedBox(height: 12),
-                      Text('Connecting to live room...'),
-                    ],
+                ? Container(
+                  color: AppTheme.themed(context, 0xFF000000),
+                  child: Center(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Preloader(),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Connecting to live room...',
+                          style: TextStyle(color: AppTheme.fg(context)),
+                        ),
+                      ],
+                    ),
                   ),
                 )
                 : MediaQuery.removePadding(
@@ -12892,9 +12924,11 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         backgroundColor: Colors.transparent,
         builder:
             (ctx) => Container(
-              decoration: const BoxDecoration(
-                color: Color(0xFF1A1A2E),
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              decoration: BoxDecoration(
+                color: AppTheme.themed(ctx, 0xFF1A1A2E),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
@@ -12903,19 +12937,22 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                     padding: const EdgeInsets.all(16),
                     child: Text(
                       v.name ?? 'User',
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: AppTheme.fg(ctx),
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
-                  const Divider(color: Colors.white12),
+                  Divider(color: AppTheme.hairline(ctx)),
                   ListTile(
-                    leading: const Icon(Icons.person, color: Colors.white70),
-                    title: const Text(
+                    leading: Icon(
+                      Icons.person,
+                      color: AppTheme.fg(ctx, 0.7),
+                    ),
+                    title: Text(
                       'View Profile',
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(color: AppTheme.fg(ctx)),
                     ),
                     onTap: () {
                       Navigator.pop(ctx);
@@ -13018,9 +13055,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                       Icons.group_add,
                       color: Color(0xFF7E3FF2),
                     ),
-                    title: const Text(
+                    title: Text(
                       'Invite to Call',
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(color: AppTheme.fg(ctx)),
                     ),
                     onTap: () {
                       Navigator.pop(ctx);
@@ -13032,9 +13069,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                       Icons.videocam,
                       color: Color(0xFF7E3FF2),
                     ),
-                    title: const Text(
+                    title: Text(
                       'Private Video Call',
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(color: AppTheme.fg(ctx)),
                     ),
                     onTap: () {
                       Navigator.pop(ctx);
@@ -13047,9 +13084,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                   ),
                   ListTile(
                     leading: const Icon(Icons.phone, color: Color(0xFF7E3FF2)),
-                    title: const Text(
+                    title: Text(
                       'Private Audio Call',
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(color: AppTheme.fg(ctx)),
                     ),
                     onTap: () {
                       Navigator.pop(ctx);
@@ -13103,9 +13140,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                   ),
                   ListTile(
                     leading: const Icon(Icons.report, color: Colors.orange),
-                    title: const Text(
+                    title: Text(
                       'Report / Block',
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(color: AppTheme.fg(ctx)),
                     ),
                     onTap: () {
                       Navigator.pop(ctx);
@@ -13127,21 +13164,21 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       context: context,
       builder:
           (ctx) => AlertDialog(
-            backgroundColor: const Color(0xFF1A1A2E),
-            title: const Text(
+            backgroundColor: AppTheme.themed(ctx, 0xFF1A1A2E),
+            title: Text(
               'Permissions Required',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppTheme.fg(ctx)),
             ),
-            content: const Text(
+            content: Text(
               'Camera and microphone access are needed to join this live stream. Please enable them in your app settings.',
-              style: TextStyle(color: Colors.white70),
+              style: TextStyle(color: AppTheme.fg(ctx, 0.7)),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text(
+                child: Text(
                   'Cancel',
-                  style: TextStyle(color: Colors.white54),
+                  style: TextStyle(color: AppTheme.fg(ctx, 0.54)),
                 ),
               ),
               FilledButton(
@@ -13162,9 +13199,11 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       backgroundColor: Colors.transparent,
       builder:
           (ctx) => Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF1A1A2E),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            decoration: BoxDecoration(
+              color: AppTheme.themed(ctx, 0xFF1A1A2E),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -13173,20 +13212,20 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                   padding: const EdgeInsets.all(16),
                   child: Text(
                     widget.isHost ? 'Host Options' : 'Room Options',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: AppTheme.fg(ctx),
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                const Divider(color: Colors.white12),
+                Divider(color: AppTheme.hairline(ctx)),
                 if (widget.isHost && _isPkActive)
                   ListTile(
                     leading: const Icon(Icons.logout, color: Colors.orange),
-                    title: const Text(
+                    title: Text(
                       'Leave PK',
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(color: AppTheme.fg(ctx)),
                     ),
                     onTap: () {
                       Navigator.pop(ctx);
@@ -13196,9 +13235,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                 if (widget.isHost)
                   ListTile(
                     leading: const Icon(Icons.close, color: Colors.red),
-                    title: const Text(
+                    title: Text(
                       'End Live',
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(color: AppTheme.fg(ctx)),
                     ),
                     onTap: () async {
                       Navigator.pop(ctx);
@@ -13208,9 +13247,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                 if (widget.isHost)
                   ListTile(
                     leading: const Icon(Icons.summarize, color: Colors.blue),
-                    title: const Text(
+                    title: Text(
                       'Summary',
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(color: AppTheme.fg(ctx)),
                     ),
                     onTap: () {
                       Navigator.pop(ctx);
@@ -13238,7 +13277,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                   leading: const Icon(Icons.exit_to_app, color: Colors.orange),
                   title: Text(
                     widget.isHost ? 'Close Live' : 'Leave Room',
-                    style: const TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppTheme.fg(ctx)),
                   ),
                   onTap: () async {
                     Navigator.pop(ctx);
@@ -13253,9 +13292,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                 ),
                 ListTile(
                   leading: const Icon(Icons.block, color: Colors.orange),
-                  title: const Text(
+                  title: Text(
                     'Block Users',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppTheme.fg(ctx)),
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -15744,9 +15783,9 @@ class _VirtualAvatarPickerSheet extends StatelessWidget {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.5,
       ),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF1A1A2E),
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
         ),
@@ -15764,10 +15803,10 @@ class _VirtualAvatarPickerSheet extends StatelessWidget {
                   size: 22,
                 ),
                 const SizedBox(width: 8),
-                const Text(
+                Text(
                   'Virtual Avatar',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppTheme.fg(context),
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -15797,16 +15836,16 @@ class _VirtualAvatarPickerSheet extends StatelessWidget {
                 const SizedBox(width: 8),
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
-                  child: const Icon(
+                  child: Icon(
                     Icons.close,
-                    color: Colors.white54,
+                    color: AppTheme.fg(context, 0.54),
                     size: 20,
                   ),
                 ),
               ],
             ),
           ),
-          const Divider(color: Colors.white12, height: 1),
+          Divider(color: AppTheme.hairline(context), height: 1),
           Flexible(
             child: GridView.builder(
               padding: const EdgeInsets.all(12),
@@ -15831,7 +15870,7 @@ class _VirtualAvatarPickerSheet extends StatelessWidget {
                       color:
                           isActive
                               ? Colors.teal.withValues(alpha: 0.3)
-                              : Colors.white.withValues(alpha: 0.05),
+                              : AppTheme.fg(ctx, 0.05),
                       borderRadius: BorderRadius.circular(12),
                       border:
                           isActive
@@ -15877,7 +15916,9 @@ class _VirtualAvatarPickerSheet extends StatelessWidget {
                           a.name,
                           style: TextStyle(
                             color:
-                                isActive ? Colors.tealAccent : Colors.white70,
+                                isActive
+                                    ? Colors.tealAccent
+                                    : AppTheme.fg(ctx, 0.7),
                             fontSize: 11,
                             fontWeight: FontWeight.w600,
                           ),

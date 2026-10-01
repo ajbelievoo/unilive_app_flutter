@@ -15,6 +15,7 @@ import '../services/api_service.dart';
 import '../services/gift_sound_service.dart';
 import '../services/session_manager.dart';
 import '../services/socket_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/log.dart';
 import '../utils/media_utils.dart';
 import '../providers/cp_provider.dart';
@@ -134,7 +135,7 @@ class GiftBottomSheet extends StatefulWidget {
     await showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -990,7 +991,7 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
       context: context,
       builder:
           (ctx) => AlertDialog(
-            backgroundColor: const Color(0xFF1A1033),
+            backgroundColor: AppTheme.themed(ctx, 0xFF1A1033, 0xFFFFFFFF),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
@@ -1003,7 +1004,7 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
             ),
             content: Text(
               'You won $winCoins diamonds (${multiplier}x)!',
-              style: const TextStyle(color: Colors.white, fontSize: 16),
+              style: TextStyle(color: AppTheme.fg(ctx), fontSize: 16),
             ),
             actions: [
               TextButton(
@@ -1283,9 +1284,9 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
     return Container(
       height: MediaQuery.of(context).size.height * 0.50,
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         children: [
@@ -1294,7 +1295,7 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
             width: 36,
             height: 4,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.2),
+              color: AppTheme.fg(context, 0.2),
               borderRadius: BorderRadius.circular(2),
             ),
           ),
@@ -1398,11 +1399,11 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
         margin: const EdgeInsets.only(right: 10),
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: isAll ? const Color(0xFF00C853) : const Color(0xFF0F1621),
+          color: isAll ? const Color(0xFF00C853) : AppTheme.cardBg(context),
           border:
               selected
                   ? Border.all(color: const Color(0xFFFFD700), width: 2)
-                  : Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  : Border.all(color: AppTheme.hairline(context)),
         ),
         child: Stack(
           alignment: Alignment.center,
@@ -1427,9 +1428,9 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
                               alpha: 0.1,
                             ),
                           )
-                          : const Icon(
+                          : Icon(
                             Icons.person,
-                            color: Colors.white,
+                            color: AppTheme.fg(context, 0.6),
                             size: 20,
                           )),
             ),
@@ -1468,10 +1469,10 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
       height: 34,
       child: Row(
         children: [
-          const Text(
+          Text(
             'Count:',
             style: TextStyle(
-              color: Colors.white70,
+              color: AppTheme.fg(context, 0.7),
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -1493,20 +1494,21 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
                       color:
                           selected
                               ? const Color(0xFFFFD700)
-                              : const Color(0xFF0F1621),
+                              : AppTheme.cardBg(context),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
                         color:
                             selected
                                 ? const Color(0xFFFFD700)
-                                : Colors.white.withValues(alpha: 0.1),
+                                : AppTheme.hairline(context),
                       ),
                     ),
                     alignment: Alignment.center,
                     child: Text(
                       '$value',
                       style: TextStyle(
-                        color: selected ? Colors.black : Colors.white,
+                        color:
+                            selected ? Colors.black : AppTheme.fg(context),
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                       ),
@@ -1543,7 +1545,10 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
                       Text(
                         cat.name ?? 'Category',
                         style: TextStyle(
-                          color: selected ? Colors.white : Colors.white54,
+                          color:
+                              selected
+                                  ? AppTheme.fg(context)
+                                  : AppTheme.fg(context, 0.54),
                           fontWeight:
                               selected ? FontWeight.bold : FontWeight.w500,
                           fontSize: 13,
@@ -1568,7 +1573,11 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
           const SizedBox(width: 8),
           GestureDetector(
             onTap: () => Fluttertoast.showToast(msg: 'Locked category'),
-            child: const Icon(Icons.lock, color: Colors.white54, size: 20),
+            child: Icon(
+              Icons.lock,
+              color: AppTheme.fg(context, 0.54),
+              size: 20,
+            ),
           ),
         ],
       ),
@@ -1622,10 +1631,10 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
       );
     }
     if (_gifts.isEmpty) {
-      return const Center(
+      return Center(
         child: Text(
           'No gifts available',
-          style: TextStyle(color: Colors.white54),
+          style: TextStyle(color: AppTheme.fg(context, 0.54)),
         ),
       );
     }
@@ -1648,12 +1657,12 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
           onTap: () => _selectGift(gift),
           child: Container(
             decoration: BoxDecoration(
-              color: const Color(0xFF0F1621),
+              color: AppTheme.cardBg(context),
               borderRadius: BorderRadius.circular(12),
               border:
                   selected
                       ? Border.all(color: const Color(0xFFFFD700), width: 1.5)
-                      : Border.all(color: Colors.white.withValues(alpha: 0.06)),
+                      : Border.all(color: AppTheme.hairline(context)),
             ),
             child: Stack(
               clipBehavior: Clip.none,
@@ -1667,9 +1676,9 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
                       const SizedBox(height: 3),
                       Text(
                         gift.name ?? '',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 9,
-                          color: Colors.white,
+                          color: AppTheme.fg(context),
                           fontWeight: FontWeight.w600,
                         ),
                         maxLines: 1,
@@ -2002,11 +2011,15 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
   Widget _giftPlaceholder() {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppTheme.fg(context, 0.05),
         borderRadius: BorderRadius.circular(10),
       ),
-      child: const Center(
-        child: Icon(Icons.card_giftcard, size: 24, color: Colors.white24),
+      child: Center(
+        child: Icon(
+          Icons.card_giftcard,
+          size: 24,
+          color: AppTheme.fg(context, 0.24),
+        ),
       ),
     );
   }
@@ -2040,8 +2053,8 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
               const SizedBox(width: 4),
               Text(
                 _formatCoins(coins),
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: AppTheme.fg(context),
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                 ),
@@ -2062,9 +2075,9 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
             Container(
               height: 34,
               decoration: BoxDecoration(
-                color: const Color(0xFF0F1621),
+                color: AppTheme.cardBg(context),
                 borderRadius: BorderRadius.circular(17),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                border: Border.all(color: AppTheme.hairline(context)),
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
@@ -2074,30 +2087,36 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
                         () => setState(
                           () => _count = _count > 1 ? _count - 1 : 1,
                         ),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
                       child: Icon(
                         Icons.keyboard_arrow_down,
-                        color: Colors.white70,
+                        color: AppTheme.fg(context, 0.7),
                         size: 18,
                       ),
                     ),
                   ),
                   Text(
                     '$_count',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: AppTheme.fg(context),
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   InkWell(
                     onTap: () => setState(() => _count = _count + 1),
-                    child: const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
                       child: Icon(
                         Icons.keyboard_arrow_up,
-                        color: Colors.white70,
+                        color: AppTheme.fg(context, 0.7),
                         size: 18,
                       ),
                     ),

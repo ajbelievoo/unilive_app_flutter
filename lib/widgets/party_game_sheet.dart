@@ -6,6 +6,8 @@ library party_game_sheet;
 
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
+
 void showPartyGameSheet(
   BuildContext context, {
   required bool isHost,
@@ -54,20 +56,20 @@ class _PartyGameSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF15152A, 0xFFF8F7FE),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 12),
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.grey.shade300, borderRadius: BorderRadius.circular(2))),
+            Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.hairline(context), borderRadius: BorderRadius.circular(2))),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'Party Game',
-              style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
             Padding(
@@ -99,7 +101,7 @@ class _PartyGameSheet extends StatelessWidget {
             width: 64,
             height: 64,
             decoration: BoxDecoration(
-              color: Colors.grey.shade100,
+              color: AppTheme.themed(context, 0xFF2A2A3E, 0xFFF5F5F5),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Image.asset(
@@ -108,7 +110,7 @@ class _PartyGameSheet extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 8),
-          Text(title, style: const TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.w500)),
+          Text(title, style: TextStyle(color: AppTheme.fg(context, 0.87), fontSize: 12, fontWeight: FontWeight.w500)),
         ],
       ),
     );

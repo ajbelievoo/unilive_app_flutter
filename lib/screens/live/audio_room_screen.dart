@@ -245,9 +245,9 @@ class _GoAudioLiveScreenState extends State<GoAudioLiveScreen> {
         height: 160,
         width: double.infinity,
         decoration: BoxDecoration(
-          color: Colors.grey.shade200,
+          color: AppTheme.cardBg(context),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(color: AppTheme.hairline(context)),
         ),
         clipBehavior: Clip.hardEdge,
         child:
@@ -263,10 +263,11 @@ class _GoAudioLiveScreenState extends State<GoAudioLiveScreen> {
                         imageUrl: _coverImageUrl!,
                         fit: BoxFit.cover,
                         placeholder:
-                            (_, __) => Container(color: Colors.grey.shade300),
+                            (_, __) =>
+                                Container(color: AppTheme.cardBg(context)),
                         errorWidget:
                             (_, __, ___) =>
-                                Container(color: Colors.grey.shade300),
+                                Container(color: AppTheme.cardBg(context)),
                       ),
                     Container(
                       color: Colors.black.withValues(alpha: 0.35),
@@ -287,26 +288,29 @@ class _GoAudioLiveScreenState extends State<GoAudioLiveScreen> {
                     ),
                   ],
                 )
-                : const Column(
+                : Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(
                       Icons.add_photo_alternate,
-                      color: Colors.grey,
+                      color: AppTheme.fg(context, 0.4),
                       size: 40,
                     ),
-                    SizedBox(height: 8),
+                    const SizedBox(height: 8),
                     Text(
                       'Add Room Cover',
                       style: TextStyle(
-                        color: Colors.grey,
+                        color: AppTheme.fg(context, 0.4),
                         fontWeight: FontWeight.w500,
                       ),
                     ),
-                    SizedBox(height: 4),
+                    const SizedBox(height: 4),
                     Text(
                       'This image will show on the home list',
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                      style: TextStyle(
+                        color: AppTheme.fg(context, 0.4),
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -487,7 +491,7 @@ class _GoAudioLiveScreenState extends State<GoAudioLiveScreen> {
             onTap: _selectRoomType,
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: Colors.grey.shade300),
+              side: BorderSide(color: AppTheme.hairline(context)),
             ),
           ),
           const SizedBox(height: 12),
@@ -6913,7 +6917,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     Navigator.pop(context);
     showModalBottomSheet<void>(
       context: context,
-      backgroundColor: const Color(0xFF17172A),
+      backgroundColor: AppTheme.themed(context, 0xFF17172A),
       builder:
           (sheetContext) => SafeArea(
             child: Column(
@@ -6930,7 +6934,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                           : permission == 'admins'
                           ? 'Host and authorized admins'
                           : 'Friends can request songs',
-                      style: const TextStyle(color: Colors.white),
+                      style: TextStyle(color: AppTheme.fg(sheetContext)),
                     ),
                     onChanged: (value) {
                       if (value == null) return;
@@ -7850,15 +7854,15 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       context: context,
       builder:
           (ctx) => AlertDialog(
-            backgroundColor: const Color(0xFF1A1A2E),
-            title: const Text(
+            backgroundColor: AppTheme.themed(ctx, 0xFF1A1A2E),
+            title: Text(
               'Hand already raised',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppTheme.fg(ctx)),
             ),
-            content: const Text(
+            content: Text(
               'You are already waiting for host approval. '
               'Do you want to switch to this seat or lower your hand?',
-              style: TextStyle(color: Colors.white70),
+              style: TextStyle(color: AppTheme.fg(ctx, 0.7)),
             ),
             actions: [
               TextButton(
@@ -8174,7 +8178,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   void _showSeatManagerSheet() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: AppTheme.themed(context, 0xFF1A1A2E),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -8183,12 +8187,12 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Padding(
-                  padding: EdgeInsets.all(16),
+                Padding(
+                  padding: const EdgeInsets.all(16),
                   child: Text(
                     'Manage Seats',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppTheme.fg(ctx),
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
@@ -8196,9 +8200,9 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                 ),
                 ListTile(
                   leading: const Icon(Icons.lock, color: Colors.orange),
-                  title: const Text(
+                  title: Text(
                     'Lock All Seats',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppTheme.fg(ctx)),
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -8207,9 +8211,9 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                 ),
                 ListTile(
                   leading: const Icon(Icons.lock_open, color: Colors.green),
-                  title: const Text(
+                  title: Text(
                     'Unlock All Seats',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppTheme.fg(ctx)),
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -8218,9 +8222,9 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                 ),
                 ListTile(
                   leading: const Icon(Icons.mic_off, color: Colors.red),
-                  title: const Text(
+                  title: Text(
                     'Mute All Seats',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppTheme.fg(ctx)),
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -8229,9 +8233,9 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                 ),
                 ListTile(
                   leading: const Icon(Icons.mic, color: Colors.green),
-                  title: const Text(
+                  title: Text(
                     'Unmute All Seats',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppTheme.fg(ctx)),
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -8240,13 +8244,13 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                 ),
                 ListTile(
                   leading: const Icon(Icons.grid_on, color: Colors.blue),
-                  title: const Text(
+                  title: Text(
                     'Number of Mics',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppTheme.fg(ctx)),
                   ),
                   subtitle: Text(
                     '${_seats.length} seats',
-                    style: const TextStyle(color: Colors.white54, fontSize: 12),
+                    style: TextStyle(color: AppTheme.fg(ctx, 0.54), fontSize: 12),
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -8258,15 +8262,17 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                   secondary: Icon(
                     Icons.record_voice_over,
                     color:
-                        _stageMode ? const Color(0xFFFFD700) : Colors.white54,
+                        _stageMode
+                            ? const Color(0xFFFFD700)
+                            : AppTheme.fg(ctx, 0.54),
                   ),
-                  title: const Text(
+                  title: Text(
                     'Stage Mode',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppTheme.fg(ctx)),
                   ),
-                  subtitle: const Text(
+                  subtitle: Text(
                     'One speaker at a time',
-                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                    style: TextStyle(color: AppTheme.fg(ctx, 0.54), fontSize: 12),
                   ),
                   value: _stageMode,
                   activeColor: const Color(0xFFFFD700),
@@ -8403,7 +8409,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       barrierDismissible: true,
       builder:
           (ctx) => Dialog(
-            backgroundColor: const Color(0xFF1A1A2E),
+            backgroundColor: AppTheme.themed(ctx, 0xFF1A1A2E),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
             ),
@@ -8416,8 +8422,8 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                     padding: const EdgeInsets.only(top: 4, bottom: 8),
                     child: Text(
                       'Seat ${seat.position + 1}',
-                      style: const TextStyle(
-                        color: Colors.white70,
+                      style: TextStyle(
+                        color: AppTheme.fg(ctx, 0.7),
                         fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
@@ -8873,7 +8879,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     }
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: AppTheme.themed(context, 0xFF1A1A2E),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -8886,14 +8892,14 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                   padding: const EdgeInsets.all(16),
                   child: Text(
                     'Invite ${name ?? 'User'} to Seat',
-                    style: const TextStyle(
-                      color: Colors.white,
+                    style: TextStyle(
+                      color: AppTheme.fg(ctx),
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
-                const Divider(height: 1, color: Colors.white24),
+                Divider(height: 1, color: AppTheme.hairline(ctx)),
                 SizedBox(
                   height: 250,
                   child: ListView.builder(
@@ -8910,7 +8916,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                         ),
                         title: Text(
                           'Seat ${pos + 1}',
-                          style: const TextStyle(color: Colors.white),
+                          style: TextStyle(color: AppTheme.fg(ctx)),
                         ),
                         onTap: () {
                           Navigator.pop(context);
@@ -9181,9 +9187,11 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       backgroundColor: Colors.transparent,
       builder:
           (ctx) => Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF1A1A2E),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            decoration: BoxDecoration(
+              color: AppTheme.themed(ctx, 0xFF1A1A2E),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
             ),
             child: SafeArea(
               child: Column(
@@ -9194,14 +9202,14 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                     height: 4,
                     margin: const EdgeInsets.only(top: 12, bottom: 16),
                     decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.25),
+                      color: AppTheme.fg(ctx, 0.25),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  const Text(
+                  Text(
                     'Counter',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppTheme.fg(ctx),
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                     ),
@@ -9213,9 +9221,9 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                         Icons.play_arrow,
                         color: Colors.green,
                       ),
-                      title: const Text(
+                      title: Text(
                         'Show Gift Counter',
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: AppTheme.fg(ctx)),
                       ),
                       onTap: () {
                         Navigator.pop(ctx);
@@ -9225,9 +9233,9 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                   else ...[
                     ListTile(
                       leading: const Icon(Icons.stop, color: Colors.redAccent),
-                      title: const Text(
+                      title: Text(
                         'Hide Gift Counter',
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: AppTheme.fg(ctx)),
                       ),
                       onTap: () {
                         Navigator.pop(ctx);
@@ -9239,9 +9247,9 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                         Icons.replay,
                         color: Color(0xFF4F8DFD),
                       ),
-                      title: const Text(
+                      title: Text(
                         'Reset Gift Counters',
-                        style: TextStyle(color: Colors.white),
+                        style: TextStyle(color: AppTheme.fg(ctx)),
                       ),
                       onTap: () {
                         Navigator.pop(ctx);
@@ -9966,9 +9974,11 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
             constraints: BoxConstraints(
               maxHeight: MediaQuery.of(context).size.height * 0.5,
             ),
-            decoration: const BoxDecoration(
-              color: Color(0xFF1A1A2E),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+            decoration: BoxDecoration(
+              color: AppTheme.themed(ctx, 0xFF1A1A2E),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(24),
+              ),
             ),
             child: SafeArea(
               child: Column(
@@ -9979,19 +9989,19 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                     height: 4,
                     margin: const EdgeInsets.only(top: 12, bottom: 16),
                     decoration: BoxDecoration(
-                      color: Colors.white24,
+                      color: AppTheme.fg(ctx, 0.24),
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  const Text(
+                  Text(
                     'Seat Requests',
                     style: TextStyle(
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                      color: AppTheme.fg(ctx),
                     ),
                   ),
-                  const Divider(color: Colors.white24),
+                  Divider(color: AppTheme.hairline(ctx)),
                   Flexible(
                     child: ListView.builder(
                       shrinkWrap: true,
@@ -10036,7 +10046,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                           ),
                           title: Text(
                             req['name']?.toString() ?? 'User',
-                            style: const TextStyle(color: Colors.white),
+                            style: TextStyle(color: AppTheme.fg(ctx)),
                           ),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
@@ -11122,22 +11132,22 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       context: context,
       builder:
           (ctx) => AlertDialog(
-            backgroundColor: const Color(0xFF1A1A2E),
-            title: const Text(
+            backgroundColor: AppTheme.themed(ctx, 0xFF1A1A2E),
+            title: Text(
               'Go Video Live?',
-              style: TextStyle(color: Colors.white),
+              style: TextStyle(color: AppTheme.fg(ctx)),
             ),
-            content: const Text(
+            content: Text(
               'All seated guests and listeners will be moved to your new video live room '
               'and this audio room will be closed.',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
+              style: TextStyle(color: AppTheme.fg(ctx, 0.7), fontSize: 14),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text(
+                child: Text(
                   'Cancel',
-                  style: TextStyle(color: Colors.white70),
+                  style: TextStyle(color: AppTheme.fg(ctx, 0.7)),
                 ),
               ),
               TextButton(
@@ -11591,7 +11601,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       barrierDismissible: true,
       builder:
           (ctx) => Dialog(
-            backgroundColor: const Color(0xFF161629),
+            backgroundColor: AppTheme.themed(ctx, 0xFF161629),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
@@ -11601,10 +11611,10 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Text(
+                  Text(
                     'Leave Audio Room?',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppTheme.fg(ctx),
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
@@ -11614,7 +11624,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                     _amHost
                         ? 'Minimize, leave, or completely end the live room.'
                         : 'Choose to keep in background or exit the room.',
-                    style: const TextStyle(color: Colors.white60, fontSize: 13),
+                    style: TextStyle(color: AppTheme.fg(ctx, 0.6), fontSize: 13),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
@@ -11690,21 +11700,21 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       context: context,
       builder:
           (ctx) => AlertDialog(
-            backgroundColor: const Color(0xFF1A1A2E),
-            title: const Text(
+            backgroundColor: AppTheme.themed(ctx, 0xFF1A1A2E),
+            title: Text(
               'End Room as Admin?',
-              style: TextStyle(color: Colors.white, fontSize: 18),
+              style: TextStyle(color: AppTheme.fg(ctx), fontSize: 18),
             ),
-            content: const Text(
+            content: Text(
               'This will end the room for the host and all listeners.',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
+              style: TextStyle(color: AppTheme.fg(ctx, 0.7), fontSize: 14),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text(
+                child: Text(
                   'Cancel',
-                  style: TextStyle(color: Colors.white70),
+                  style: TextStyle(color: AppTheme.fg(ctx, 0.7)),
                 ),
               ),
               TextButton(
@@ -11738,22 +11748,22 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       barrierDismissible: true,
       builder:
           (ctx) => AlertDialog(
-            backgroundColor: const Color(0xFF1A1A2E),
-            title: const Text(
+            backgroundColor: AppTheme.themed(ctx, 0xFF1A1A2E),
+            title: Text(
               'End Audio Room?',
-              style: TextStyle(color: Colors.white, fontSize: 18),
+              style: TextStyle(color: AppTheme.fg(ctx), fontSize: 18),
             ),
-            content: const Text(
+            content: Text(
               'Are you sure you want to end the room? '
               'All seated guests and listeners will be removed immediately.',
-              style: TextStyle(color: Colors.white70, fontSize: 14),
+              style: TextStyle(color: AppTheme.fg(ctx, 0.7), fontSize: 14),
             ),
             actions: [
               TextButton(
                 onPressed: () => Navigator.pop(ctx),
-                child: const Text(
+                child: Text(
                   'Cancel',
-                  style: TextStyle(color: Colors.white70),
+                  style: TextStyle(color: AppTheme.fg(ctx, 0.7)),
                 ),
               ),
               TextButton(
@@ -11792,18 +11802,18 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
             height: 64,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: backgroundColor ?? Colors.white.withValues(alpha: 0.1),
+              color: backgroundColor ?? AppTheme.fg(context, 0.1),
               border: Border.all(
-                color: borderColor ?? Colors.white.withValues(alpha: 0.4),
+                color: borderColor ?? AppTheme.fg(context, 0.4),
               ),
             ),
-            child: Icon(icon, color: iconColor ?? Colors.white, size: 28),
+            child: Icon(icon, color: iconColor ?? AppTheme.fg(context), size: 28),
           ),
           const SizedBox(height: 8),
           Text(
             label,
             style: TextStyle(
-              color: textColor ?? Colors.white,
+              color: textColor ?? AppTheme.fg(context),
               fontSize: 13,
               fontWeight: FontWeight.w600,
             ),
@@ -11957,7 +11967,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     // Show a bottom sheet with share options: system share, inbox share
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: AppTheme.themed(context, 0xFF1A1A2E),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -11966,22 +11976,22 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Padding(
-                  padding: EdgeInsets.all(16),
+                Padding(
+                  padding: const EdgeInsets.all(16),
                   child: Text(
                     'Share Room',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppTheme.fg(ctx),
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                 ),
                 ListTile(
-                  leading: const Icon(Icons.share, color: Colors.white),
-                  title: const Text(
+                  leading: Icon(Icons.share, color: AppTheme.fg(ctx)),
+                  title: Text(
                     'Share via apps',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppTheme.fg(ctx)),
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -11992,10 +12002,10 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                   },
                 ),
                 ListTile(
-                  leading: const Icon(Icons.chat, color: Colors.white),
-                  title: const Text(
+                  leading: Icon(Icons.chat, color: AppTheme.fg(ctx)),
+                  title: Text(
                     'Share to inbox',
-                    style: TextStyle(color: Colors.white),
+                    style: TextStyle(color: AppTheme.fg(ctx)),
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -15019,53 +15029,55 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       backgroundColor: Colors.transparent,
       builder:
           (ctx) => Container(
-            decoration: const BoxDecoration(
-              color: Color(0xFF1A1A2E),
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            decoration: BoxDecoration(
+              color: AppTheme.themed(ctx, 0xFF1A1A2E),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
             ),
             child: SafeArea(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Padding(
-                    padding: EdgeInsets.all(16),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
                     child: Text(
                       'Send Photo',
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppTheme.fg(ctx),
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                   ),
                   ListTile(
-                    leading: const Icon(
+                    leading: Icon(
                       Icons.photo_camera,
-                      color: Colors.white,
+                      color: AppTheme.fg(ctx),
                     ),
-                    title: const Text(
+                    title: Text(
                       'Take Photo',
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(color: AppTheme.fg(ctx)),
                     ),
                     onTap: () => Navigator.pop(ctx, ImageSource.camera),
                   ),
                   ListTile(
-                    leading: const Icon(
+                    leading: Icon(
                       Icons.photo_library,
-                      color: Colors.white,
+                      color: AppTheme.fg(ctx),
                     ),
-                    title: const Text(
+                    title: Text(
                       'Choose from Gallery',
-                      style: TextStyle(color: Colors.white),
+                      style: TextStyle(color: AppTheme.fg(ctx)),
                     ),
                     onTap: () => Navigator.pop(ctx, ImageSource.gallery),
                   ),
                   const SizedBox(height: 8),
                   TextButton(
                     onPressed: () => Navigator.pop(ctx, null),
-                    child: const Text(
+                    child: Text(
                       'Cancel',
-                      style: TextStyle(color: Colors.white54),
+                      style: TextStyle(color: AppTheme.fg(ctx, 0.54)),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -15656,9 +15668,9 @@ class _FamilyWarPickerSheetState extends State<_FamilyWarPickerSheet> {
   Widget build(BuildContext context) {
     return Container(
       height: MediaQuery.of(context).size.height * 0.6,
-      decoration: const BoxDecoration(
-        color: Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF1A1A2E),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SafeArea(
         child: Column(
@@ -15683,17 +15695,20 @@ class _FamilyWarPickerSheetState extends State<_FamilyWarPickerSheet> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  const Text(
+                  Text(
                     'Challenge a Family',
                     style: TextStyle(
-                      color: Colors.white,
+                      color: AppTheme.fg(context),
                       fontSize: 18,
                       fontWeight: FontWeight.bold,
                     ),
                   ),
                   const Spacer(),
                   IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white70),
+                    icon: Icon(
+                      Icons.close,
+                      color: AppTheme.fg(context, 0.7),
+                    ),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
@@ -15716,7 +15731,7 @@ class _FamilyWarPickerSheetState extends State<_FamilyWarPickerSheet> {
                   const SizedBox(width: 8),
                   Text(
                     'Your family: ${widget.myFamilyName}',
-                    style: const TextStyle(color: Colors.white70, fontSize: 13),
+                    style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 13),
                   ),
                 ],
               ),
@@ -15732,16 +15747,16 @@ class _FamilyWarPickerSheetState extends State<_FamilyWarPickerSheet> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.error_outline,
-                              color: Colors.white38,
+                              color: AppTheme.fg(context, 0.38),
                               size: 48,
                             ),
                             const SizedBox(height: 8),
                             Text(
                               _error!,
-                              style: const TextStyle(
-                                color: Colors.white54,
+                              style: TextStyle(
+                                color: AppTheme.fg(context, 0.54),
                                 fontSize: 14,
                               ),
                             ),
@@ -15760,20 +15775,20 @@ class _FamilyWarPickerSheetState extends State<_FamilyWarPickerSheet> {
                         ),
                       )
                       : _families.isEmpty
-                      ? const Center(
+                      ? Center(
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             Icon(
                               Icons.shield_moon,
                               size: 48,
-                              color: Colors.white24,
+                              color: AppTheme.fg(context, 0.24),
                             ),
-                            SizedBox(height: 8),
+                            const SizedBox(height: 8),
                             Text(
                               'No other families available',
                               style: TextStyle(
-                                color: Colors.white54,
+                                color: AppTheme.fg(context, 0.54),
                                 fontSize: 14,
                               ),
                             ),
@@ -15802,9 +15817,9 @@ class _FamilyWarPickerSheetState extends State<_FamilyWarPickerSheet> {
     return Container(
       margin: const EdgeInsets.only(bottom: 8),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppTheme.fg(context, 0.05),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -15829,15 +15844,15 @@ class _FamilyWarPickerSheetState extends State<_FamilyWarPickerSheet> {
         ),
         title: Text(
           f.name ?? 'Unknown Family',
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: AppTheme.fg(context),
             fontSize: 14,
             fontWeight: FontWeight.w600,
           ),
         ),
         subtitle: Text(
           'Lv.${f.level}  ${f.memberCount} members',
-          style: const TextStyle(color: Colors.white38, fontSize: 11),
+          style: TextStyle(color: AppTheme.fg(context, 0.38), fontSize: 11),
         ),
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
