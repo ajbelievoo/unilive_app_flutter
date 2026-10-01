@@ -180,6 +180,41 @@ class AppTheme {
     ],
   );
 
+  // ---- Theme-aware helpers for dark-first designed screens ---------------
+  /// True when the active theme is dark (also respects ThemeMode.system).
+  static bool isDark(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark;
+
+  /// Foreground color for text/icons painted directly on the screen
+  /// background — white on dark, deep-navy on light.
+  static Color fg(BuildContext context, [double alpha = 1.0]) =>
+      isDark(context)
+          ? Colors.white.withValues(alpha: alpha)
+          : const Color(0xFF1A1A2E).withValues(alpha: alpha);
+
+  /// Glass card surface — translucent white on dark, solid white on light.
+  static Color cardBg(BuildContext context) =>
+      isDark(context) ? Colors.white.withValues(alpha: 0.06) : Colors.white;
+
+  /// Hairline border/divider color.
+  static Color hairline(BuildContext context) =>
+      isDark(context)
+          ? Colors.white.withValues(alpha: 0.10)
+          : Colors.black.withValues(alpha: 0.08);
+
+  /// Returns Color([darkColor]) in dark mode or Color([lightColor]) in
+  /// light mode — for surfaces that were designed dark-only.
+  static Color themed(BuildContext context, int darkColor,
+          [int lightColor = 0xFFFFFFFF]) =>
+      isDark(context) ? Color(darkColor) : Color(lightColor);
+
+  /// Screen background gradient: keeps the design's [darkColors] in dark
+  /// mode and swaps in a soft off-white gradient for light mode.
+  static List<Color> bgGradient(BuildContext context, List<Color> darkColors) =>
+      isDark(context)
+          ? darkColors
+          : const [Color(0xFFF4F2FF), Color(0xFFFBFAFF), Color(0xFFFFFFFF)];
+
   // ---- System UI overlay styles ------------------------------------------
   /// Light overlay: dark icons on a light status bar.
   static const SystemUiOverlayStyle systemLight = SystemUiOverlayStyle(

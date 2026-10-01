@@ -10,6 +10,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import 'svga_player_widget.dart';
+import '../theme/app_theme.dart';
 import '../utils/media_utils.dart';
 
 // ---- Theme-aware palette ------------------------------------------------------
@@ -21,28 +22,21 @@ import '../utils/media_utils.dart';
 class StoreTheme {
   StoreTheme._();
 
-  static bool isDark(BuildContext context) =>
-      Theme.of(context).brightness == Brightness.dark;
+  static bool isDark(BuildContext context) => AppTheme.isDark(context);
 
   /// Primary foreground (text/icons on the screen background).
   static Color text(BuildContext context, [double alpha = 1.0]) =>
-      isDark(context)
-          ? Colors.white.withValues(alpha: alpha)
-          : const Color(0xFF1A1A2E).withValues(alpha: alpha);
+      AppTheme.fg(context, alpha);
 
   /// Card / sheet surface color.
-  static Color card(BuildContext context) =>
-      isDark(context) ? Colors.white.withValues(alpha: 0.06) : Colors.white;
+  static Color card(BuildContext context) => AppTheme.cardBg(context);
 
   /// Bottom-sheet / modal surface color.
   static Color sheet(BuildContext context) =>
-      isDark(context) ? const Color(0xFF15152A) : Colors.white;
+      AppTheme.themed(context, 0xFF15152A, 0xFFF8F7FE);
 
   /// Hairline border color for cards/chips.
-  static Color border(BuildContext context) =>
-      isDark(context)
-          ? Colors.white.withValues(alpha: 0.10)
-          : Colors.black.withValues(alpha: 0.08);
+  static Color border(BuildContext context) => AppTheme.hairline(context);
 }
 
 // ---- Category visual metadata ------------------------------------------------
