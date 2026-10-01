@@ -38,6 +38,13 @@ class _MainScreenState extends State<MainScreen> {
       GlobalKey<LiveListScreenState>();
   static const String _tag = 'MainScreen';
 
+  /// Tabs mount lazily on first visit. IndexedStack previously built all
+  /// four screens (Live/Feed/Messages/Profile) at once at startup — four
+  /// screens' worth of network calls + image decodes on the main thread
+  /// produced multi-second frame stalls and watchdog ANRs on low-end
+  /// devices. Once visited a tab stays alive to preserve scroll state.
+  final Set<int> _visitedTabs = {0};
+
   @override
   void initState() {
     super.initState();
@@ -93,6 +100,13 @@ class _MainScreenState extends State<MainScreen> {
       const ProfileScreen(),
     ];
 
+    // Lazy-mount: only the current + previously visited tabs exist in the
+    // tree; unvisited tabs are zero-cost placeholders.
+    final children = List.generate(
+      tabs.length,
+      (i) => _visitedTabs.contains(i) ? tabs[i] : const SizedBox.shrink(),
+    );
+
     return PopScope(
       canPop: false,
       onPopInvokedWithResult: (didPop, result) async {
@@ -106,7 +120,7 @@ class _MainScreenState extends State<MainScreen> {
         body: IndexedStack(
           alignment: Alignment.topLeft,
           index: _index,
-          children: tabs,
+          children: children,
         ),
         extendBody: true,
         bottomNavigationBar: _buildBottomNav(context),
@@ -197,7 +211,10 @@ class _MainScreenState extends State<MainScreen> {
     final selected = _index == index;
     return GestureDetector(
       onTap: () {
-        setState(() => _index = index);
+        setState(() {
+          _index = index;
+          _visitedTabs.add(index);
+        });
         // Whenever the Live (home) tab becomes active, reset to the "All"
         // tab and silently refresh so the user always sees fresh content.
         if (index == 0) {
