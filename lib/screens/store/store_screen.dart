@@ -218,12 +218,61 @@ class _StoreItemListTabState extends State<_StoreItemListTab>
   @override
   void initState() {
     super.initState();
+    final cached = _catalog[widget.type];
+    if (cached != null && cached.isNotEmpty) {
+      _items.addAll(cached);
+      _loading = false;
+    }
     _load();
+  }
+
+  /// Pre-decodes SVGA thumbnails and pre-caches raster images so grid items
+  /// render instantly instead of decoding/downloading on visibility.
+  void _warmItemMedia(List<StoreItem> items) {
+    final svgaUrls = <String>[];
+    final imgUrls = <String>[];
+    for (final item in items) {
+      for (final u in [item.thumbnail, item.image]) {
+        if (u == null || u.isEmpty) continue;
+        (SvgaHelper.isSvgaUrl(u) ? svgaUrls : imgUrls).add(u);
+      }
+    }
+    if (svgaUrls.isNotEmpty) SvgaCacheManager.warmDecode(svgaUrls);
+    if (imgUrls.isEmpty || !mounted) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      for (final u in imgUrls.take(24)) {
+        precacheImage(
+          CachedNetworkImageProvider(VideoUtil.getFullImageUrl(u)),
+          context,
+        );
+      }
+    });
+  }
+
+  /// Fetches the other categories' item lists in the background so switching
+  /// to an unvisited tab shows items instantly instead of a spinner.
+  void _prefetchOtherTabs() {
+    if (_prefetchStarted) return;
+    _prefetchStarted = true;
+    final session = context.read<SessionManager>();
+    for (final t in StoreScreen._tabTypes) {
+      if (t == 'luckyId' || t == widget.type || _catalog.containsKey(t)) {
+        continue;
+      }
+      ApiService.getStoreItems(type: t, userId: session.userId)
+          .then((r) {
+            if (r.status && r.data.isNotEmpty) {
+              _catalog[t] = List.of(r.data);
+            }
+          })
+          .catchError((_) {});
+    }
   }
 
   Future<void> _load() async {
     setState(() {
-      _loading = true;
+      _loading = _items.isEmpty;
       _hasError = false;
       _loadErrorMessage = null;
     });
