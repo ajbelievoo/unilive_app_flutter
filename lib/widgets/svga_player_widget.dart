@@ -1,10 +1,15 @@
 import 'dart:async';
 import 'dart:collection';
 import 'dart:io';
+import 'dart:isolate';
 import 'dart:typed_data';
+import 'dart:ui' as ui;
 import 'package:archive/archive.dart' as archive;
 import 'package:flutter/material.dart';
+import 'package:flutter/painting.dart' show decodeImageFromList;
 import 'package:svgaplayer_3/svgaplayer_flutter.dart';
+import 'package:svgaplayer_3/proto/svga.pb.dart'
+    show ShapeEntity, ShapeEntity_ShapeType;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:dio/dio.dart';
@@ -70,6 +75,35 @@ Uint8List _stripHttpCompression(Uint8List data) {
   return data;
 }
 
+/// CPU-heavy SVGA decode stage that runs inside a worker isolate:
+/// zlib inflate + protobuf parse + KEEP-shape backfill.
+///
+/// `SVGAParser.decodeFromBuffer()` does this synchronously on the caller's
+/// isolate — with 0.8–10 MB SVGA files that blocked the UI thread for
+/// seconds at a time, producing the Davey multi-second stalls and ANRs
+/// seen on the VIP store page. Isolate.run moves the blocking work off
+/// the UI thread; `MovieEntity` is plain data at this stage (its
+/// bitmapCache/pathCache are still empty) so it's safe to transfer back.
+MovieEntity _decodeMovieEntitySync(Uint8List bytes) {
+  final inflated = archive.ZLibDecoder().decodeBytes(bytes);
+  final movie = MovieEntity.fromBuffer(inflatedBytes);
+  // Same KEEP-shape backfill as SVGAParser._processShapeItems.
+  for (final sprite in movie.sprites) {
+    List<ShapeEntity>? lastShape;
+    for (final frame in sprite.frames) {
+      if (frame.shapes.isNotEmpty) {
+        if (frame.shapes.first.type == ShapeEntity_ShapeType.KEEP &&
+            lastShape != null) {
+          frame.shapes = lastShape;
+        } else {
+          lastShape = frame.shapes;
+        }
+      }
+    }
+  }
+  return movie;
+}
+
 /// Global SVGA cache with Disk & Memory persistence.
 ///
 /// IMPORTANT: We cache the raw **bytes** (Uint8List), NOT the decoded
@@ -96,6 +130,52 @@ class SvgaCacheManager {
   static const int _maxMemoryEntries = 6;
   static const int _maxFileBytes = 40 * 1024 * 1024;
   static Directory? _cacheDir;
+
+  /// Decode concurrency limiter. Without this, opening the VIP store (or a
+  /// gift wall) fired ~10 simultaneous SVGA decodes; the embedded image
+  /// decode phase queues on the platform image decoder anyway, so running
+  /// them all at once just multiplied memory pressure and produced
+  /// watchdog stalls. Two at a time keeps the pipeline busy without
+  /// overwhelming the device.
+  static int _activeDecodes = 0;
+  static const int _maxConcurrentDecodes = 2;
+  static final Queue<Completer<void>> _decodeWaiters = Queue();
+
+  static Future<void> _acquireDecodeSlot() {
+    if (_activeDecodes < _maxConcurrentDecodes) {
+      _activeDecodes++;
+      return Future.value();
+    }
+    final waiter = Completer<void>();
+    _decodeWaiters.add(waiter);
+    return waiter.future;
+  }
+
+  static void _releaseDecodeSlot() {
+    if (_decodeWaiters.isNotEmpty) {
+      _decodeWaiters.removeFirst().complete();
+    } else {
+      _activeDecodes--;
+    }
+  }
+
+  /// Decodes the SVGA's embedded images into `bitmapCache`. Equivalent to
+  /// SVGAParser._prepareResources — runs on this isolate because ui.Image
+  /// objects can't cross isolates (the platform decode itself happens on
+  /// the engine's IO thread, so this doesn't block the UI).
+  static Future<MovieEntity> _prepareResources(MovieEntity movie) async {
+    if (movie.images.isEmpty) return movie;
+    await Future.wait(movie.images.entries.map((item) async {
+      try {
+        final ui.Image image =
+            await decodeImageFromList(Uint8List.fromList(item.value));
+        movie.bitmapCache[item.key] = image;
+      } catch (e) {
+        Log.w('SvgaCacheManager', 'embedded image decode failed: $e');
+      }
+    }));
+    return movie;
+  }
 
   static Future<void> init() async {
     if (_cacheDir != null) return;
@@ -130,12 +210,18 @@ class SvgaCacheManager {
       }
 
       try {
-        // SVGAParser.decodeFromBuffer() handles zlib decompression internally
-        // and then parses the protobuf MovieEntity. We pass the raw bytes
-        // (which should be zlib-compressed protobuf starting with 0x78).
-        final video = await SVGAParser.shared
-            .decodeFromBuffer(bytes)
-            .timeout(const Duration(seconds: 12));
+        // zlib inflate + protobuf parse run on a worker isolate (they were
+        // blocking the UI thread for seconds on multi-MB files); embedded
+        // image decode runs here since ui.Image can't cross isolates.
+        await _acquireDecodeSlot();
+        MovieEntity video;
+        try {
+          video = await Isolate.run(() => _decodeMovieEntitySync(bytes))
+              .timeout(const Duration(seconds: 20));
+          video = await _prepareResources(video);
+        } finally {
+          _releaseDecodeSlot();
+        }
         if (video.params.frames <= 0) {
           Log.e('SvgaCacheManager',
               'Decoded SVGA is empty (no frames) (attempt ${attempt + 1}): $url');
