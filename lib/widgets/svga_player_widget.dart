@@ -6,7 +6,6 @@ import 'dart:typed_data';
 import 'dart:ui' as ui;
 import 'package:archive/archive.dart' as archive;
 import 'package:flutter/material.dart';
-import 'package:flutter/painting.dart' show decodeImageFromList;
 import 'package:svgaplayer_3/svgaplayer_flutter.dart';
 import 'package:svgaplayer_3/proto/svga.pb.dart'
     show ShapeEntity, ShapeEntity_ShapeType;
