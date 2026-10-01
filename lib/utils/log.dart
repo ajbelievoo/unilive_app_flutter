@@ -16,14 +16,12 @@ class Log {
   }
 
   static void d(String tag, Object? message) {
-    // TEMPORARY: enabled in release mode for PK debugging.
-    // TODO: revert to `if (kReleaseMode) return;` after PK fix is verified.
+    if (kReleaseMode) return;
     _print('[$tag] $message');
   }
 
   static void i(String tag, Object? message) {
-    // TEMPORARY: enabled in release mode for PK debugging.
-    // TODO: revert to `if (kReleaseMode) return;` after PK fix is verified.
+    if (kReleaseMode) return;
     _print('[$tag][INFO] $message');
   }
 

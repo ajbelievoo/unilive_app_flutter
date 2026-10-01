@@ -44,10 +44,6 @@ class GiftSoundService {
   DateTime? _lastDefaultPlay;
   Duration _minInterval = const Duration(milliseconds: 220);
 
-  // SVGA audio temp file counter (avoids name collisions when multiple SVGA
-  // gifts play back-to-back).
-  int _svgaSeq = 0;
-
   /// Initialise & preload the default gift sound. Safe to call multiple times.
   Future<void> init() async {
     if (_defaultPlayer != null && _defaultReady) return;
@@ -89,11 +85,16 @@ class GiftSoundService {
     }
 
     // Fallback: create a fresh player if the preloaded player had an issue.
+    // Store it as _defaultPlayer so it's reused and disposed — a bare local
+    // AudioPlayer leaks native resources on every fallback play.
     try {
-      final fallbackPlayer = AudioPlayer();
-      await fallbackPlayer.setAsset(_defaultAsset);
-      await fallbackPlayer.setVolume(1.0);
-      await fallbackPlayer.play();
+      await _defaultPlayer?.dispose();
+      final p = AudioPlayer();
+      _defaultPlayer = p;
+      await p.setAsset(_defaultAsset);
+      _defaultReady = true;
+      await p.setVolume(1.0);
+      await p.play();
     } catch (e) {
       Log.e(_tag, 'fallback playDefault failed', e);
     }
@@ -112,8 +113,9 @@ class GiftSoundService {
     if (bytes.isEmpty) return;
     try {
       final dir = await getTemporaryDirectory();
-      final seq = _svgaSeq++;
-      final file = File('${dir.path}/svga_audio_$seq.mp3');
+      // Reuse ONE temp file — previously every SVGA gift wrote a new file
+      // (svga_audio_0/1/2...) that was never deleted, growing cache forever.
+      final file = File('${dir.path}/svga_audio.mp3');
       await file.writeAsBytes(bytes, flush: true);
 
       // Reuse a single SVGA player; stop any in-flight audio first.

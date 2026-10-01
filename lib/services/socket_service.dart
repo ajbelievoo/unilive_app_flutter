@@ -31,12 +31,19 @@ class SocketService {
   int _reconnectAttempts = 0;
   Timer? _manualReconnectTimer;
 
-  /// Pending listeners registered before socket was ready.
-  /// Key = event name, Value = list of handlers.
-  final Map<String, List<void Function(dynamic)>> _pendingListeners = {};
+  /// Every live `on()` registration, keyed by event. Survives socket
+  /// recreation so handlers re-attach when a new socket object is built —
+  /// previously a reconnect-time `connect()` call disposed the socket and
+  /// permanently wiped every handler (rooms went dead mid-session).
+  final Map<String, Set<void Function(dynamic)>> _activeListeners = {};
 
   /// Pending emits queued before socket was ready.
+  /// Capped so periodic emits can't accumulate unboundedly while offline.
   final List<(String, dynamic)> _pendingEmits = [];
+  static const int _maxPendingEmits = 200;
+
+  /// Guards against concurrent connect() calls racing socket creation.
+  bool _connecting = false;
 
   /// Stream that emits `true` when connected, `false` when disconnected.
   final _connectionController = StreamController<bool>.broadcast();
@@ -61,10 +68,35 @@ class SocketService {
     String? authToken,
     String? deviceId,
   }) async {
-    if (_socket != null && _connected) {
+    if (_socket != null && _connected && _userId == userId) {
       Log.d(_tag, 'already connected');
       return;
     }
+
+    // Socket exists but is disconnected (auto-reconnect in flight or down).
+    // Reuse it — disposing it here would wipe every registered handler.
+    // socket.io dedupes concurrent connect() calls, so this is idempotent.
+    if (_socket != null && _userId == userId) {
+      Log.d(_tag, 'socket exists — nudging reconnect');
+      _socket!.connect();
+      return;
+    }
+
+    // A previous connect() is still building the socket — wait for it rather
+    // than racing a second socket creation (handlers would attach to the
+    // losing instance). After it settles, re-run connect() so the same-user
+    // fast paths above (or a real user switch) apply cleanly.
+    if (_connecting) {
+      for (var i = 0; i < 50 && _connecting; i++) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+      return connect(
+        userId: userId,
+        authToken: authToken,
+        deviceId: deviceId,
+      );
+    }
+
     _userId = userId;
     _authToken = authToken;
     _reconnectAttempts = 0;
@@ -82,13 +114,15 @@ class SocketService {
       }
     }
 
-    // Dispose old socket if any
+    // Dispose old socket only when reconnecting as a DIFFERENT user —
+    // same-user reconnects already returned above and keep their handlers.
     if (_socket != null) {
       try {
         _socket!.dispose();
       } catch (_) {}
       _socket = null;
     }
+    _connecting = true;
 
     final query = <String, String>{'globalRoom': 'globalRoom:$userId'};
     if (devId.isNotEmpty) query['deviceId'] = devId;
@@ -112,12 +146,17 @@ class SocketService {
 
     _socket = sio.io(socketUrl, optionsBuilder.build());
 
+    // Attach all live listeners to the fresh socket object. socket.io keeps
+    // handlers across reconnects on the SAME socket, so this must only run
+    // on socket creation — never inside onConnect/onReconnect (that would
+    // double-register every handler).
+    _attachActiveListeners();
+
     _socket!.onConnect((_) {
       _connected = true;
       _reconnectAttempts = 0;
       Log.d(_tag, 'connected successfully!');
       _connectionController.add(true);
-      _registerPendingListeners();
       _flushPendingEmits();
       emitPresence(true);
     });
@@ -148,7 +187,6 @@ class SocketService {
       Log.d(_tag, 'reconnected successfully');
       _reconnectAttempts = 0;
       _reconnectController.add(null);
-      _registerPendingListeners();
       _flushPendingEmits();
       emitPresence(true);
     });
@@ -161,8 +199,12 @@ class SocketService {
     _socket!.connect();
 
     // Wait up to 3 seconds for connection (non-blocking like native app)
-    for (int i = 0; i < 30 && !_connected; i++) {
-      await Future.delayed(const Duration(milliseconds: 100));
+    try {
+      for (int i = 0; i < 30 && !_connected; i++) {
+        await Future.delayed(const Duration(milliseconds: 100));
+      }
+    } finally {
+      _connecting = false;
     }
     Log.d(_tag, 'connect() returned, connected=$_connected');
   }
@@ -203,16 +245,16 @@ class SocketService {
     _socket?.connect();
   }
 
-  /// Register all pending listeners on the current socket.
-  void _registerPendingListeners() {
-    if (_socket == null || _pendingListeners.isEmpty) return;
-    for (final entry in _pendingListeners.entries) {
+  /// Attach every live listener to the current socket object. Only call
+  /// this right after creating a NEW socket — handlers persist in
+  /// [_activeListeners] across socket recreation.
+  void _attachActiveListeners() {
+    if (_socket == null) return;
+    for (final entry in _activeListeners.entries) {
       for (final handler in entry.value) {
         _socket!.on(entry.key, handler);
-        Log.d(_tag, 'registered pending listener: ${entry.key}');
       }
     }
-    _pendingListeners.clear();
   }
 
   /// Flush all pending emits.
@@ -229,15 +271,19 @@ class SocketService {
   /// subscription. If socket isn't connected yet, the listener is queued
   /// and registered when the socket connects.
   void Function() on(String event, void Function(dynamic data) handler) {
+    _activeListeners.putIfAbsent(event, () => {}).add(handler);
     if (_socket != null) {
       _socket!.on(event, handler);
     } else {
-      Log.d(_tag, 'socket not ready — queueing listener for: $event');
-      _pendingListeners.putIfAbsent(event, () => []).add(handler);
+      Log.d(_tag, 'socket not ready — listener will attach on connect: $event');
     }
     return () {
       _socket?.off(event, handler);
-      _pendingListeners[event]?.remove(handler);
+      final set = _activeListeners[event];
+      if (set != null) {
+        set.remove(handler);
+        if (set.isEmpty) _activeListeners.remove(event);
+      }
     };
   }
 
@@ -267,6 +313,11 @@ class SocketService {
     } else {
       Log.d(_tag, 'socket not ready — queueing emit($event)');
       _pendingEmits.add((event, data));
+      // Drop the oldest queued emits past the cap — periodic emits (view
+      // polls, heartbeats) go stale fast and must not flush as a burst.
+      if (_pendingEmits.length > _maxPendingEmits) {
+        _pendingEmits.removeRange(0, _pendingEmits.length - _maxPendingEmits);
+      }
     }
   }
 
@@ -290,7 +341,9 @@ class SocketService {
     _userId = null;
     _authToken = null;
     _reconnectAttempts = 0;
-    _pendingListeners.clear();
+    _connecting = false;
+    // NOTE: _activeListeners intentionally NOT cleared — they re-attach to
+    // the next socket. Each handler's owner removes it via its cancel fn.
     _pendingEmits.clear();
     _connectionController.add(false);
     Log.d(_tag, 'disconnected and disposed');

@@ -573,6 +573,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   static const String _tag = 'AudioRoom';
 
   late RtcEngine _engine;
+  RtcEngineEventHandler? _rtcEventHandler;
   bool _engineReady = false;
   bool _isJoinedChannel = false;
   bool? _pendingBroadcastRole;
@@ -644,6 +645,15 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   final _recentlyRemovedViewers = <String, DateTime>{};
 
   final _comments = <_LiveComment>[];
+
+  /// Bounded comment list — a busy room used to grow this forever.
+  static const int _maxComments = 200;
+  void _pushComment(_LiveComment c) {
+    _comments.add(c);
+    if (_comments.length > _maxComments) {
+      _comments.removeRange(0, _comments.length - _maxComments);
+    }
+  }
   int _clientCommentCount = 0;
   int _clientGiftCount = 0;
   int _clientFanCount = 0;
@@ -1039,6 +1049,31 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   /// if liveStreamingId is null (same logic as _emitJoinEvents).
   String get _liveId => _roomUser.liveStreamingId ?? _roomUser.id ?? '';
 
+  /// The socket is global — events from OTHER rooms arrive here too.
+  /// Returns false when the payload carries a room identifier that is known
+  /// NOT to be this room. Payloads without any room key pass through (some
+  /// backend events omit them).
+  bool _isThisRoomEvent(Map<dynamic, dynamic> map) {
+    final ids = <String>{
+      if (_liveId.isNotEmpty) _liveId,
+      if ((_roomUser.id ?? '').isNotEmpty) _roomUser.id!,
+      if ((_roomUser.liveUserId ?? '').isNotEmpty) _roomUser.liveUserId!,
+    };
+    // Note: 'liveUserId' is deliberately NOT checked — seat/event payloads
+    // sometimes carry the acting user's id there (a guest), not the room's.
+    for (final key in const [
+      'liveStreamingId',
+      'roomId',
+      'liveRoom',
+      'liveRoomId',
+      'liveUserMongoId',
+    ]) {
+      final v = map[key]?.toString();
+      if (v != null && v.isNotEmpty && !ids.contains(v)) return false;
+    }
+    return true;
+  }
+
   /// Host user ID for this room. Used as the `liveUserId` in socket payloads.
   /// Falls back to the first seat marked as host, or the room `_id` as last resort.
   String? get _hostUserId =>
@@ -1324,13 +1359,14 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       'requestFullList': true,
     };
     SocketService.instance.emit(Const.eventView, payload);
-    _viewerRefreshTimer = Timer.periodic(const Duration(seconds: 5), (t) {
+    _viewerRefreshTimer = Timer.periodic(const Duration(seconds: 15), (t) {
       if (!mounted) {
         t.cancel();
         return;
       }
-      // Emit view event to get fresh list from server. 5s keeps the top
-      // viewer strip/count much closer to real time without spamming backend.
+      // Each `view` poll is ~6 DB queries server-side PER member — at 5s a
+      // 100-member room generated ~120 queries/s of pure roster churn.
+      // addView/lessView pushes keep the list fresh between polls.
       SocketService.instance.emit(Const.eventView, payload);
     });
   }
@@ -1391,7 +1427,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   /// Add a local-only system comment and broadcast it to the room chat.
   void _addSystemComment(String text) {
     final comment = _LiveComment(name: 'System', text: text, isSystem: true);
-    setState(() => _comments.add(comment));
+    setState(() => _pushComment(comment));
     _scrollToBottom();
 
     final session = context.read<SessionManager>();
@@ -1626,7 +1662,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   }
 
   void _addJoinMessages() {
-    _comments.add(
+    _pushComment(
       _LiveComment(
         name: 'System',
         text:
@@ -1636,7 +1672,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     );
     final welcome = (_roomUser.roomWelcome ?? '').trim();
     if (welcome.isNotEmpty) {
-      _comments.add(
+      _pushComment(
         _LiveComment(name: 'Announcement', text: welcome, isSystem: true),
       );
     }
@@ -2066,8 +2102,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       );
       AudioRoomEngineService.instance.setEngine(_engine);
 
-      _engine.registerEventHandler(
-        RtcEngineEventHandler(
+      _rtcEventHandler = RtcEngineEventHandler(
           onJoinChannelSuccess: (conn, elapsed) {
             Log.d(_tag, 'joined ${conn.channelId} localUid=${conn.localUid}');
             _isJoinedChannel = true;
@@ -2329,8 +2364,8 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
             Log.d(_tag, 'token will expire, requesting new token');
             await _refreshToken();
           },
-        ),
       );
+      _engine.registerEventHandler(_rtcEventHandler!);
 
       await _engine.enableAudio();
       await _engine.enableAudioVolumeIndication(
@@ -2546,6 +2581,11 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         final ai = context.read<AIFeatureManager>();
         await AgoraExtensionsService.instance.dispose(_engine, ai);
       } catch (_) {}
+      final handler = _rtcEventHandler;
+      if (handler != null) {
+        _engine.unregisterEventHandler(handler);
+        _rtcEventHandler = null;
+      }
       await _engine.leaveChannel();
       await _engine.release();
     } catch (e) {
@@ -3057,6 +3097,10 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       try {
         final map = _unwrapSocketData(data);
         if (map == null) return;
+        // `dummy` is also used for other rooms' singleLiveUser responses —
+        // without this guard a nested join (e.g. profile sheet) overwrites
+        // this room's whole state with a different room's data.
+        if (!_isThisRoomEvent(map)) return;
         final updated = AudioRoomUser.fromJson(map);
         // Preserve the local seat count if the host just changed it, otherwise
         // grow to the backend's reported count.
@@ -3285,6 +3329,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     });
 
     _cancelAddViewSub = socket.on(Const.eventAddView, (data) {
+      if (data is Map && !_isThisRoomEvent(data)) return;
       final didAdd = _tryAddViewerFromSocket(data);
       // If the backend only sent a count signal with no user details, bump the count.
       if (!didAdd && data is! Map && data is! List) {
@@ -3375,6 +3420,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       }
     });
     _cancelLessViewSub = socket.on(Const.eventLessView, (data) {
+      if (data is Map && !_isThisRoomEvent(data)) return;
       final didRemove = _tryRemoveViewerFromSocket(data);
       // Always decrement count when someone leaves — even if the viewer
       // wasn't in our local list (host, untracked viewer, etc).
@@ -3384,6 +3430,12 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     });
 
     _cancelViewSub = socket.on(Const.eventView, (data) {
+      // Bare roster lists carry no room key — check only when it exists.
+      if (data is Map && !_isThisRoomEvent(data)) return;
+      if (data is List && data.isNotEmpty && data.first is Map) {
+        final first = data.first as Map;
+        if (!_isThisRoomEvent(first)) return;
+      }
       _parseViewerList(data);
     });
 
@@ -3484,6 +3536,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       try {
         final map = _unwrapSocketData(data);
         if (map == null) return;
+        if (!_isThisRoomEvent(map)) return;
         // Backend may broadcast the FULL room state (with `seat` array) for
         // the `seat` event — same as native `handleSeatRefreshEvent` which
         // delegates to `onSeat` when `json.has("seat")` is true.
@@ -3567,6 +3620,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       try {
         final map = _unwrapSocketData(data);
         if (map == null) return;
+        if (!_isThisRoomEvent(map)) return;
         // Mute events must update only the intended user's audio state. Some
         // backend responses include a stale full-room snapshot whose profile
         // fields belong to the host; applying it here replaces the guest's
@@ -3631,6 +3685,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       try {
         final map = _unwrapSocketData(data);
         if (map == null) return;
+        if (!_isThisRoomEvent(map)) return;
         // Backend broadcasts the FULL room state for addParticipants (with
         // `seat` array), matching native `handleSeatRefreshEvent` → `onSeat`.
         if (_isFullRoomState(map)) {
@@ -3699,6 +3754,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       try {
         final map = _unwrapSocketData(data);
         if (map == null) return;
+        if (!_isThisRoomEvent(map)) return;
         // Backend broadcasts the FULL room state for lessParticipants too.
         if (_isFullRoomState(map)) {
           Log.d(
@@ -3823,6 +3879,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     _listenExtraSocket(Const.eventRoomName, (data) {
       try {
         final map = _unwrapSocketData(data);
+        if (map != null && !_isThisRoomEvent(map)) return;
         final name = map?['roomName']?.toString();
         if (name?.isNotEmpty == true) {
           setState(() => _roomUser = _roomUser.copyWith(roomName: name));
@@ -3833,6 +3890,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     _listenExtraSocket(Const.eventRoomWelcome, (data) {
       try {
         final map = _unwrapSocketData(data);
+        if (map != null && !_isThisRoomEvent(map)) return;
         final welcome = map?['roomWelcome']?.toString();
         if (welcome != null) {
           setState(() => _roomUser = _roomUser.copyWith(roomWelcome: welcome));
@@ -3851,7 +3909,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
             (data is String ? data : null);
         if (text != null && text.trim().isNotEmpty && mounted) {
           setState(() {
-            _comments.add(
+            _pushComment(
               _LiveComment(
                 name: 'Announcement',
                 text: text.trim(),
@@ -4057,7 +4115,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
             setState(() {
               _seatRequests.add(map);
               // Also add as a comment with accept button (Bigo-style).
-              _comments.add(
+              _pushComment(
                 _LiveComment(
                   name: name,
                   text: 'requested to join seat',
@@ -4201,7 +4259,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
           _creditLuckyWin(coins);
           if (mounted) {
             setState(
-              () => _comments.add(
+              () => _pushComment(
                 _LiveComment(
                   name: 'System',
                   text: 'You won $coins diamonds in lucky gift!',
@@ -4274,7 +4332,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
               });
             }
           });
-          _comments.add(
+          _pushComment(
             _LiveComment(
               name: 'System',
               text: message,
@@ -4327,7 +4385,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
               map['user']?['_id']?.toString() ??
               '',
         );
-        _comments.add(luckyComment);
+        _pushComment(luckyComment);
         _clientCommentCount++;
         _scrollToBottom();
         final event = GiftQueueController.fromSocketData(data);
@@ -4420,7 +4478,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
               ? message
               : '$name won $coins diamonds in lucky gift!',
         );
-        _comments.add(
+        _pushComment(
           _LiveComment(
             name: name.isNotEmpty ? name : 'Someone',
             text:
@@ -4466,7 +4524,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         final image =
             map['senderImage']?.toString() ?? map['image']?.toString();
         setState(
-          () => _comments.add(
+          () => _pushComment(
             _LiveComment(
               name: name,
               text:
@@ -4498,7 +4556,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
             0;
         final image = map['image']?.toString();
         setState(
-          () => _comments.add(
+          () => _pushComment(
             _LiveComment(
               name: name,
               text: 'won $coins diamonds from the lucky bag',
@@ -4736,6 +4794,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       try {
         final map = _unwrapSocketData(data);
         if (map == null) return;
+        if (!_isThisRoomEvent(map)) return;
         final seatsJson = map['seat'] as List? ?? [];
         final newSeats =
             seatsJson
@@ -4787,6 +4846,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       try {
         final map = _unwrapSocketData(data);
         if (map == null) return;
+        if (!_isThisRoomEvent(map)) return;
         final view = map['view'] as int?;
         // Backend total includes the host, so subtract 1 for real viewer count.
         if (view != null && mounted) {
@@ -4799,6 +4859,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       try {
         final map = _unwrapSocketData(data);
         if (map == null) return;
+        if (!_isThisRoomEvent(map)) return;
         final blockedList = map['blocked'] as List? ?? [];
         final session = context.read<SessionManager>();
         final isBlocked = blockedList.any(
@@ -4917,13 +4978,15 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       } catch (_) {}
     });
 
-    _listenExtraSocket(Const.eventMusicPause, (_) {
+    _listenExtraSocket(Const.eventMusicPause, (data) {
+      if (data is Map && !_isThisRoomEvent(data)) return;
       _roomMusicIsPlaying = false;
       if (mounted) setState(() {});
       if (_musicController?.canControl == false) _musicController?.mirrorPause();
     });
 
-    _listenExtraSocket(Const.eventMusicResume, (_) {
+    _listenExtraSocket(Const.eventMusicResume, (data) {
+      if (data is Map && !_isThisRoomEvent(data)) return;
       _roomMusicIsPlaying = true;
       if (mounted) setState(() {});
       if (_musicController?.canControl == false) _musicController?.mirrorResume();
@@ -4934,6 +4997,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       try {
         final map = _unwrapSocketData(data);
         if (map == null) return;
+        if (!_isThisRoomEvent(map)) return;
         final pos =
             map['positionMs'] is int
                 ? map['positionMs'] as int
@@ -4947,6 +5011,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       try {
         final map = _unwrapSocketData(data);
         if (map == null) return;
+        if (!_isThisRoomEvent(map)) return;
         final vol =
             map['volume'] is int
                 ? map['volume'] as int
@@ -5019,7 +5084,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                 : null);
         if (mounted) {
           setState(
-            () => _comments.add(
+            () => _pushComment(
               _LiveComment(
                 name: name,
                 text:
@@ -5759,7 +5824,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
           if (_wheatMode) _autoAcceptSeatRequestIfFreeJoin(entry);
         }
         setState(
-          () => _comments.add(
+          () => _pushComment(
             _LiveComment(
               name: userName,
               text: 'requested a seat',
@@ -5807,7 +5872,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
 
       if (isCard) {
         setState(
-          () => _comments.add(
+          () => _pushComment(
             _LiveComment(
               name: userName,
               text: commentText,
@@ -5844,7 +5909,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       // System "left the room" message
       if (isSystem && isLeft) {
         setState(
-          () => _comments.add(
+          () => _pushComment(
             _LiveComment(
               name: userName,
               text: 'left the room',
@@ -5897,7 +5962,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         }
         if (!_effectSettings.showEnterRoomMessage) return;
         setState(
-          () => _comments.add(
+          () => _pushComment(
             _LiveComment(
               name: userName,
               text: 'joined the room',
@@ -5938,7 +6003,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       // Lucky bag / lucky win announcements — gold-styled chat bubble.
       if (type == 'luckyBag' || type == 'luckyWin') {
         setState(
-          () => _comments.add(
+          () => _pushComment(
             _LiveComment(
               name: userName,
               text: commentText,
@@ -5970,7 +6035,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
 
       if (type == 'image' && (cardImage ?? '').isNotEmpty) {
         setState(
-          () => _comments.add(
+          () => _pushComment(
             _LiveComment(
               name: userName,
               text: '',
@@ -6004,7 +6069,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
 
       if (commentText.isEmpty) return;
       setState(
-        () => _comments.add(
+        () => _pushComment(
           _LiveComment(
             name: userName,
             text: commentText,
@@ -7020,7 +7085,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     _commentCtrl.clear();
     final user = context.read<AuthProvider>().user;
     setState(
-      () => _comments.add(
+      () => _pushComment(
         _LiveComment(
           name: user?.name ?? 'Me',
           text: text,
@@ -7417,7 +7482,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       }
       _syncSeatAdminBadge(userId, isAdmin);
       if (wasAdmin != isAdmin) {
-        _comments.add(
+        _pushComment(
           _LiveComment(
             name: 'System',
             text:
@@ -8701,7 +8766,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                     );
                   }
                   // Add a system comment so the whole room sees who became admin.
-                  _comments.add(
+                  _pushComment(
                     _LiveComment(
                       name: 'System',
                       text:
@@ -9667,7 +9732,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
             ? event!.giftImage
             : _staticGiftImageFromUrls(rawGiftImage, rawAnimationUrl);
     setState(
-      () => _comments.add(
+      () => _pushComment(
         _LiveComment(
           name: senderName,
           text: '',
@@ -12016,7 +12081,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
             ? rawSvgaImage
             : ((giftType == 2 || giftType == 3) ? rawGiftImage : '');
     setState(
-      () => _comments.add(
+      () => _pushComment(
         _LiveComment(
           name: senderName,
           text: '',
@@ -12256,7 +12321,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         final name = payload['name']?.toString() ?? session.userName;
         if (!mounted) return;
         setState(
-          () => _comments.add(
+          () => _pushComment(
             _LiveComment(
               name: name,
               text:
@@ -13168,7 +13233,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                             final name =
                                 payload['name']?.toString() ?? 'Someone';
                             setState(
-                              () => _comments.add(
+                              () => _pushComment(
                                 _LiveComment(
                                   name: name,
                                   text:
@@ -15037,7 +15102,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         }
       }
       setState(
-        () => _comments.add(
+        () => _pushComment(
           _LiveComment(
             name: user?.name ?? 'Me',
             text: '',

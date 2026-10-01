@@ -544,6 +544,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   );
 
   late RtcEngineEx _engine;
+  RtcEngineEventHandler? _rtcEventHandler;
   bool _engineReady = false;
   bool _isMinimized = false;
   bool _isInSystemPip = false;
@@ -631,6 +632,16 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   }
 
   final _comments = <_LiveComment>[];
+
+  /// Bounded comment list — a busy room used to grow this forever (memory +
+  /// rebuild cost per add scales with list size).
+  static const int _maxComments = 200;
+  void _pushComment(_LiveComment c) {
+    _comments.add(c);
+    if (_comments.length > _maxComments) {
+      _comments.removeRange(0, _comments.length - _maxComments);
+    }
+  }
   int _clientCommentCount = 0;
   int _viewerCount = 0;
   int _clientFanCount = 0;
@@ -733,6 +744,13 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   /// Rebuilding the main view under a new key forces the SDK to rebind a
   /// fresh surface, so the live never stays stuck after a guest joins.
   int _videoSurfaceEpoch = 0;
+  bool _surfaceRefreshQueued = false;
+
+  /// Grace timers for transient Agora `userOfflineDropped` events — relayed
+  /// PK streams and co-host tiles flap under load; teardown only happens if
+  /// the uid doesn't rejoin within the window.
+  Timer? _pkDropGraceTimer;
+  final Map<int, Timer> _coHostDropTimers = {};
 
   /// Name/image cache keyed by userId — the backend's addParticipates
   /// broadcast does not always carry the guest's name, so tiles would
@@ -873,6 +891,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   int _pkRelayRetryCount = 0;
   bool _pkRelayStarted = false;
   bool _pkRelayStarting = false;
+  int _pkRelayGeneration = 0;
   static const int _pkRelayMaxRetries = 3;
   // UIDs of opponents whose PK battle just ended. Used to prevent relayed
   // video from briefly re-appearing as a co-host / Guest tile after PK stops.
@@ -1486,6 +1505,12 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     _pkRelayRetryTimer = null;
     _pkResultResetTimer?.cancel();
     _pkResultResetTimer = null;
+    _pkDropGraceTimer?.cancel();
+    _pkDropGraceTimer = null;
+    for (final t in _coHostDropTimers.values) {
+      t.cancel();
+    }
+    _coHostDropTimers.clear();
     _videoStartFallbackTimer?.cancel();
     _videoStartFallbackTimer = null;
     _durationTimer?.cancel();
@@ -1796,17 +1821,24 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         ),
       );
 
-      _engine.registerEventHandler(
-        RtcEngineEventHandler(
+      _rtcEventHandler = RtcEngineEventHandler(
           onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
             Log.i(_tag, 'joined channel ${connection.channelId}');
             if (mounted && _hostOffline) setState(() => _hostOffline = false);
           },
           onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
+            if (!mounted) return;
             Log.i(
               _tag,
               'remote user $remoteUid joined (connection.channelId=${connection.channelId}) pkRemoteUid=$_pkRemoteAgoraUid pkIsHost1=$_pkIsHost1',
             );
+
+            // A rejoin inside the grace window cancels the pending teardown.
+            if (_pkRemoteAgoraUid == remoteUid) {
+              _pkDropGraceTimer?.cancel();
+              _pkDropGraceTimer = null;
+            }
+            _coHostDropTimers.remove(remoteUid)?.cancel();
 
             if (!_isPkActive && _recentlyLeftPkUids.contains(remoteUid)) {
               Log.i(_tag, 'Ignoring recently-left PK opponent $remoteUid');
@@ -1847,6 +1879,18 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
 
             // PK opponent video — create dedicated PK remote controller.
             if (_pkRemoteAgoraUid == remoteUid) {
+              // Audience: re-request the low stream — the initial request at
+              // PK-open is dropped when the opponent uid hasn't appeared yet.
+              if (!widget.isHost && _isPkActive) {
+                unawaited(
+                  _engine
+                      .setRemoteVideoStreamType(
+                        uid: remoteUid,
+                        streamType: VideoStreamType.videoStreamLow,
+                      )
+                      .catchError((_) {}),
+                );
+              }
               setState(() {
                 _pkRemoteController = VideoViewController.remote(
                   rtcEngine: _engine,
@@ -1893,17 +1937,42 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             int remoteUid,
             UserOfflineReasonType reason,
           ) {
+            if (!mounted) return;
             Log.i(_tag, 'remote user $remoteUid offline: reason=$reason');
             if (_recentlyLeftPkUids.remove(remoteUid)) {
               Log.i(_tag, 'PK opponent $remoteUid fully left channel');
             }
+            final isTransientDrop =
+                reason == UserOfflineReasonType.userOfflineDropped;
+
             if (_pkRemoteAgoraUid == remoteUid) {
               if (_isPkActive) {
-                Log.i(
-                  _tag,
-                  'PK opponent $remoteUid went offline, leaving PK battle',
-                );
-                _leavePkBattle(reason: 'disconnect', notifyOpponent: false);
+                if (isTransientDrop) {
+                  // Media-relay streams flap under load — a transient drop
+                  // must not tear down the whole PK. Grace window: if the
+                  // opponent rejoins (onUserJoined) the timer is cancelled.
+                  Log.i(
+                    _tag,
+                    'PK opponent $remoteUid dropped (transient) — 6s grace',
+                  );
+                  _pkDropGraceTimer?.cancel();
+                  _pkDropGraceTimer = Timer(const Duration(seconds: 6), () {
+                    if (mounted &&
+                        _isPkActive &&
+                        _pkRemoteAgoraUid == remoteUid) {
+                      _leavePkBattle(
+                        reason: 'disconnect',
+                        notifyOpponent: false,
+                      );
+                    }
+                  });
+                } else {
+                  Log.i(
+                    _tag,
+                    'PK opponent $remoteUid quit, leaving PK battle',
+                  );
+                  _leavePkBattle(reason: 'disconnect', notifyOpponent: false);
+                }
               } else {
                 setState(() => _pkRemoteController = null);
               }
@@ -1925,14 +1994,38 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
               }
             }
 
-            // Remove co-host controller if present.
+            // Remove co-host controller if present. A transient drop keeps
+            // the tile for a grace window — otherwise every network flap
+            // tears down + rebuilds the whole SurfaceView set.
             if (_coHostControllers.containsKey(remoteUid)) {
-              setState(() {
-                _coHostControllers.remove(remoteUid);
-                _coHosts.removeWhere((h) => _coHostAgoraUid(h) == remoteUid);
-              });
-              _coHostUidToUserId.remove(remoteUid);
-              _refreshMainVideoSurface();
+              if (isTransientDrop) {
+                _coHostDropTimers[remoteUid]?.cancel();
+                _coHostDropTimers[remoteUid] = Timer(
+                  const Duration(seconds: 6),
+                  () {
+                    _coHostDropTimers.remove(remoteUid);
+                    if (!mounted) return;
+                    setState(() {
+                      _coHostControllers.remove(remoteUid);
+                      _coHosts.removeWhere(
+                        (h) => _coHostAgoraUid(h) == remoteUid,
+                      );
+                    });
+                    _coHostUidToUserId.remove(remoteUid);
+                    _refreshMainVideoSurface();
+                  },
+                );
+              } else {
+                _coHostDropTimers.remove(remoteUid)?.cancel();
+                setState(() {
+                  _coHostControllers.remove(remoteUid);
+                  _coHosts.removeWhere(
+                    (h) => _coHostAgoraUid(h) == remoteUid,
+                  );
+                });
+                _coHostUidToUserId.remove(remoteUid);
+                _refreshMainVideoSurface();
+              }
             }
           },
           // When a remote user turns their camera off, the backend does not
@@ -2061,10 +2154,24 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             Log.d(_tag, 'audioMixing state=$state reason=$reason');
             _musicController?.onAudioMixingStateChanged(state, reason);
           },
-        ),
       );
+      _engine.registerEventHandler(_rtcEventHandler!);
 
       await _engine.enableVideo();
+
+      // Audio profile/scenario + AEC/NS/AGC — the video room previously ran
+      // Agora defaults, which break down (echo, level fights) once several
+      // co-hosts publish mic. Same settings stack as the audio room.
+      try {
+        final audioSettings = await AudioQualityService.loadSettings();
+        await AudioQualityService.applySettings(_engine, audioSettings);
+      } catch (e) {
+        Log.e(_tag, 'audio quality apply failed', e);
+      }
+      // Voice traffic routes to speakerphone in a live room (not earpiece).
+      try {
+        await _engine.setDefaultAudioRouteToSpeakerphone(true);
+      } catch (_) {}
 
       // Register a native Agora video frame observer so the Host Presence
       // Guard can inspect REAL camera frames (I420) instead of the black
@@ -2125,7 +2232,10 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           widget.liveUser.userId ??
           widget.liveUser.liveRoomId ??
           '';
-      final uid = widget.isHost ? widget.liveUser.agoraUID : 0;
+      // Audience joins with their pre-assigned co-host uid so switching to
+      // broadcaster later is a pure in-channel role switch — no leave+rejoin
+      // (which used to black out all remote audio for 1-3s on every join).
+      final uid = widget.isHost ? widget.liveUser.agoraUID : _myAgoraUid;
 
       if (widget.isHost) {
         _localController = VideoViewController(
@@ -2426,6 +2536,11 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         try {
           await AgoraExtensionsService.instance.dispose(_engine, aiManager);
         } catch (_) {}
+      }
+      final handler = _rtcEventHandler;
+      if (handler != null) {
+        _engine.unregisterEventHandler(handler);
+        _rtcEventHandler = null;
       }
       await _engine.leaveChannel();
       await _engine.release();
@@ -2782,6 +2897,13 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     final liveId = widget.liveUser.liveRoomId;
     final liveUserMongoId = widget.liveUser.id;
 
+    // Registers a listener whose cancel fn is retained for dispose().
+    // Bare `socket.on(...)` calls leak onto the global singleton socket —
+    // after N room visits every event fires N stale handlers.
+    void onEvt(String event, void Function(dynamic) handler) {
+      _roomRuntimeSocketCancellations.add(socket.on(event, handler));
+    }
+
     // Explicitly connect to this room on the backend to receive events (SS 11).
     final currentUserId = context.read<SessionManager>().userId;
     socket.emit(Const.eventLiveRoomConnect, {
@@ -2936,7 +3058,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         // so the host can invite any number of times.
         if (type == 'callInvite' || type == 'invite') {
           setState(
-            () => _comments.add(
+            () => _pushComment(
               _LiveComment(
                 name: userName,
                 text: commentText,
@@ -3107,7 +3229,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             }
           }
           setState(
-            () => _comments.add(
+            () => _pushComment(
               _LiveComment(
                 name: userName,
                 text: 'sent a request to join a call',
@@ -3182,7 +3304,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
               1;
           final gCoin = (map['coin'] as num?)?.toInt() ?? 0;
           setState(
-            () => _comments.add(
+            () => _pushComment(
               _LiveComment(
                 name: userName,
                 text: '',
@@ -3296,7 +3418,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           }
           if (_effectSettings.showEnterRoomMessage) {
             setState(
-              () => _comments.add(
+              () => _pushComment(
                 _LiveComment(
                   name: userName,
                   text: 'joined the room',
@@ -3362,7 +3484,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           }
           if (_effectSettings.showEnterRoomMessage) {
             setState(
-              () => _comments.add(
+              () => _pushComment(
                 _LiveComment(
                   name: userName,
                   text: 'left the room',
@@ -3386,7 +3508,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         // Image comment (photo sent in chat).
         if (commentText.isEmpty && imageUrl.isNotEmpty) {
           setState(
-            () => _comments.add(
+            () => _pushComment(
               _LiveComment(
                 name: userName,
                 text: '',
@@ -3468,7 +3590,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             Map<String, dynamic>.from(map),
           ),
         );
-        setState(() => _comments.add(newComment));
+        setState(() => _pushComment(newComment));
         if (_isTranslationEnabled) _translateComment(newComment);
         _clientCommentCount++;
         _scrollToBottom();
@@ -3542,7 +3664,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
               '',
         );
         setState(
-          () => _comments.add(
+          () => _pushComment(
             _LiveComment(
               name: name,
               text: '',
@@ -3691,7 +3813,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
               '',
         );
         setState(
-          () => _comments.add(
+          () => _pushComment(
             _LiveComment(
               name: event.senderName,
               text: '',
@@ -3823,7 +3945,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
               '',
         );
         setState(
-          () => _comments.add(
+          () => _pushComment(
             _LiveComment(
               name: name,
               text: '',
@@ -3920,7 +4042,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             Fluttertoast.showToast(msg: 'You won $coins diamonds');
             _creditLuckyWin(coins);
             setState(
-              () => _comments.add(
+              () => _pushComment(
                 _LiveComment(
                   name: 'System',
                   text: 'You won $coins diamonds',
@@ -3938,7 +4060,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             Fluttertoast.showToast(msg: 'You won $coins diamonds');
             _creditLuckyWin(coins);
             setState(
-              () => _comments.add(
+              () => _pushComment(
                 _LiveComment(
                   name: 'System',
                   text: 'You won $coins diamonds',
@@ -4003,7 +4125,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           });
           _startLuckyBannerTimer();
           setState(
-            () => _comments.add(
+            () => _pushComment(
               _LiveComment(
                 name: 'System',
                 text:
@@ -4093,7 +4215,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         });
         _startLuckyBannerTimer();
         setState(
-          () => _comments.add(
+          () => _pushComment(
             _LiveComment(
               name: 'System',
               text:
@@ -4705,7 +4827,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       }
     });
 
-    socket.on(Const.eventUserCoinUpdate, (data) {
+    onEvt(Const.eventUserCoinUpdate, (data) {
       try {
         context.read<AuthProvider>().updateUserCoinsFromSocket(data);
       } catch (_) {}
@@ -4744,7 +4866,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         // to all viewers AND the broadcaster in the comments section.
         if (mounted) {
           setState(
-            () => _comments.add(
+            () => _pushComment(
               _LiveComment(
                 name: senderName,
                 text:
@@ -4781,7 +4903,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             (map['coins'] as num?)?.toInt() ??
             0;
         setState(
-          () => _comments.add(
+          () => _pushComment(
             _LiveComment(
               name: name,
               text: 'won $coins diamonds from the lucky bag',
@@ -4797,7 +4919,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
 
     // Live-pushed announcements (next-day gifting events, game schedules,
     // admin broadcasts) — shown in the comments section.
-    socket.on('roomAnnouncement', (data) {
+    onEvt('roomAnnouncement', (data) {
       try {
         String? text;
         if (data is Map) {
@@ -4807,7 +4929,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         }
         if (text != null && text.trim().isNotEmpty && mounted) {
           setState(() {
-            _comments.add(
+            _pushComment(
               _LiveComment(
                 name: 'Announcement',
                 text: text!.trim(),
@@ -4820,13 +4942,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     });
 
     // Host-set room welcome/announcement updates the comments too.
-    socket.on(Const.eventRoomWelcome, (data) {
+    onEvt(Const.eventRoomWelcome, (data) {
       try {
         final map = data is Map ? Map<String, dynamic>.from(data) : null;
+        if (map != null && !_payloadBelongsToCurrentLive(map)) return;
         final welcome = map?['roomWelcome']?.toString();
         if (welcome != null && welcome.trim().isNotEmpty && mounted) {
           setState(() {
-            _comments.add(
+            _pushComment(
               _LiveComment(
                 name: 'Announcement',
                 text: welcome.trim(),
@@ -4840,10 +4963,11 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
 
     // Room-wide sound effects — when anyone plays a sound effect, every
     // room member hears it locally (assets are bundled in the app).
-    socket.on('roomSoundEffect', (data) {
+    onEvt('roomSoundEffect', (data) {
       try {
         final map = data is Map ? Map<String, dynamic>.from(data) : null;
         if (map == null || !mounted) return;
+        if (!_payloadBelongsToCurrentLive(map)) return;
         final senderId = map['userId']?.toString() ?? '';
         if (senderId == context.read<SessionManager>().userId) return;
         final effectId = map['effectId']?.toString() ?? '';
@@ -4853,7 +4977,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       } catch (_) {}
     });
 
-    socket.on(Const.eventMaintenance, (_) {
+    onEvt(Const.eventMaintenance, (_) {
       if (mounted) {
         showDialog(
           context: context,
@@ -4875,7 +4999,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       }
     });
 
-    socket.on(Const.eventUserBlock, (_) {
+    onEvt(Const.eventUserBlock, (_) {
       if (mounted) {
         Fluttertoast.showToast(msg: 'You have been removed from the room');
         Navigator.pop(context);
@@ -4883,10 +5007,13 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     });
 
     // Cheer from other users
-    socket.on('cheer', (data) {
+    onEvt('cheer', (data) {
       try {
         final map = data is Map ? data : null;
         if (map == null) return;
+        if (!_payloadBelongsToCurrentLive(Map<String, dynamic>.from(map))) {
+          return;
+        }
         final name = map['name']?.toString() ?? 'User';
         final image = map['image']?.toString();
         _cheerKey.currentState?.addCheer(name: name, imageUrl: image);
@@ -5722,7 +5849,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         final prize = (map['prize'] as num?)?.toInt() ?? 0;
         final gameName = map['gameName']?.toString() ?? 'Game';
         setState(
-          () => _comments.add(
+          () => _pushComment(
             _LiveComment(
               name: 'System',
               text: '$winnerName won $prize diamonds in $gameName!',
@@ -5761,10 +5888,13 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     });
 
     // Theme change
-    socket.on(Const.eventChangeTheme, (data) {
+    onEvt(Const.eventChangeTheme, (data) {
       try {
         final map = data is Map ? data : null;
         if (map == null) return;
+        if (!_payloadBelongsToCurrentLive(Map<String, dynamic>.from(map))) {
+          return;
+        }
         final bg = map['background']?.toString();
         if (bg != null && bg.isNotEmpty && mounted) {
           setState(() => _backgroundImage = bg);
@@ -5820,7 +5950,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         if (position == -1) {
           if (mounted) {
             setState(
-              () => _comments.add(
+              () => _pushComment(
                 _LiveComment(
                   name: name,
                   text:
@@ -5844,10 +5974,13 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     });
 
     // Banned user list (host blocks user)
-    socket.on(Const.eventUpdateBlockedlist, (data) {
+    onEvt(Const.eventUpdateBlockedlist, (data) {
       try {
         final map = data is Map ? data : null;
         if (map == null) return;
+        if (!_payloadBelongsToCurrentLive(Map<String, dynamic>.from(map))) {
+          return;
+        }
         final blockedList = map['blocked'] as List? ?? [];
         final session = context.read<SessionManager>();
         final isBlocked = blockedList.any(
@@ -5861,10 +5994,13 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     });
 
     // Live rejoin - update viewer count (backend total includes the host).
-    socket.on(Const.eventLiveRejoin, (data) {
+    onEvt(Const.eventLiveRejoin, (data) {
       try {
         final map = data is Map ? data : null;
         if (map == null) return;
+        if (!_payloadBelongsToCurrentLive(Map<String, dynamic>.from(map))) {
+          return;
+        }
         final view = parseInt(map['view']);
         // Never let a rejoin ack drop the count below the viewers we
         // already know are inside — some backends send a stale/low `view`.
@@ -5879,11 +6015,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     // Music events (host controls background music; viewers mirror state).
     // Host actions are emitted by RoomMusicController hooks, so the host
     // ignores these echoes — only viewers mirror.
-    socket.on(Const.eventMusicPlay, (data) {
+    onEvt(Const.eventMusicPlay, (data) {
       if (widget.isHost) return;
       try {
         final map = data is Map ? data : null;
         if (map == null) return;
+        if (!_payloadBelongsToCurrentLive(Map<String, dynamic>.from(map))) {
+          return;
+        }
         final trackJson = map['track'] is Map ? map['track'] as Map : null;
         final pos =
             map['positionMs'] is int
@@ -5927,8 +6066,12 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       } catch (_) {}
     });
 
-    socket.on(Const.eventMusicStop, (_) {
+    onEvt(Const.eventMusicStop, (data) {
       if (widget.isHost) return;
+      if (data is Map &&
+          !_payloadBelongsToCurrentLive(Map<String, dynamic>.from(data))) {
+        return;
+      }
       if (mounted) {
         _musicController?.mirrorStop();
         setState(() {
@@ -5938,23 +6081,34 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       }
     });
 
-    socket.on(Const.eventMusicPause, (_) {
+    onEvt(Const.eventMusicPause, (data) {
       if (widget.isHost || !mounted) return;
+      if (data is Map &&
+          !_payloadBelongsToCurrentLive(Map<String, dynamic>.from(data))) {
+        return;
+      }
       _musicController?.mirrorPause();
       setState(() => _isMusicPlaying = false);
     });
 
-    socket.on(Const.eventMusicResume, (_) {
+    onEvt(Const.eventMusicResume, (data) {
       if (widget.isHost || !mounted) return;
+      if (data is Map &&
+          !_payloadBelongsToCurrentLive(Map<String, dynamic>.from(data))) {
+        return;
+      }
       _musicController?.mirrorResume();
       setState(() => _isMusicPlaying = true);
     });
 
-    socket.on(Const.eventMusicSeek, (data) {
+    onEvt(Const.eventMusicSeek, (data) {
       if (widget.isHost || !mounted) return;
       try {
         final map = data is Map ? data : null;
         if (map == null) return;
+        if (!_payloadBelongsToCurrentLive(Map<String, dynamic>.from(map))) {
+          return;
+        }
         final pos =
             map['positionMs'] is int
                 ? map['positionMs'] as int
@@ -5963,11 +6117,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       } catch (_) {}
     });
 
-    socket.on(Const.eventMusicVolume, (data) {
+    onEvt(Const.eventMusicVolume, (data) {
       if (widget.isHost || !mounted) return;
       try {
         final map = data is Map ? data : null;
         if (map == null) return;
+        if (!_payloadBelongsToCurrentLive(Map<String, dynamic>.from(map))) {
+          return;
+        }
         final vol =
             map['volume'] is int
                 ? map['volume'] as int
@@ -5977,7 +6134,11 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     });
 
     // Live end by admin.
-    socket.on(Const.eventLiveEndByAdmin, (_) {
+    onEvt(Const.eventLiveEndByAdmin, (data) {
+      if (data is Map &&
+          !_payloadBelongsToCurrentLive(Map<String, dynamic>.from(data))) {
+        return;
+      }
       if (mounted) {
         Fluttertoast.showToast(msg: 'Live ended by admin');
         Navigator.pop(context);
@@ -5985,7 +6146,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     });
 
     // Host calling event (host initiates a call from live).
-    socket.on(Const.eventHostCalling, (data) {
+    onEvt(Const.eventHostCalling, (data) {
       try {
         final map = data is Map ? data : null;
         if (map == null) return;
@@ -6001,14 +6162,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     });
 
     // Host call ended.
-    socket.on(Const.eventHostCallEnded, (_) {
+    onEvt(Const.eventHostCallEnded, (_) {
       if (mounted) {
         Fluttertoast.showToast(msg: 'Host call ended');
       }
     });
 
     // VIP expiry warning.
-    socket.on(Const.eventVipExpiryWarning, (data) {
+    onEvt(Const.eventVipExpiryWarning, (data) {
       try {
         final map = data is Map ? data : null;
         if (map == null) return;
@@ -6021,7 +6182,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     });
 
     // VIP downgraded.
-    socket.on(Const.eventVipDowngraded, (_) {
+    onEvt(Const.eventVipDowngraded, (_) {
       if (mounted) {
         Fluttertoast.showToast(msg: 'Your VIP has expired');
         context.read<AuthProvider>().refreshUser();
@@ -6048,33 +6209,33 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     });
 
     // Co-Watch sync events.
-    socket.on(Const.eventCoWatchPlay, (data) {
+    onEvt(Const.eventCoWatchPlay, (data) {
       if (widget.isHost) return;
       _applyCoWatchData(data, (m, url, title, pos) {
         _coWatchController?.applyPlay(url, title, pos);
       });
     });
-    socket.on(Const.eventCoWatchPause, (data) {
+    onEvt(Const.eventCoWatchPause, (data) {
       if (widget.isHost) return;
       _coWatchController?.applyPause();
     });
-    socket.on(Const.eventCoWatchResume, (data) {
+    onEvt(Const.eventCoWatchResume, (data) {
       if (widget.isHost) return;
       _coWatchController?.applyResume();
     });
-    socket.on(Const.eventCoWatchSeek, (data) {
+    onEvt(Const.eventCoWatchSeek, (data) {
       if (widget.isHost) return;
       _applyCoWatchData(data, (m, url, title, pos) {
         _coWatchController?.applySeek(pos);
       });
     });
-    socket.on(Const.eventCoWatchStop, (data) {
+    onEvt(Const.eventCoWatchStop, (data) {
       if (widget.isHost) return;
       _coWatchController?.applyStop();
     });
 
     // Voice Emoji events.
-    socket.on(Const.eventVoiceEmoji, (data) {
+    onEvt(Const.eventVoiceEmoji, (data) {
       try {
         final map = data is Map ? Map<String, dynamic>.from(data) : null;
         if (map == null) return;
@@ -6193,7 +6354,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     if (payload == null) return;
 
     SocketService.instance.emit(Const.eventView, payload);
-    _viewerRefreshTimer = Timer.periodic(const Duration(seconds: 5), (t) {
+    _viewerRefreshTimer = Timer.periodic(const Duration(seconds: 15), (t) {
       if (!mounted) {
         t.cancel();
         return;
@@ -6463,7 +6624,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         isNameAnimation: VipPrivilegeHelper.hasNameAnimation(session),
       ),
     );
-    setState(() => _comments.add(localComment));
+    setState(() => _pushComment(localComment));
     if (_isTranslationEnabled) _translateComment(localComment);
     _clientCommentCount++;
     _scrollToBottom();
@@ -6515,7 +6676,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       }
       final fullUrl = VideoUtil.getFullImageUrl(imageUrl);
       setState(
-        () => _comments.add(
+        () => _pushComment(
           _LiveComment(
             name: user?.name ?? 'Me',
             text: '',
@@ -6675,7 +6836,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   /// or black until it is rebuilt — this performs automatically the same
   /// recovery users previously did with a manual camera off/on toggle.
   void _refreshMainVideoSurface() {
+    // Coalesce bursts: when 3-4 co-hosts join/leave back-to-back, each event
+    // used to schedule its own full-surface rebuild (every platform view
+    // destroyed + recreated + host preview restarted). One rebuild per frame
+    // is enough — the latest state is rendered anyway.
+    if (_surfaceRefreshQueued) return;
+    _surfaceRefreshQueued = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
+      _surfaceRefreshQueued = false;
       if (!mounted) return;
       setState(() {
         _videoSurfaceEpoch++;
@@ -7111,14 +7279,18 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   Future<void> _startBroadcast() async {
     if (!_engineReady || _myAgoraUid <= 0) return;
     try {
-      // The viewer initially joined as audience with uid=0. To publish as a
-      // co-host with a stable, known agoraUid, we must leave and rejoin.
-      await _engine.leaveChannel();
-      await _joinAgoraChannel(
-        uid: _myAgoraUid,
-        broadcaster: true,
-        startPreview: true,
+      // Audience already joined the channel with uid=_myAgoraUid, so going
+      // on-call is an in-channel role switch — no leave+rejoin. Remote audio
+      // keeps flowing for this user and nobody's subscriptions churn.
+      await _engine.setClientRole(role: ClientRoleType.clientRoleBroadcaster);
+      await _engine.updateChannelMediaOptions(
+        const ChannelMediaOptions(
+          clientRoleType: ClientRoleType.clientRoleBroadcaster,
+          publishMicrophoneTrack: true,
+          publishCameraTrack: true,
+        ),
       );
+      await _engine.startPreview();
 
       // Create local video controller for co-host (self view).
       _coHostControllers[_myAgoraUid] = VideoViewController(
@@ -7174,12 +7346,20 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       // can't silently auto-join us again (guarded in the join handler).
       _myJoinRequestSent = false;
       _myCallInviteAccepted = false;
-      await _engine.leaveChannel();
+      // In-channel downgrade back to audience — mic/camera stop publishing
+      // but remote streams keep playing without any rejoin gap.
+      await _engine.updateChannelMediaOptions(
+        const ChannelMediaOptions(
+          clientRoleType: ClientRoleType.clientRoleAudience,
+          publishMicrophoneTrack: false,
+          publishCameraTrack: false,
+        ),
+      );
+      await _engine.setClientRole(role: ClientRoleType.clientRoleAudience);
+      try {
+        await _engine.stopPreview();
+      } catch (_) {}
       _removeCoHostController(_myAgoraUid);
-      // Rejoin as audience with uid=0 (the original audience uid).
-      if (_uid case final uid?) {
-        await _joinAgoraChannel(uid: uid, broadcaster: false);
-      }
       if (mounted) setState(() {});
       Fluttertoast.showToast(msg: 'You left the call');
     } catch (e) {
@@ -8342,7 +8522,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
 
   Future<void> _toggleSpeaker() async {
     _speakerEnabled = !_speakerEnabled;
-    await _engine.muteAllRemoteAudioStreams(!_speakerEnabled);
+    // Route audio speaker<->earpiece — this used to call
+    // muteAllRemoteAudioStreams, which silenced the host AND every co-host.
+    await _engine.setEnableSpeakerphone(_speakerEnabled);
     setState(() {});
   }
 
@@ -9243,7 +9425,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     final localEvent = GiftQueueController.fromSocketData(resend);
     if (localEvent != null) {
       setState(
-        () => _comments.add(
+        () => _pushComment(
           _LiveComment(
             name: user?.name ?? session.userName,
             text: '',
@@ -9316,7 +9498,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         final name = payload['name']?.toString() ?? session.userName;
         if (!mounted) return;
         setState(
-          () => _comments.add(
+          () => _pushComment(
             _LiveComment(
               name: name,
               text:
@@ -10138,6 +10320,10 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       return;
     }
     _pkRelayStarting = true;
+    // Generation guard: if PK ends (or a newer relay start begins) while we
+    // sit in the 500ms delay, abort — otherwise the delayed start fires on a
+    // dead PK and leaves a phantom relayed publisher in the channel.
+    final generation = ++_pkRelayGeneration;
     final srcConnection = RtcConnection(channelId: myChannel, localUid: srcUid);
     try {
       await _engine.stopChannelMediaRelayEx(srcConnection);
@@ -10151,6 +10337,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       );
     }
     await Future<void>.delayed(const Duration(milliseconds: 500));
+    if (!mounted ||
+        !_isPkActive ||
+        generation != _pkRelayGeneration ||
+        _pkConfig == null) {
+      _pkRelayStarting = false;
+      Log.d(_tag, 'PK relay: start aborted — PK ended during delay');
+      return;
+    }
     try {
       await _engine.startOrUpdateChannelMediaRelayEx(
         configuration: relayConfig,
@@ -10243,31 +10437,32 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       setState(() => _pkSecondsLeft = 0);
       _handlePkTimerFinished();
     });
-    // Periodic server sync so both hosts show the same timer/score even when
-    // the socket broadcast misses one room or the device clocks drift.
-    _pkServerSyncTimer?.cancel();
-    _pkServerSyncTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
-      if (!mounted || !_isPkActive || _pkConfig == null) {
-        timer.cancel();
-        return;
-      }
+    // Periodic server sync + score re-broadcast are HOST-ONLY. Previously
+    // every PK *viewer* also ran both — N viewers meant N×2 socket emits per
+    // 2s + N HTTP polls per 10s, a storm that scaled with audience size.
+    // Viewers get scores from the room-wide broadcasts the hosts make.
+    if (widget.isHost) {
+      _pkServerSyncTimer?.cancel();
+      _pkServerSyncTimer = Timer.periodic(const Duration(seconds: 10), (timer) {
+        if (!mounted || !_isPkActive || _pkConfig == null) {
+          timer.cancel();
+          return;
+        }
+        unawaited(_syncPkFromServer());
+      });
       unawaited(_syncPkFromServer());
-    });
-    unawaited(_syncPkFromServer());
 
-    // Aggressive cross-room fallback: re-broadcast the latest local score
-    // every 2 seconds so a missed server `pkScoreUpdate` does not leave the
-    // other host stale for long.
-    _pkScoreBroadcastTimer?.cancel();
-    _pkScoreBroadcastTimer = Timer.periodic(const Duration(seconds: 2), (
-      timer,
-    ) {
-      if (!mounted || !_isPkActive || _pkConfig == null) {
-        timer.cancel();
-        return;
-      }
-      _emitPkScoreUpdate();
-    });
+      _pkScoreBroadcastTimer?.cancel();
+      _pkScoreBroadcastTimer = Timer.periodic(const Duration(seconds: 2), (
+        timer,
+      ) {
+        if (!mounted || !_isPkActive || _pkConfig == null) {
+          timer.cancel();
+          return;
+        }
+        _emitPkScoreUpdate();
+      });
+    }
   }
 
   /// Fetches the authoritative PK state from `/pkCall/status` so both hosts
@@ -10964,6 +11159,8 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     _pkRelayRetryTimer = null;
     _pkResultResetTimer?.cancel();
     _pkResultResetTimer = null;
+    _pkDropGraceTimer?.cancel();
+    _pkDropGraceTimer = null;
     unawaited(_stopPkMediaRelay(configToStop));
     if (leavingOpponentUid != null && leavingOpponentUid > 0) {
       unawaited(
@@ -10989,6 +11186,8 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   }
 
   Future<void> _stopPkMediaRelay([PkConfig? configOverride]) async {
+    // Invalidate any in-flight start parked in its 500ms delay.
+    _pkRelayGeneration++;
     _pkTimer?.cancel();
     _pkTimer = null;
     _pkVideoRetryTimer?.cancel();
@@ -11711,7 +11910,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
               }
               // 1. Add chat comment bubble for the gift.
               setState(
-                () => _comments.add(
+                () => _pushComment(
                   _LiveComment(
                     name: user?.name ?? session.userName,
                     text: '',
@@ -11971,7 +12170,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                             final name =
                                 payload['name']?.toString() ?? 'Someone';
                             setState(
-                              () => _comments.add(
+                              () => _pushComment(
                                 _LiveComment(
                                   name: name,
                                   text:
