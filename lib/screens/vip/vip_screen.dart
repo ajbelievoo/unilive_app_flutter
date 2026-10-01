@@ -26,6 +26,8 @@ import '../../models/user_root.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/vip_provider.dart';
 import '../../routes/app_routes.dart';
+import '../../services/api_service.dart';
+import '../../services/session_manager.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/format_utils.dart';
 import '../../utils/log.dart';
