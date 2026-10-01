@@ -1,9 +1,18 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin plugins.
     id("dev.flutter.flutter-gradle-plugin")
     id("com.google.gms.google-services")
+}
+
+val keystoreProperties = Properties().apply {
+    val keyProps = rootProject.file("key.properties")
+    if (keyProps.exists()) {
+        keyProps.inputStream().use { load(it) }
+    }
 }
 
 android {
@@ -39,10 +48,13 @@ android {
             enableV4Signing = false
         }
         create("release") {
-            storeFile = file("release.keystore")
-            storePassword = "believoo123"
-            keyAlias = "release-key"
-            keyPassword = "believoo123"
+            // Published APKs are signed with the shared release key whose
+            // SHA-1 (9656e59f…) is registered in Firebase — a different key
+            // breaks Google Sign-In and update installs.
+            storeFile = file(keystoreProperties.getProperty("storeFile", "release.keystore"))
+            storePassword = keystoreProperties.getProperty("storePassword", "believoo123")
+            keyAlias = keystoreProperties.getProperty("keyAlias", "release-key")
+            keyPassword = keystoreProperties.getProperty("keyPassword", "believoo123")
             enableV1Signing = true
             enableV2Signing = true
             enableV3Signing = false
