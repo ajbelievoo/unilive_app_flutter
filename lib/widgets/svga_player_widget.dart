@@ -105,18 +105,17 @@ MovieEntity _decodeMovieEntitySync(Uint8List bytes) {
 
 /// Global SVGA cache with Disk & Memory persistence.
 ///
-/// IMPORTANT: We cache the raw **bytes** (Uint8List), NOT the decoded
-/// `MovieEntity`. The `svgaplayer_flutter` `MovieEntity`/videoItem is NOT
-/// safe to share across multiple `SVGAAnimationController` instances — when
-/// one controller is disposed it releases the videoItem's rendering
-/// resources, which kills any other controller still holding the same
-/// instance. Caching a single decoded `MovieEntity` caused the bug where a
-/// frame/asset showed once, then never again until the app was restarted
-/// (restart cleared the in-memory cache → fresh decode → worked once more).
+/// IMPORTANT: `MovieEntity`/videoItem is NOT safe to share across
+/// multiple `SVGAAnimationController` instances — when one controller is
+/// disposed it releases the videoItem's rendering resources, which kills
+/// any other controller still holding the same instance.
 ///
-/// By caching bytes and decoding a fresh `MovieEntity` per `load()` call,
-/// every `SvgaPlayer` gets its own independent videoItem that can be
-/// disposed safely without affecting siblings or future widgets.
+/// To keep revisits instant WITHOUT that bug, entities go through the
+/// exclusive-checkout [_entityPool]: a player detaches its entity
+/// (autorelease=false, videoItem=null) and [checkin]s it on dispose, and
+/// the next `load()` hands it to exactly one new player. Embedded images
+/// are additionally shared via [_imageCache] clones (refcounted, safe),
+/// so even a cold decode re-decodes protobuf only, not PNGs.
 ///
 /// SVGA v2 format: The file is a **zlib-compressed protobuf** `MovieEntity`.
 /// `SVGAParser.decodeFromBuffer()` handles the zlib decompression internally,
@@ -155,6 +154,44 @@ class SvgaCacheManager {
     while (_imageCache.length > _maxCachedImages) {
       final evicted = _imageCache.remove(_imageCache.keys.first);
       evicted?.dispose();
+    }
+  }
+
+  /// Ready-to-render MovieEntity objects returned by disposed players.
+  /// Checkout in [load()] is exclusive and checkin detaches the controller
+  /// first, so an entity is never shared concurrently. This is what makes
+  /// revisiting a VIP tier / re-entering a room truly instant — no parse,
+  /// no image decode, straight onto a fresh controller.
+  static final LinkedHashMap<String, MovieEntity> _entityPool =
+      LinkedHashMap();
+  static const int _maxPooledEntities = 10;
+
+  /// Returns a decoded entity to the pool for reuse, or disposes it when
+  /// the pool is full ([evict] = false keeps existing entries and drops the
+  /// newcomer — used by warm-up so early tiers stay pooled).
+  static void checkin(String rawUrl, MovieEntity? entity,
+      {bool evict = true}) {
+    if (entity == null) return;
+    try {
+      final url = VideoUtil.getFullSvgaUrl(rawUrl.trim());
+      if (url.isEmpty || entity.params.frames <= 0) {
+        entity.dispose();
+        return;
+      }
+      entity.autorelease = false;
+      _entityPool.remove(url);
+      if (_entityPool.length >= _maxPooledEntities) {
+        if (!evict) {
+          entity.dispose();
+          return;
+        }
+        _entityPool.remove(_entityPool.keys.first)?.dispose();
+      }
+      _entityPool[url] = entity;
+    } catch (_) {
+      try {
+        entity.dispose();
+      } catch (_) {}
     }
   }
 
@@ -239,6 +276,21 @@ class SvgaCacheManager {
     // raw backend paths without calling VideoUtil.getFullSvgaUrl first.
     final url = VideoUtil.getFullSvgaUrl(rawUrl.trim());
     if (url.isEmpty) return null;
+
+    // Revisit fast path: a previously-disposed player returned its decoded
+    // entity to the pool — check it out and skip download + parse + image
+    // decode entirely. Fresh dynamicItem so per-player mutations (hidden
+    // sprites, text/embedded-image overrides) never leak between users.
+    final pooled = _entityPool.remove(url);
+    if (pooled != null) {
+      if (pooled.params.frames > 0) {
+        pooled.dynamicItem = SVGADynamicEntity();
+        return pooled;
+      }
+      try {
+        pooled.dispose();
+      } catch (_) {}
+    }
 
     for (var attempt = 0; attempt < 2; attempt++) {
       final bytes = await _getBytes(url, forceNetwork: attempt > 0);
@@ -442,9 +494,7 @@ class SvgaCacheManager {
   static void warmDecode(List<String> urls) {
     for (final url in urls) {
       load(url).then((entity) {
-        try {
-          entity?.dispose();
-        } catch (_) {}
+        checkin(url, entity, evict: false);
       }).catchError((_) {});
     }
   }
@@ -523,6 +573,7 @@ class _SvgaPlayerState extends State<SvgaPlayer>
     final url = widget.url?.trim();
     if (url == null || url.isEmpty) {
       _controller?.stop();
+      _returnEntity(_controller);
       _loadedUrl = null;
       if (mounted) {
         setState(() {
@@ -563,7 +614,13 @@ class _SvgaPlayerState extends State<SvgaPlayer>
     } catch (e) {
       Log.e('SvgaPlayer', 'SVGA load failed: $url', e);
     }
-    if (!mounted || generation != _loadGeneration || widget.url?.trim() != url) return;
+    if (!mounted ||
+        generation != _loadGeneration ||
+        widget.url?.trim() != url) {
+      // Widget left/re-targeted mid-load — don't waste the decode, pool it.
+      if (video != null) SvgaCacheManager.checkin(url, video);
+      return;
+    }
 
     if (video == null) {
       final rasterBytes = await SvgaCacheManager.loadRasterFallback(url);
@@ -590,6 +647,7 @@ class _SvgaPlayerState extends State<SvgaPlayer>
     }
 
     final oldController = _controller;
+    _returnEntity(oldController);
     final controller = SVGAAnimationController(vsync: this);
     controller.videoItem = video;
     _controller = controller;
@@ -675,12 +733,37 @@ class _SvgaPlayerState extends State<SvgaPlayer>
     }
   }
 
+  /// Detaches the decoded entity from [c] and returns it to the pool so a
+  /// later visit skips decode entirely. `autorelease=false` must be set
+  /// BEFORE `videoItem = null` — the setter disposes the old item
+  /// otherwise (and `SVGAAnimationController.dispose()` sets videoItem to
+  /// null internally, which is why detach must happen first).
+  void _returnEntity(SVGAAnimationController? c) {
+    if (c == null) return;
+    final entity = c.videoItem;
+    if (entity == null) return;
+    entity.autorelease = false;
+    try {
+      c.videoItem = null;
+    } catch (_) {}
+    final url = _loadedUrl;
+    if (url != null && url.isNotEmpty) {
+      SvgaCacheManager.checkin(url, entity);
+    } else {
+      try {
+        entity.dispose();
+      } catch (_) {}
+    }
+  }
+
   @override
   void dispose() {
     _loadGeneration++;
-    _controller?.stop();
-    _controller?.dispose();
+    final c = _controller;
     _controller = null;
+    c?.stop();
+    _returnEntity(c);
+    c?.dispose();
     // Stop embedded audio when this player is disposed so the sound
     // doesn't keep playing after the overlay/widget is removed.
     if (widget.playEmbeddedAudio) {
