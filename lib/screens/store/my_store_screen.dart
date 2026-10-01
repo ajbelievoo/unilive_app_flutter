@@ -20,8 +20,10 @@ import '../../routes/app_routes.dart';
 import '../../services/api_service.dart';
 import '../../services/session_manager.dart';
 import '../../utils/log.dart';
+import '../../utils/media_utils.dart';
 import '../../widgets/premium_ui.dart';
 import '../../widgets/store_widgets.dart';
+import '../../widgets/svga_player_widget.dart';
 
 class MyStoreScreen extends StatefulWidget {
   const MyStoreScreen({super.key});
@@ -61,8 +63,11 @@ class _MyStoreScreenState extends State<MyStoreScreen>
   }
 
   Future<void> _loadData() async {
+    // Render the provider's cached inventory instantly (it survives across
+    // screen visits) — the network refresh below updates it silently.
+    final cached = context.read<StoreProvider>().myItems;
     setState(() {
-      _isLoading = true;
+      _isLoading = cached.isEmpty;
       _loadError = null;
     });
     try {
@@ -77,6 +82,7 @@ class _MyStoreScreenState extends State<MyStoreScreen>
       if (!mounted) return;
       final items = provider.myItems;
       Log.d(_tag, 'loaded ${items.length} owned items');
+      _warmOwnedMedia(items);
       if (provider.myItemsError != null) {
         setState(() => _loadError = provider.myItemsError);
       } else if (items.isEmpty) {
@@ -167,6 +173,20 @@ class _MyStoreScreenState extends State<MyStoreScreen>
     }
   }
 
+  /// Pre-decodes owned SVGA assets and pre-caches raster thumbnails so the
+  /// grid renders instantly instead of decoding on visibility.
+  void _warmOwnedMedia(List<OwnedStoreItem> items) {
+    final svgaUrls = <String>[];
+    for (final item in items) {
+      for (final u in [item.thumbnail, item.image]) {
+        if (u != null && u.isNotEmpty && SvgaHelper.isSvgaUrl(u)) {
+          svgaUrls.add(u);
+        }
+      }
+    }
+    if (svgaUrls.isNotEmpty) SvgaCacheManager.warmDecode(svgaUrls);
+  }
+
   String _currentSource(String type) => _sourceFilter[type] ?? 'all';
   void _setSource(String type, String source) =>
       setState(() => _sourceFilter[type] = source);
@@ -213,7 +233,7 @@ class _MyStoreScreenState extends State<MyStoreScreen>
                           : RefreshIndicator(
                             onRefresh: _loadData,
                             color: _currentStyle.glow,
-                            backgroundColor: Colors.black87,
+                            backgroundColor: StoreTheme.sheet(context),
                             child: TabBarView(
                               controller: _tabController,
                               children: List.generate(
@@ -241,7 +261,10 @@ class _MyStoreScreenState extends State<MyStoreScreen>
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+            icon: Icon(
+              Icons.arrow_back_ios,
+              color: StoreTheme.text(context),
+            ),
             onPressed: () => Navigator.of(context).pop(),
           ),
           const SizedBox(width: 4),
@@ -249,7 +272,7 @@ class _MyStoreScreenState extends State<MyStoreScreen>
             shaderCallback:
                 (b) => LinearGradient(
                   colors: [
-                    Colors.white,
+                    StoreTheme.text(context),
                     _currentStyle.glow.withValues(alpha: 0.7),
                   ],
                 ).createShader(b),
@@ -297,7 +320,7 @@ class _MyStoreScreenState extends State<MyStoreScreen>
             Container(
               width: 1,
               height: 36,
-              color: Colors.white.withValues(alpha: 0.08),
+              color: StoreTheme.border(context),
             ),
             _StatTile(
               icon: Icons.check_circle,
@@ -308,7 +331,7 @@ class _MyStoreScreenState extends State<MyStoreScreen>
             Container(
               width: 1,
               height: 36,
-              color: Colors.white.withValues(alpha: 0.08),
+              color: StoreTheme.border(context),
             ),
             _StatTile(
               icon: Icons.all_inclusive,
@@ -396,7 +419,7 @@ class _MyStoreScreenState extends State<MyStoreScreen>
               Text(
                 showError ? 'Could not load' : 'No $label owned',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.7),
+                  color: StoreTheme.text(context, 0.7),
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
                 ),
@@ -407,7 +430,7 @@ class _MyStoreScreenState extends State<MyStoreScreen>
                     ? _loadError!
                     : 'Buy items or earn from CP, Friend, Family, VIP & Levels',
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.3),
+                  color: StoreTheme.text(context, 0.3),
                   fontSize: 12,
                 ),
                 textAlign: TextAlign.center,
@@ -416,14 +439,17 @@ class _MyStoreScreenState extends State<MyStoreScreen>
               if (showError)
                 TextButton.icon(
                   onPressed: _loadData,
-                  icon: const Icon(
+                  icon: Icon(
                     Icons.refresh,
-                    color: Colors.white70,
+                    color: StoreTheme.text(context, 0.7),
                     size: 18,
                   ),
-                  label: const Text(
+                  label: Text(
                     'Retry',
-                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                    style: TextStyle(
+                      color: StoreTheme.text(context, 0.7),
+                      fontSize: 14,
+                    ),
                   ),
                 )
               else
@@ -524,8 +550,8 @@ class _StatTile extends StatelessWidget {
           const SizedBox(height: 6),
           Text(
             value,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: StoreTheme.text(context),
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
@@ -534,7 +560,7 @@ class _StatTile extends StatelessWidget {
           Text(
             label,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.4),
+              color: StoreTheme.text(context, 0.4),
               fontSize: 10,
               fontWeight: FontWeight.w500,
             ),
@@ -601,7 +627,7 @@ class _OwnedItemCard extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
+          color: StoreTheme.card(context),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: (equipped ? const Color(0xFF34C759) : src.color).withValues(
@@ -749,10 +775,10 @@ class _OwnedItemCard extends StatelessWidget {
                           item.name ?? 'Item',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: const TextStyle(
+                          style: TextStyle(
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
-                            color: Colors.white,
+                            color: StoreTheme.text(context),
                           ),
                         ),
                         const SizedBox(height: 8),

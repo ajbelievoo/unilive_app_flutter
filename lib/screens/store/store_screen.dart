@@ -8,6 +8,7 @@
 /// polished preview modal with hero image.
 library store;
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
@@ -23,8 +24,10 @@ import '../../services/api_service.dart';
 import '../../services/session_manager.dart';
 import '../../utils/format_utils.dart';
 import '../../utils/log.dart';
+import '../../utils/media_utils.dart';
 import '../../widgets/premium_ui.dart';
 import '../../widgets/store_widgets.dart';
+import '../../widgets/svga_player_widget.dart';
 
 const Color _luckyIdGlow = Color(0xFFFF6B6B);
 
@@ -136,7 +139,10 @@ class _StoreBodyState extends State<_StoreBody> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+            icon: Icon(
+              Icons.arrow_back_ios,
+              color: StoreTheme.text(context),
+            ),
             onPressed: () => Navigator.of(context).pop(),
           ),
           const SizedBox(width: 4),
@@ -144,7 +150,7 @@ class _StoreBodyState extends State<_StoreBody> {
             shaderCallback:
                 (b) => LinearGradient(
                   colors: [
-                    Colors.white,
+                    StoreTheme.text(context),
                     _currentStyle.glow.withValues(alpha: 0.7),
                   ],
                 ).createShader(b),
@@ -187,6 +193,15 @@ class _StoreItemListTabState extends State<_StoreItemListTab>
   bool _hasError = false;
   String? _loadErrorMessage;
   int _userDiamonds = 0;
+
+  /// Catalog cache shared across all tab instances — re-entering the Store
+  /// or rebuilding a tab renders the last fetched list instantly while a
+  /// silent refresh runs in the background.
+  static final Map<String, List<StoreItem>> _catalog = {};
+
+  /// One-shot guard: the first loaded tab kicks off background prefetch of
+  /// the other categories' JSON so every tab switch is instant.
+  static bool _prefetchStarted = false;
 
   /// Index of the item currently being purchased (-1 = none).
   /// Used to show a loading spinner on the Buy button so the user gets
@@ -246,6 +261,9 @@ class _StoreItemListTabState extends State<_StoreItemListTab>
       _items
         ..clear()
         ..addAll(res.data);
+      _catalog[widget.type] = List.of(res.data);
+      _warmItemMedia(res.data);
+      _prefetchOtherTabs();
     } on DioException catch (e, s) {
       final code = e.response?.statusCode;
       final body = e.response?.data;
@@ -342,12 +360,12 @@ class _StoreItemListTabState extends State<_StoreItemListTab>
         'purchase DioException type=${e.type} code=$code body=$body',
       );
       if (e.response == null) {
-        if (!mounted) return;
-        setState(() {
-          item.isPurchase = true;
-          _userDiamonds = (_userDiamonds - item.diamond).toInt();
-        });
-        Fluttertoast.showToast(msg: 'Purchased successfully!');
+        // No response means the request likely never reached the server —
+        // marking the item purchased here showed a fake success and wrong
+        // diamond balance on timeouts/offline. Report the real failure.
+        Fluttertoast.showToast(
+          msg: 'No network — purchase did not go through. Please retry.',
+        );
         return;
       }
       final msg =
@@ -566,7 +584,7 @@ class _StoreItemListTabState extends State<_StoreItemListTab>
             Text(
               'Could not load items',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
+                color: StoreTheme.text(context, 0.7),
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -576,7 +594,7 @@ class _StoreItemListTabState extends State<_StoreItemListTab>
               'Check your connection and try again',
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.35),
+                color: StoreTheme.text(context, 0.35),
                 fontSize: 13,
               ),
             ),
@@ -585,17 +603,17 @@ class _StoreItemListTabState extends State<_StoreItemListTab>
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.08),
+                  color: StoreTheme.card(context),
                   borderRadius: BorderRadius.circular(10),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.1),
+                    color: StoreTheme.border(context),
                   ),
                 ),
                 child: Text(
                   _loadErrorMessage!,
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.5),
+                    color: StoreTheme.text(context, 0.5),
                     fontSize: 11,
                     fontFamily: 'monospace',
                   ),
@@ -660,7 +678,7 @@ class _StoreItemListTabState extends State<_StoreItemListTab>
             Text(
               'No items available',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
+                color: StoreTheme.text(context, 0.7),
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
               ),
@@ -669,7 +687,7 @@ class _StoreItemListTabState extends State<_StoreItemListTab>
             Text(
               'Check back later for new items',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.3),
+                color: StoreTheme.text(context, 0.3),
                 fontSize: 13,
               ),
             ),
@@ -736,7 +754,7 @@ class _PreviewSheet extends StatelessWidget {
     final padding = MediaQuery.of(context).padding.bottom;
     return Container(
       decoration: BoxDecoration(
-        color: const Color(0xFF15152A),
+        color: StoreTheme.sheet(context),
         borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(32),
           topRight: Radius.circular(32),
@@ -773,7 +791,7 @@ class _PreviewSheet extends StatelessWidget {
                   width: 44,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.3),
+                    color: StoreTheme.text(context, 0.25),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -799,15 +817,18 @@ class _PreviewSheet extends StatelessWidget {
                     Expanded(
                       child: Text(
                         name,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: StoreTheme.text(context),
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white70),
+                      icon: Icon(
+                        Icons.close,
+                        color: StoreTheme.text(context, 0.7),
+                      ),
                       onPressed: onClose,
                     ),
                   ],
@@ -898,10 +919,10 @@ class _PreviewSheet extends StatelessWidget {
                       const SizedBox(width: 12),
                       Text(
                         '$diamond',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 26,
                           fontWeight: FontWeight.bold,
-                          color: Colors.white,
+                          color: StoreTheme.text(context),
                         ),
                       ),
                       const SizedBox(width: 6),
@@ -909,7 +930,7 @@ class _PreviewSheet extends StatelessWidget {
                         'Diamonds',
                         style: TextStyle(
                           fontSize: 14,
-                          color: Colors.white.withValues(alpha: 0.5),
+                          color: StoreTheme.text(context, 0.5),
                           fontWeight: FontWeight.w500,
                         ),
                       ),
@@ -1047,7 +1068,7 @@ class _StoreItemCard extends StatelessWidget {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
+          color: StoreTheme.card(context),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: (equipped ? const Color(0xFF34C759) : style.glow).withValues(
@@ -1141,10 +1162,10 @@ class _StoreItemCard extends StatelessWidget {
                   children: [
                     Text(
                       item.name ?? '',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 13,
-                        color: Colors.white,
+                        color: StoreTheme.text(context),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1169,7 +1190,7 @@ class _StoreItemCard extends StatelessWidget {
                               item.validationTag!,
                               style: TextStyle(
                                 fontSize: 10,
-                                color: Colors.white.withValues(alpha: 0.3),
+                                color: StoreTheme.text(context, 0.3),
                               ),
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -1396,7 +1417,7 @@ class _LuckyIdTabState extends State<_LuckyIdTab>
                 Text(
                   'No Lucky IDs available',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
+                    color: StoreTheme.text(context, 0.7),
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
                   ),
@@ -1457,7 +1478,7 @@ class _LuckyIdCard extends StatelessWidget {
     final glow = isPurchased ? const Color(0xFF34C759) : _luckyIdGlow;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: StoreTheme.card(context),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(color: glow.withValues(alpha: 0.2), width: 0.8),
         boxShadow: [
@@ -1506,10 +1527,10 @@ class _LuckyIdCard extends StatelessWidget {
               const SizedBox(height: 10),
               Text(
                 luckyId,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: StoreTheme.text(context),
                   letterSpacing: 1,
                 ),
               ),

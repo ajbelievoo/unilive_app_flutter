@@ -12,6 +12,39 @@ import 'package:flutter/material.dart';
 import 'svga_player_widget.dart';
 import '../utils/media_utils.dart';
 
+// ---- Theme-aware palette ------------------------------------------------------
+
+/// Theme-aware colors for the Store/My Store chrome. The store was designed
+/// dark-premium; when the app theme is light, these helpers flip surfaces to
+/// light cards + dark text so the screen follows the app mode instead of
+/// staying permanently dark.
+class StoreTheme {
+  StoreTheme._();
+
+  static bool isDark(BuildContext context) =>
+      Theme.of(context).brightness == Brightness.dark;
+
+  /// Primary foreground (text/icons on the screen background).
+  static Color text(BuildContext context, [double alpha = 1.0]) =>
+      isDark(context)
+          ? Colors.white.withValues(alpha: alpha)
+          : const Color(0xFF1A1A2E).withValues(alpha: alpha);
+
+  /// Card / sheet surface color.
+  static Color card(BuildContext context) =>
+      isDark(context) ? Colors.white.withValues(alpha: 0.06) : Colors.white;
+
+  /// Bottom-sheet / modal surface color.
+  static Color sheet(BuildContext context) =>
+      isDark(context) ? const Color(0xFF15152A) : Colors.white;
+
+  /// Hairline border color for cards/chips.
+  static Color border(BuildContext context) =>
+      isDark(context)
+          ? Colors.white.withValues(alpha: 0.10)
+          : Colors.black.withValues(alpha: 0.08);
+}
+
 // ---- Category visual metadata ------------------------------------------------
 
 /// Visual identity for each store category: icon, gradient, glow color.
@@ -108,24 +141,35 @@ const Map<String, SourceStyle> sourceStyles = {
 
 // ---- Background ---------------------------------------------------------------
 
-/// Dark premium background with a radial glow at the top using the given
-/// [glowColor]. Matches the VIP screen's layered background approach.
+/// Premium background with a radial glow at the top using the given
+/// [glowColor]. Dark mode gets the deep navy gradient; light mode gets a
+/// soft off-white gradient — both keep the category glow accent.
 class StoreBackground extends StatelessWidget {
   const StoreBackground({super.key, this.glowColor = const Color(0xFF6A5AE0)});
   final Color glowColor;
 
   @override
   Widget build(BuildContext context) {
+    final dark = StoreTheme.isDark(context);
     return Stack(
       alignment: Alignment.topLeft,
       children: [
-        // Base dark gradient
         Container(
-          decoration: const BoxDecoration(
+          decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
-              colors: [Color(0xFF15152A), Color(0xFF0D0D1A), Color(0xFF0A0A12)],
+              colors: dark
+                  ? const [
+                      Color(0xFF15152A),
+                      Color(0xFF0D0D1A),
+                      Color(0xFF0A0A12),
+                    ]
+                  : const [
+                      Color(0xFFF4F2FF),
+                      Color(0xFFFBFAFF),
+                      Color(0xFFFFFFFF),
+                    ],
             ),
           ),
         ),
@@ -140,7 +184,10 @@ class StoreBackground extends StatelessWidget {
               gradient: RadialGradient(
                 center: const Alignment(0, -0.2),
                 radius: 0.9,
-                colors: [glowColor.withValues(alpha: 0.18), Colors.transparent],
+                colors: [
+                  glowColor.withValues(alpha: dark ? 0.18 : 0.12),
+                  Colors.transparent,
+                ],
               ),
             ),
           ),
@@ -154,7 +201,7 @@ class StoreBackground extends StatelessWidget {
             height: 120,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: glowColor.withValues(alpha: 0.06), width: 1),
+              border: Border.all(color: glowColor.withValues(alpha: 0.08), width: 1),
             ),
           ),
         ),
@@ -166,7 +213,10 @@ class StoreBackground extends StatelessWidget {
             height: 80,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              border: Border.all(color: Colors.white.withValues(alpha: 0.04), width: 1),
+              border: Border.all(
+                color: StoreTheme.text(context, 0.05),
+                width: 1,
+              ),
             ),
           ),
         ),
@@ -199,12 +249,14 @@ class StoreGlassCard extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: StoreTheme.card(context),
         borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1), width: 1),
+        border: Border.all(color: StoreTheme.border(context), width: 1),
         boxShadow: glow != null
             ? [BoxShadow(color: glow!.withValues(alpha: 0.25), blurRadius: glowBlur, spreadRadius: 2)]
-            : null,
+            : (StoreTheme.isDark(context)
+                ? null
+                : [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 12, offset: const Offset(0, 4))]),
       ),
       child: child,
     );
@@ -246,8 +298,8 @@ class StoreTabBar extends StatelessWidget implements PreferredSizeWidget {
       indicatorSize: TabBarIndicatorSize.tab,
       indicatorPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       dividerColor: Colors.transparent,
-      labelColor: Colors.white,
-      unselectedLabelColor: Colors.white.withValues(alpha: 0.4),
+      labelColor: StoreTheme.text(context),
+      unselectedLabelColor: StoreTheme.text(context, 0.45),
       labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
       unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
       labelPadding: const EdgeInsets.symmetric(horizontal: 6),
@@ -306,7 +358,7 @@ class BalanceBar extends StatelessWidget {
                   Text(
                     label,
                     style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.5),
+                      color: StoreTheme.text(context, 0.5),
                       fontSize: 11,
                       fontWeight: FontWeight.w500,
                     ),
@@ -314,7 +366,7 @@ class BalanceBar extends StatelessWidget {
                   const SizedBox(height: 2),
                   ShaderMask(
                     shaderCallback: (bounds) => LinearGradient(
-                      colors: [Colors.white, color.withValues(alpha: 0.8)],
+                      colors: [StoreTheme.text(context), color.withValues(alpha: 0.8)],
                     ).createShader(bounds),
                     child: Text(
                       amount,
@@ -371,15 +423,18 @@ class StoreImagePlaceholder extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final dark = StoreTheme.isDark(context);
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [Colors.white.withValues(alpha: 0.04), Colors.white.withValues(alpha: 0.01)],
+          colors: dark
+              ? [Colors.white.withValues(alpha: 0.04), Colors.white.withValues(alpha: 0.01)]
+              : [Colors.black.withValues(alpha: 0.04), Colors.black.withValues(alpha: 0.01)],
         ),
       ),
-      child: Center(child: Icon(icon, size: size, color: Colors.white.withValues(alpha: 0.2))),
+      child: Center(child: Icon(icon, size: size, color: StoreTheme.text(context, 0.2))),
     );
   }
 }
@@ -537,10 +592,10 @@ class SourceFilterChip extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
         decoration: BoxDecoration(
           gradient: selected ? LinearGradient(colors: [color, color.withValues(alpha: 0.6)]) : null,
-          color: selected ? null : Colors.white.withValues(alpha: 0.05),
+          color: selected ? null : StoreTheme.card(context),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
-            color: selected ? color.withValues(alpha: 0.6) : Colors.white.withValues(alpha: 0.08),
+            color: selected ? color.withValues(alpha: 0.6) : StoreTheme.border(context),
             width: selected ? 1.2 : 0.8,
           ),
           boxShadow: selected ? [BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 8)] : null,
@@ -553,7 +608,7 @@ class SourceFilterChip extends StatelessWidget {
             Text(
               label,
               style: TextStyle(
-                color: selected ? Colors.white : Colors.white.withValues(alpha: 0.5),
+                color: selected ? Colors.white : StoreTheme.text(context, 0.5),
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
@@ -579,9 +634,9 @@ class AppBarPillButton extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(right: 12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.1),
+        color: StoreTheme.card(context),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12), width: 0.8),
+        border: Border.all(color: StoreTheme.border(context), width: 0.8),
       ),
       child: Material(
         color: Colors.transparent,
@@ -593,9 +648,9 @@ class AppBarPillButton extends StatelessWidget {
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(icon, color: Colors.white, size: 15),
+                Icon(icon, color: StoreTheme.text(context), size: 15),
                 const SizedBox(width: 4),
-                Text(label, style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold)),
+                Text(label, style: TextStyle(color: StoreTheme.text(context), fontSize: 12, fontWeight: FontWeight.bold)),
               ],
             ),
           ),

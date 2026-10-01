@@ -138,8 +138,11 @@ class _SvgaStoreScreenState extends State<SvgaStoreScreen>
         bottom: TabBar(
           controller: _tab,
           tabs: _labels.map((l) => Tab(text: l)).toList(),
-          labelColor: Colors.white,
-          unselectedLabelColor: Colors.white54,
+          labelColor: Theme.of(context).colorScheme.onSurface,
+          unselectedLabelColor: Theme.of(context)
+              .colorScheme
+              .onSurface
+              .withValues(alpha: 0.5),
           indicatorColor: AppTheme.primary,
         ),
       ),
