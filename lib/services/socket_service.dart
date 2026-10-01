@@ -91,7 +91,7 @@ class SocketService {
         await Future.delayed(const Duration(milliseconds: 100));
       }
       return connect(
-        userId: userId,
+        userId,
         authToken: authToken,
         deviceId: deviceId,
       );
