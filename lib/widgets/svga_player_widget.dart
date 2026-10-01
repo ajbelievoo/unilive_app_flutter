@@ -84,7 +84,7 @@ Uint8List _stripHttpCompression(Uint8List data) {
 /// the UI thread; `MovieEntity` is plain data at this stage (its
 /// bitmapCache/pathCache are still empty) so it's safe to transfer back.
 MovieEntity _decodeMovieEntitySync(Uint8List bytes) {
-  final inflatedBytes = archive.ZLibDecoder().decodeBytes(bytes);
+  final inflatedBytes = const archive.ZLibDecoder().decodeBytes(bytes);
   final movie = MovieEntity.fromBuffer(inflatedBytes);
   // Same KEEP-shape backfill as SVGAParser._processShapeItems.
   for (final sprite in movie.sprites) {
