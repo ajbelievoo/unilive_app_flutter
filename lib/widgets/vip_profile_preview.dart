@@ -23,6 +23,7 @@ class VipProfilePreview extends StatelessWidget {
     this.size = 110,
     this.frameSize = 140,
     this.showName = true,
+    this.animate = true,
   });
 
   final String? userImage;
@@ -34,6 +35,11 @@ class VipProfilePreview extends StatelessWidget {
   final double size;
   final double frameSize;
   final bool showName;
+
+  /// When false, SVGA assets render their first frame without animating.
+  /// Used to pause animations on off-screen [PageView] pages so each
+  /// non-visible tier doesn't keep a live decoder + ticker running.
+  final bool animate;
 
   @override
   Widget build(BuildContext context) {
@@ -81,7 +87,7 @@ class VipProfilePreview extends StatelessWidget {
                           url: VideoUtil.getFullSvgaUrl(frameUrl),
                           width: frameSize,
                           height: frameSize,
-                          allowAnimation: true,
+                          allowAnimation: animate,
                           repeat: true,
                         )
                       : CachedNetworkImage(
@@ -104,7 +110,7 @@ class VipProfilePreview extends StatelessWidget {
                     child: SvgaHelper.isSvgaUrl(badgeUrl!)
                         ? SvgaPlayer(
                             url: VideoUtil.getFullSvgaUrl(badgeUrl),
-                            allowAnimation: true,
+                            allowAnimation: animate,
                             repeat: true,
                           )
                         : CachedNetworkImage(

@@ -368,10 +368,13 @@ class _SvgaPlayerState extends State<SvgaPlayer>
   void didUpdateWidget(SvgaPlayer oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.url != widget.url ||
-        oldWidget.allowAnimation != widget.allowAnimation ||
-        oldWidget.repeat != widget.repeat ||
         oldWidget.playEmbeddedAudio != widget.playEmbeddedAudio) {
       _loadSvga();
+    } else if (oldWidget.allowAnimation != widget.allowAnimation ||
+        oldWidget.repeat != widget.repeat) {
+      // Same asset — just pause/resume. Re-decoding the SVGA on every
+      // animation toggle was needlessly expensive (PageView swipes).
+      _updateAnimationState();
     }
   }
 

@@ -489,6 +489,7 @@ class _VipScreenState extends State<VipScreen> with TickerProviderStateMixin {
                                 key: ValueKey('tier_page_${tier.id}'),
                                 tier: tier,
                                 index: index,
+                                isActive: index == _selectedTierIndex,
                                 vipStatus: provider.vipStatusObj,
                                 rulesMinPoints: provider.rulesMinPoints,
                                 strokeColor: _tierStrokeColor(
@@ -945,13 +946,18 @@ class _VipScreenState extends State<VipScreen> with TickerProviderStateMixin {
 
 /// A standalone page for a specific VIP tier, ensuring state isolation.
 ///
-/// Implemented as a [StatefulWidget] with [AutomaticKeepAliveClientMixin] so
-/// that Flutter keeps the page alive when the user swipes past it in the
-/// [PageView], preventing expensive rebuilds (SVGA players, network images,
-/// animated progress bars) every time the user swipes back.
+/// Deliberately NOT kept alive: each page owns multiple SVGA decoders
+/// (profile frame, badge, identity grid, exclusive grid). Keeping all
+/// swiped pages alive held ~150 decoded animations in GPU memory at once
+/// and crashed lower-end devices with kgsl shared-memory alloc failures.
 class VipTierPage extends StatefulWidget {
   final VipTier tier;
   final int index;
+
+  /// Whether this page is the currently visible one in the [PageView].
+  /// Non-visible pages render SVGA previews statically (first frame) so
+  /// they don't keep looping decoders alive off-screen.
+  final bool isActive;
   final VipStatus? vipStatus;
   final Map<String, int> rulesMinPoints;
   final Color strokeColor;
@@ -963,6 +969,7 @@ class VipTierPage extends StatefulWidget {
     super.key,
     required this.tier,
     required this.index,
+    required this.isActive,
     this.vipStatus,
     required this.rulesMinPoints,
     required this.strokeColor,
@@ -975,10 +982,7 @@ class VipTierPage extends StatefulWidget {
   State<VipTierPage> createState() => _VipTierPageState();
 }
 
-class _VipTierPageState extends State<VipTierPage>
-    with AutomaticKeepAliveClientMixin {
-  @override
-  bool get wantKeepAlive => true;
+class _VipTierPageState extends State<VipTierPage> {
 
   // ---------------------------------------------------------------------------
   // Shorthand getters — delegate to widget fields so the method bodies below
@@ -1164,7 +1168,6 @@ class _VipTierPageState extends State<VipTierPage>
 
   @override
   Widget build(BuildContext context) {
-    super.build(context); // Required for AutomaticKeepAliveClientMixin.
     final tierLvl = _tierLevel();
     final monthPoints = vipStatus?.currentMonthEarnedPoints ?? 0;
     final monthTarget = _getVipPointsForLevel(tierLvl);
@@ -1188,6 +1191,7 @@ class _VipTierPageState extends State<VipTierPage>
             nameColor: _parseColor(tier.effectiveNameColor),
             size: 100,
             frameSize: 140,
+            animate: widget.isActive,
           ),
           const SizedBox(height: 8),
           Text(
