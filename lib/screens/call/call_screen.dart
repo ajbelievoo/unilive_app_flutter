@@ -104,9 +104,9 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
 
   late RtcEngine _engine;
   bool _engineReady = false;
-  bool _muted = false;
-  bool _cameraOff = false;
-  bool _speakerOn = true;
+  late bool _muted = widget.data.initialMuted;
+  late bool _cameraOff = widget.data.initialCameraOff;
+  late bool _speakerOn = widget.data.initialSpeakerOn;
   int _seconds = 0;
   Timer? _timer;
   Timer? _coinTimer;
@@ -458,10 +458,10 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
 
       if (_isAudioMode) {
         await _engine.enableAudio();
-        await _engine.setDefaultAudioRouteToSpeakerphone(true);
+        await _engine.setDefaultAudioRouteToSpeakerphone(_speakerOn);
       } else {
         await _engine.enableVideo();
-        await _engine.startPreview();
+        if (!_cameraOff) await _engine.startPreview();
       }
 
       // Enable audio volume indication for voice wave visualization.
@@ -488,6 +488,16 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
       );
 
       if (mounted) setState(() => _engineReady = true);
+
+      // Apply pre-call media toggles chosen on the ringing screen.
+      try {
+        if (_muted) await _engine.muteLocalAudioStream(true);
+        if (_cameraOff && !_isAudioMode) {
+          await _engine.muteLocalVideoStream(true);
+        }
+        if (!_isAudioMode) await _engine.setEnableSpeakerphone(_speakerOn);
+      } catch (_) {}
+
       _startPrivacyGuard();
       _emitPrivacySignal(force: true);
     } catch (e, s) {
@@ -2300,7 +2310,11 @@ class _ActiveCallScreenState extends State<ActiveCallScreen>
                         ),
                       ),
                     ] else if (_isFreeCall) ...[
-                      const ImageIcon(const AssetImage("assets/gift/official_gift.png"), color: Colors.greenAccent, size: 12),
+                      const ImageIcon(
+                        const AssetImage("assets/gift/official_gift.png"),
+                        color: Colors.greenAccent,
+                        size: 12,
+                      ),
                       const SizedBox(width: 3),
                       const Text(
                         'FREE',

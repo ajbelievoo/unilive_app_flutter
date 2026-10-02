@@ -105,7 +105,9 @@ class _CallRequestScreenState extends State<CallRequestScreen> {
       // Stop then dispose in a chained future; calling stop() and dispose()
       // synchronously can trigger just_audio's "complete a future with itself"
       // error when the platform future is still in flight.
-      _ringbackPlayer.stop().then((_) => _ringbackPlayer.dispose()).catchError((e) {
+      _ringbackPlayer.stop().then((_) => _ringbackPlayer.dispose()).catchError((
+        e,
+      ) {
         Log.e(_tag, 'ringback dispose error', e);
       });
     } catch (e) {
@@ -176,6 +178,9 @@ class _CallRequestScreenState extends State<CallRequestScreen> {
               callRate: _callRate,
               freeTrialSeconds: _freeTrialSeconds,
               isFreeCall: widget.isFreeCall,
+              initialMuted: _isMuted,
+              initialSpeakerOn: _isSpeakerOn,
+              initialCameraOff: _cameraOff,
             );
             Navigator.pop(context, callData);
           } else {
@@ -197,10 +202,12 @@ class _CallRequestScreenState extends State<CallRequestScreen> {
         });
 
         _timeoutTimer = Timer(const Duration(seconds: 45), () {
-          if (mounted) {
-            Fluttertoast.showToast(msg: 'Call not answered');
-            Navigator.pop(context, null);
-          }
+          if (!mounted) return;
+          Fluttertoast.showToast(msg: 'Call not answered');
+          // Notify the callee + backend the call is over — popping without
+          // callCancel leaves the other phone ringing and the call session
+          // open server-side.
+          _cancelCall();
         });
       } else {
         Fluttertoast.showToast(msg: res.message ?? 'Call request failed');
@@ -279,10 +286,13 @@ class _CallRequestScreenState extends State<CallRequestScreen> {
             Image.network(
               widget.userImage!,
               fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(color: const Color(0xFF1A0A2E)),
-              loadingBuilder: (_, child, progress) => progress == null
-                  ? child
-                  : Container(color: const Color(0xFF1A0A2E)),
+              errorBuilder:
+                  (_, __, ___) => Container(color: const Color(0xFF1A0A2E)),
+              loadingBuilder:
+                  (_, child, progress) =>
+                      progress == null
+                          ? child
+                          : Container(color: const Color(0xFF1A0A2E)),
             )
           else
             Container(color: const Color(0xFF1A0A2E)),
@@ -329,24 +339,27 @@ class _CallRequestScreenState extends State<CallRequestScreen> {
                               ? Image.network(
                                 widget.userImage!,
                                 fit: BoxFit.cover,
-                                errorBuilder: (_, __, ___) => Container(
-                                  color: AppTheme.primary,
-                                  child: const Icon(
-                                    Icons.person,
-                                    size: 60,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                loadingBuilder: (_, child, progress) => progress == null
-                                    ? child
-                                    : Container(
-                                        color: AppTheme.primary,
-                                        child: const Icon(
-                                          Icons.person,
-                                          size: 60,
-                                          color: Colors.white,
-                                        ),
+                                errorBuilder:
+                                    (_, __, ___) => Container(
+                                      color: AppTheme.primary,
+                                      child: const Icon(
+                                        Icons.person,
+                                        size: 60,
+                                        color: Colors.white,
                                       ),
+                                    ),
+                                loadingBuilder:
+                                    (_, child, progress) =>
+                                        progress == null
+                                            ? child
+                                            : Container(
+                                              color: AppTheme.primary,
+                                              child: const Icon(
+                                                Icons.person,
+                                                size: 60,
+                                                color: Colors.white,
+                                              ),
+                                            ),
                               )
                               : Container(
                                 color: AppTheme.primary,
@@ -466,11 +479,12 @@ class _CallRequestScreenState extends State<CallRequestScreen> {
                                 width: 30,
                                 height: 30,
                                 fit: BoxFit.contain,
-                                errorBuilder: (_, __, ___) => const Icon(
-                                  Icons.call_end,
-                                  color: Colors.white,
-                                  size: 30,
-                                ),
+                                errorBuilder:
+                                    (_, __, ___) => const Icon(
+                                      Icons.call_end,
+                                      color: Colors.white,
+                                      size: 30,
+                                    ),
                               ),
                     ),
                   ),

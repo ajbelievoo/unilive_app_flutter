@@ -328,7 +328,9 @@ class _GoAudioLiveScreenState extends State<GoAudioLiveScreen> {
     try {
       final micStatus = await Permission.microphone.request();
       if (micStatus.isDenied || micStatus.isPermanentlyDenied) {
-        Fluttertoast.showToast(msg: 'Microphone permission is required to host');
+        Fluttertoast.showToast(
+          msg: 'Microphone permission is required to host',
+        );
         setState(() => _starting = false);
         return;
       }
@@ -367,8 +369,7 @@ class _GoAudioLiveScreenState extends State<GoAudioLiveScreen> {
         unawaited(
           _restoreCachedAdmins(
             hostUserId: session.userId,
-            newLiveStreamingId:
-                res.user!.liveStreamingId ?? res.user!.id ?? '',
+            newLiveStreamingId: res.user!.liveStreamingId ?? res.user!.id ?? '',
           ),
         );
         if (mounted) {
@@ -399,7 +400,10 @@ class _GoAudioLiveScreenState extends State<GoAudioLiveScreen> {
     try {
       final cached = await AudioRoomAdminCache.loadAdmins(hostUserId);
       if (cached.isEmpty) return;
-      Log.d(_tag, 'Restoring ${cached.length} cached admins for room=$newLiveStreamingId');
+      Log.d(
+        _tag,
+        'Restoring ${cached.length} cached admins for room=$newLiveStreamingId',
+      );
       for (final admin in cached) {
         final targetId = admin.adminUserId?.id;
         if (targetId == null || targetId.isEmpty) continue;
@@ -431,11 +435,7 @@ class _GoAudioLiveScreenState extends State<GoAudioLiveScreen> {
   @override
   Widget build(BuildContext context) {
     if (_checkingActive) {
-      return const Scaffold(
-        body: Center(
-          child: Preloader(size: 40),
-        ),
-      );
+      return const Scaffold(body: Center(child: Preloader(size: 40)));
     }
     return Scaffold(
       appBar: AppBar(title: const Text('Start Audio Live')),
@@ -658,6 +658,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       _comments.removeRange(0, _comments.length - _maxComments);
     }
   }
+
   int _clientCommentCount = 0;
   int _clientGiftCount = 0;
   int _clientFanCount = 0;
@@ -981,8 +982,6 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     return _isAdminUser(myId);
   }
 
-
-
   // Seat join requests (when viewers request to take a seat, host sees them).
   final _seatRequests = <Map<String, dynamic>>[];
   Function? _cancelSeatRequestSub;
@@ -1211,7 +1210,10 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
           seconds: _watchSeconds,
           liveType: 'audio',
         );
-        Log.d(_tag, 'updateLiveTime pinged liveId=$_liveId seconds=$_watchSeconds');
+        Log.d(
+          _tag,
+          'updateLiveTime pinged liveId=$_liveId seconds=$_watchSeconds',
+        );
       } catch (e) {
         // Backend may not expose this endpoint; the socket heartbeat is the
         // primary keep-alive.
@@ -2093,7 +2095,9 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
 
       final micStatus = await Permission.microphone.request();
       if (_amHost && !micStatus.isGranted) {
-        Fluttertoast.showToast(msg: 'Microphone permission is required to host');
+        Fluttertoast.showToast(
+          msg: 'Microphone permission is required to host',
+        );
         if (mounted) setState(() => _engineReady = true);
         return;
       }
@@ -2107,267 +2111,267 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       AudioRoomEngineService.instance.setEngine(_engine);
 
       _rtcEventHandler = RtcEngineEventHandler(
-          onJoinChannelSuccess: (conn, elapsed) {
-            Log.d(_tag, 'joined ${conn.channelId} localUid=${conn.localUid}');
-            _isJoinedChannel = true;
-            _applyPendingAgoraState();
-            _reconnectAttempts = 0;
-            _isReconnecting = false;
-            // Route audio to speaker now that the channel is joined.
-            // Calling setEnableSpeakerphone before join completes returns
-            // ERR_NOT_READY (-3).
-            _engine.setEnableSpeakerphone(true).catchError((e) {
-              Log.w(_tag, 'setEnableSpeakerphone failed: $e');
-            });
-            // Capture the actual Agora-assigned uid. When audience joins
-            // with uid=0, Agora assigns a random uid — we must track it
-            // to match volume indications for the local user.
-            final assignedUid = conn.localUid ?? 0;
-            if (assignedUid != _localAgoraUid) {
-              _localAgoraUid = assignedUid;
-              // Update the local user's seat with the correct agoraUid.
-              final session = context.read<SessionManager>();
-              final myUserId = session.userId;
-              final idx = _seats.indexWhere((e) => e.userId == myUserId);
-              if (idx >= 0 && _seats[idx].agoraUid != assignedUid) {
-                setState(() => _seats[idx].agoraUid = assignedUid);
-              }
+        onJoinChannelSuccess: (conn, elapsed) {
+          Log.d(_tag, 'joined ${conn.channelId} localUid=${conn.localUid}');
+          _isJoinedChannel = true;
+          _applyPendingAgoraState();
+          _reconnectAttempts = 0;
+          _isReconnecting = false;
+          // Route audio to speaker now that the channel is joined.
+          // Calling setEnableSpeakerphone before join completes returns
+          // ERR_NOT_READY (-3).
+          _engine.setEnableSpeakerphone(true).catchError((e) {
+            Log.w(_tag, 'setEnableSpeakerphone failed: $e');
+          });
+          // Capture the actual Agora-assigned uid. When audience joins
+          // with uid=0, Agora assigns a random uid — we must track it
+          // to match volume indications for the local user.
+          final assignedUid = conn.localUid ?? 0;
+          if (assignedUid != _localAgoraUid) {
+            _localAgoraUid = assignedUid;
+            // Update the local user's seat with the correct agoraUid.
+            final session = context.read<SessionManager>();
+            final myUserId = session.userId;
+            final idx = _seats.indexWhere((e) => e.userId == myUserId);
+            if (idx >= 0 && _seats[idx].agoraUid != assignedUid) {
+              setState(() => _seats[idx].agoraUid = assignedUid);
+            }
 
-              // If the host's Agora uid changed (e.g. joined with uid 0 and
-              // was auto-assigned), broadcast the host seat so all viewers can
-              // map volume indication / voice waves to the host. We don't set
-              // the host seat to the local guest uid — that broke remote wave
-              // display for everyone except the host.
-              if (_amHost && _selfPosition == -1) {
-                final hostSeat = _seats.where((e) => e.isHost).firstOrNull;
-                if (hostSeat != null) {
-                  SocketService.instance.emit(Const.eventAddParticipated, {
-                    'position': -1,
-                    'liveUserMongoId': widget.roomUser.id,
-                    'liveStreamingId': _liveId,
-                    'userId': myUserId,
-                    'name': _roomUser.name ?? session.userName,
-                    'image': _roomUser.image ?? session.userImage,
-                    'country': _roomUser.country ?? session.getCountry(),
-                    'agoraUid': assignedUid,
-                    'mute': _micEnabled ? 0 : 1,
-                    'avatarFrame': _roomUser.avatarFrameImage,
-                    'voiceWaveUrl': _roomUser.voiceWaveUrl,
-                    'isHost': true,
-                    'role': 'host',
-                    'reserved': true,
-                  });
-                }
+            // If the host's Agora uid changed (e.g. joined with uid 0 and
+            // was auto-assigned), broadcast the host seat so all viewers can
+            // map volume indication / voice waves to the host. We don't set
+            // the host seat to the local guest uid — that broke remote wave
+            // display for everyone except the host.
+            if (_amHost && _selfPosition == -1) {
+              final hostSeat = _seats.where((e) => e.isHost).firstOrNull;
+              if (hostSeat != null) {
+                SocketService.instance.emit(Const.eventAddParticipated, {
+                  'position': -1,
+                  'liveUserMongoId': widget.roomUser.id,
+                  'liveStreamingId': _liveId,
+                  'userId': myUserId,
+                  'name': _roomUser.name ?? session.userName,
+                  'image': _roomUser.image ?? session.userImage,
+                  'country': _roomUser.country ?? session.getCountry(),
+                  'agoraUid': assignedUid,
+                  'mute': _micEnabled ? 0 : 1,
+                  'avatarFrame': _roomUser.avatarFrameImage,
+                  'voiceWaveUrl': _roomUser.voiceWaveUrl,
+                  'isHost': true,
+                  'role': 'host',
+                  'reserved': true,
+                });
               }
+            }
 
-              // If a seated viewer's Agora uid was just assigned, re-broadcast
-              // their seat so all clients can map volume indications / VIP
-              // waves to this user. Without this, other clients have
-              // agoraUid=0 for this user and can never detect them speaking.
-              if (!_amHost && _selfPosition >= 0) {
-                final mySeat =
-                    _seats.where((e) => e.userId == myUserId).firstOrNull;
-                if (mySeat != null && mySeat.agoraUid == assignedUid) {
-                  SocketService.instance.emit(Const.eventAddParticipated, {
-                    'position': mySeat.position,
-                    'liveUserMongoId': widget.roomUser.id,
-                    'liveStreamingId': _liveId,
-                    'userId': myUserId,
-                    'name': mySeat.name ?? session.userName,
-                    'image': mySeat.image ?? session.userImage,
-                    'country': mySeat.country ?? session.getCountry(),
-                    'agoraUid': assignedUid,
-                    'mute': mySeat.mute,
-                    'avatarFrame': mySeat.avatarFrame,
-                    'voiceWaveUrl': mySeat.voiceWaveUrl,
-                    'isVIP': mySeat.isVIP,
-                    'isHost': false,
-                    'role': mySeat.role,
-                    'reserved': true,
-                  });
+            // If a seated viewer's Agora uid was just assigned, re-broadcast
+            // their seat so all clients can map volume indications / VIP
+            // waves to this user. Without this, other clients have
+            // agoraUid=0 for this user and can never detect them speaking.
+            if (!_amHost && _selfPosition >= 0) {
+              final mySeat =
+                  _seats.where((e) => e.userId == myUserId).firstOrNull;
+              if (mySeat != null && mySeat.agoraUid == assignedUid) {
+                SocketService.instance.emit(Const.eventAddParticipated, {
+                  'position': mySeat.position,
+                  'liveUserMongoId': widget.roomUser.id,
+                  'liveStreamingId': _liveId,
+                  'userId': myUserId,
+                  'name': mySeat.name ?? session.userName,
+                  'image': mySeat.image ?? session.userImage,
+                  'country': mySeat.country ?? session.getCountry(),
+                  'agoraUid': assignedUid,
+                  'mute': mySeat.mute,
+                  'avatarFrame': mySeat.avatarFrame,
+                  'voiceWaveUrl': mySeat.voiceWaveUrl,
+                  'isVIP': mySeat.isVIP,
+                  'isHost': false,
+                  'role': mySeat.role,
+                  'reserved': true,
+                });
+                Log.d(
+                  _tag,
+                  're-broadcast seat ${mySeat.position} with agoraUid=$assignedUid for VIP wave sync',
+                );
+              }
+            }
+
+            Log.d(_tag, 'localAgoraUid updated to $assignedUid');
+          }
+        },
+        onUserJoined: (connection, remoteUid, elapsed) {
+          Log.d(_tag, 'remote Agora user joined uid=$remoteUid');
+          _bindRemoteAgoraUid(remoteUid);
+        },
+        onUserOffline: (connection, remoteUid, reason) {
+          Log.d(
+            _tag,
+            'remote Agora user offline uid=$remoteUid reason=$reason',
+          );
+          _remoteAgoraUids.remove(remoteUid);
+          if (!mounted) return;
+          setState(() {
+            for (final seat in _seats) {
+              if (seat.agoraUid == remoteUid) {
+                seat.isSpeaking = false;
+                seat.agoraUid = 0;
+              }
+            }
+          });
+        },
+        onError: (err, msg) {
+          Log.e(_tag, 'agora error $err: $msg');
+          // Token expired (109), token invalid (110), or banned — refresh
+          // token from backend and attempt reconnection. errInvalidToken
+          // happens when the locally-generated token has a wrong cert/uid
+          // or the backend token is stale — fetching a fresh backend token
+          // is the most reliable recovery.
+          if (err == ErrorCodeType.errTokenExpired ||
+              err == ErrorCodeType.errInvalidToken ||
+              err == ErrorCodeType.errClientIsBannedByServer) {
+            _refreshTokenFromBackendAndRejoin();
+          }
+        },
+        onConnectionLost: (conn) {
+          Log.e(_tag, 'agora connection lost', null);
+          _isJoinedChannel = false;
+          _pendingBroadcastRole = null;
+          _pendingMicEnabled = null;
+          _attemptReconnect();
+        },
+        onRejoinChannelSuccess: (conn, elapsed) {
+          Log.d(_tag, 'rejoined ${conn.channelId}');
+          _isJoinedChannel = true;
+          _applyPendingAgoraState();
+          _reconnectAttempts = 0;
+          _isReconnecting = false;
+          if (mounted) setState(() => _networkQuality = 0);
+        },
+        onNetworkQuality: (
+          RtcConnection connection,
+          int remoteUid,
+          QualityType rxQuality,
+          QualityType txQuality,
+        ) {
+          // Use the worse of rx/tx quality as the overall indicator.
+          final worst =
+              rxQuality.index > txQuality.index ? rxQuality : txQuality;
+          if (mounted && worst.index != _networkQuality) {
+            setState(() => _networkQuality = worst.index);
+          }
+        },
+        onAudioVolumeIndication: (conn, speakers, totalVolume, _) {
+          if (!mounted) return;
+          if (speakers.isNotEmpty) {
+            Log.d(
+              _tag,
+              'audioVolume: ${speakers.length} speakers, '
+              'localUid=$_localAgoraUid, '
+              'uids=${speakers.map((s) => 'uid=${s.uid} vol=${s.volume}').join(', ')}',
+            );
+          }
+          // Map each speaker uid to a seat. The local user's uid is
+          // _localAgoraUid (host: agoraUID, audience: 0).
+          final anySpeaking = <int>[];
+          final myUserId = context.read<SessionManager>().userId;
+
+          for (final s in speakers) {
+            final volume = s.volume ?? 0;
+            if (volume <= 1)
+              continue; // Very low threshold — even whisper triggers
+
+            // Agora volume indication for local user can be 0 or localUid.
+            final isLocal = s.uid == 0 || s.uid == _localAgoraUid;
+
+            if (isLocal) {
+              // If local mic is disabled, NEVER trigger speaking wave.
+              if (!_micEnabled) continue;
+              final localSeat =
+                  _seats.where((e) => e.userId == myUserId).firstOrNull;
+              if (localSeat != null && !localSeat.isMuted) {
+                anySpeaking.add(localSeat.position);
+              }
+            } else {
+              final remoteUid = s.uid ?? 0;
+              _bindRemoteAgoraUid(remoteUid);
+              var seat =
+                  _seats.where((e) => e.agoraUid == remoteUid).firstOrNull;
+              // Some backend snapshots omit a newly seated user's Agora
+              // uid. If exactly one remote occupied seat still has uid 0,
+              // bind this active remote uid to it. The mapping then remains
+              // stable for later volume callbacks and VIP wave rendering.
+              if (seat == null) {
+                final unmapped =
+                    _seats
+                        .where(
+                          (e) =>
+                              e.isOccupied &&
+                              e.userId != myUserId &&
+                              e.agoraUid == 0 &&
+                              !e.isMuted,
+                        )
+                        .toList();
+                if (unmapped.length == 1) {
+                  seat = unmapped.first;
+                  seat.agoraUid = remoteUid;
                   Log.d(
                     _tag,
-                    're-broadcast seat ${mySeat.position} with agoraUid=$assignedUid for VIP wave sync',
+                    'bound remote Agora uid=${s.uid} to seat=${seat.position} user=${seat.userId}',
                   );
                 }
               }
-
-              Log.d(_tag, 'localAgoraUid updated to $assignedUid');
+              if (seat != null && !seat.isMuted) {
+                anySpeaking.add(seat.position);
+              }
             }
-          },
-          onUserJoined: (connection, remoteUid, elapsed) {
-            Log.d(_tag, 'remote Agora user joined uid=$remoteUid');
-            _bindRemoteAgoraUid(remoteUid);
-          },
-          onUserOffline: (connection, remoteUid, reason) {
-            Log.d(
-              _tag,
-              'remote Agora user offline uid=$remoteUid reason=$reason',
-            );
-            _remoteAgoraUids.remove(remoteUid);
-            if (!mounted) return;
-            setState(() {
-              for (final seat in _seats) {
-                if (seat.agoraUid == remoteUid) {
+          }
+
+          // This callback fires every 250ms (enableAudioVolumeIndication
+          // interval). Only rebuild when a seat's speaking flag actually
+          // changes — an unconditional setState rebuilds the whole room
+          // (including gift overlays) 4×/sec for nothing.
+          var speakingChanged = false;
+          for (final seat in _seats) {
+            // Only show speaking waves if NOT muted. For local user, check _micEnabled.
+            final isLocalSeat = seat.userId == myUserId;
+            final canSpeak = !seat.isMuted && (!isLocalSeat || _micEnabled);
+            final speaking = canSpeak && anySpeaking.contains(seat.position);
+            if (seat.isSpeaking != speaking) {
+              seat.isSpeaking = speaking;
+              speakingChanged = true;
+            }
+          }
+          if (speakingChanged && mounted) setState(() {});
+          // Reset speaking clear timer — clear all after 600ms of silence
+          _speakingClearTimer?.cancel();
+          _speakingClearTimer = Timer(const Duration(milliseconds: 600), () {
+            if (mounted) {
+              setState(() {
+                for (final seat in _seats) {
                   seat.isSpeaking = false;
-                  seat.agoraUid = 0;
                 }
-              }
-            });
-          },
-          onError: (err, msg) {
-            Log.e(_tag, 'agora error $err: $msg');
-            // Token expired (109), token invalid (110), or banned — refresh
-            // token from backend and attempt reconnection. errInvalidToken
-            // happens when the locally-generated token has a wrong cert/uid
-            // or the backend token is stale — fetching a fresh backend token
-            // is the most reliable recovery.
-            if (err == ErrorCodeType.errTokenExpired ||
-                err == ErrorCodeType.errInvalidToken ||
-                err == ErrorCodeType.errClientIsBannedByServer) {
-              _refreshTokenFromBackendAndRejoin();
+              });
             }
-          },
-          onConnectionLost: (conn) {
-            Log.e(_tag, 'agora connection lost', null);
-            _isJoinedChannel = false;
-            _pendingBroadcastRole = null;
-            _pendingMicEnabled = null;
-            _attemptReconnect();
-          },
-          onRejoinChannelSuccess: (conn, elapsed) {
-            Log.d(_tag, 'rejoined ${conn.channelId}');
-            _isJoinedChannel = true;
-            _applyPendingAgoraState();
-            _reconnectAttempts = 0;
-            _isReconnecting = false;
-            if (mounted) setState(() => _networkQuality = 0);
-          },
-          onNetworkQuality: (
-            RtcConnection connection,
-            int remoteUid,
-            QualityType rxQuality,
-            QualityType txQuality,
-          ) {
-            // Use the worse of rx/tx quality as the overall indicator.
-            final worst =
-                rxQuality.index > txQuality.index ? rxQuality : txQuality;
-            if (mounted && worst.index != _networkQuality) {
-              setState(() => _networkQuality = worst.index);
-            }
-          },
-          onAudioVolumeIndication: (conn, speakers, totalVolume, _) {
-            if (!mounted) return;
-            if (speakers.isNotEmpty) {
-              Log.d(
-                _tag,
-                'audioVolume: ${speakers.length} speakers, '
-                'localUid=$_localAgoraUid, '
-                'uids=${speakers.map((s) => 'uid=${s.uid} vol=${s.volume}').join(', ')}',
-              );
-            }
-            // Map each speaker uid to a seat. The local user's uid is
-            // _localAgoraUid (host: agoraUID, audience: 0).
-            final anySpeaking = <int>[];
-            final myUserId = context.read<SessionManager>().userId;
-
-            for (final s in speakers) {
-              final volume = s.volume ?? 0;
-              if (volume <= 1)
-                continue; // Very low threshold — even whisper triggers
-
-              // Agora volume indication for local user can be 0 or localUid.
-              final isLocal = s.uid == 0 || s.uid == _localAgoraUid;
-
-              if (isLocal) {
-                // If local mic is disabled, NEVER trigger speaking wave.
-                if (!_micEnabled) continue;
-                final localSeat =
-                    _seats.where((e) => e.userId == myUserId).firstOrNull;
-                if (localSeat != null && !localSeat.isMuted) {
-                  anySpeaking.add(localSeat.position);
-                }
-              } else {
-                final remoteUid = s.uid ?? 0;
-                _bindRemoteAgoraUid(remoteUid);
-                var seat =
-                    _seats.where((e) => e.agoraUid == remoteUid).firstOrNull;
-                // Some backend snapshots omit a newly seated user's Agora
-                // uid. If exactly one remote occupied seat still has uid 0,
-                // bind this active remote uid to it. The mapping then remains
-                // stable for later volume callbacks and VIP wave rendering.
-                if (seat == null) {
-                  final unmapped =
-                      _seats
-                          .where(
-                            (e) =>
-                                e.isOccupied &&
-                                e.userId != myUserId &&
-                                e.agoraUid == 0 &&
-                                !e.isMuted,
-                          )
-                          .toList();
-                  if (unmapped.length == 1) {
-                    seat = unmapped.first;
-                    seat.agoraUid = remoteUid;
-                    Log.d(
-                      _tag,
-                      'bound remote Agora uid=${s.uid} to seat=${seat.position} user=${seat.userId}',
-                    );
-                  }
-                }
-                if (seat != null && !seat.isMuted) {
-                  anySpeaking.add(seat.position);
-                }
-              }
-            }
-
-            // This callback fires every 250ms (enableAudioVolumeIndication
-            // interval). Only rebuild when a seat's speaking flag actually
-            // changes — an unconditional setState rebuilds the whole room
-            // (including gift overlays) 4×/sec for nothing.
-            var speakingChanged = false;
-            for (final seat in _seats) {
-              // Only show speaking waves if NOT muted. For local user, check _micEnabled.
-              final isLocalSeat = seat.userId == myUserId;
-              final canSpeak = !seat.isMuted && (!isLocalSeat || _micEnabled);
-              final speaking = canSpeak && anySpeaking.contains(seat.position);
-              if (seat.isSpeaking != speaking) {
-                seat.isSpeaking = speaking;
-                speakingChanged = true;
-              }
-            }
-            if (speakingChanged && mounted) setState(() {});
-            // Reset speaking clear timer — clear all after 600ms of silence
-            _speakingClearTimer?.cancel();
-            _speakingClearTimer = Timer(const Duration(milliseconds: 600), () {
-              if (mounted) {
-                setState(() {
-                  for (final seat in _seats) {
-                    seat.isSpeaking = false;
-                  }
-                });
-              }
-            });
-          },
-          // Audio routing change — pause music when phone call interrupts
-          onAudioRoutingChanged: (routing) {
-            Log.d(_tag, 'audio routing changed: $routing');
-            // routing == 1 means earpiece (phone call in progress)
-            if (routing == 1) {
-              _musicController?.pause();
-              _musicPlayer.pause();
-            }
-          },
-          // Audio mixing state — drives auto-advance in RoomMusicController.
-          onAudioMixingStateChanged: (state, reason) {
-            Log.d(_tag, 'audioMixing state=$state reason=$reason');
-            _musicController?.onAudioMixingStateChanged(state, reason);
-          },
-          onTokenPrivilegeWillExpire: (conn, token) async {
-            Log.d(_tag, 'token will expire, requesting new token');
-            await _refreshToken();
-          },
+          });
+        },
+        // Audio routing change — pause music when phone call interrupts
+        onAudioRoutingChanged: (routing) {
+          Log.d(_tag, 'audio routing changed: $routing');
+          // routing == 1 means earpiece (phone call in progress)
+          if (routing == 1) {
+            _musicController?.pause();
+            _musicPlayer.pause();
+          }
+        },
+        // Audio mixing state — drives auto-advance in RoomMusicController.
+        onAudioMixingStateChanged: (state, reason) {
+          Log.d(_tag, 'audioMixing state=$state reason=$reason');
+          _musicController?.onAudioMixingStateChanged(state, reason);
+        },
+        onTokenPrivilegeWillExpire: (conn, token) async {
+          Log.d(_tag, 'token will expire, requesting new token');
+          await _refreshToken();
+        },
       );
       _engine.registerEventHandler(_rtcEventHandler!);
 
@@ -3369,8 +3373,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       if (targetUserId == myUserId) {
         // Record the kick — kicked users are blocked from this room for 2h
         // (24h if kicked 3+ times within a day).
-        final roomKey =
-            _liveId.isNotEmpty ? _liveId : (_roomUser.id ?? '');
+        final roomKey = _liveId.isNotEmpty ? _liveId : (_roomUser.id ?? '');
         RoomBanService.recordKick(roomKey).then((ban) {
           if (!mounted) return;
           Fluttertoast.showToast(
@@ -4261,8 +4264,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         // Winner-only payload: the backend may emit just the coin amount —
         // native `onLuckyGift` treats a bare number as "You won N diamonds".
         if (data is num || data is String) {
-          final coins =
-              data is num ? data.toInt() : (int.tryParse(data) ?? 0);
+          final coins = data is num ? data.toInt() : (int.tryParse(data) ?? 0);
           if (coins <= 0) return;
           Fluttertoast.showToast(msg: 'You won $coins diamonds');
           _creditLuckyWin(coins);
@@ -4320,15 +4322,13 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         if (lm != null) {
           if (name == 'Someone') name = (lm.group(1) ?? '').trim();
           if (coins == 0) {
-            coins =
-                int.tryParse((lm.group(2) ?? '').replaceAll(',', '')) ?? 0;
+            coins = int.tryParse((lm.group(2) ?? '').replaceAll(',', '')) ?? 0;
           }
         }
         if (coins <= 0 && message.isNotEmpty) {
           // Message-only broadcast — banner + comment, no gift card.
           setState(() {
-            _luckyBannerName =
-                name == 'Someone' ? message : name;
+            _luckyBannerName = name == 'Someone' ? message : name;
             _luckyBannerImage = image;
             _luckyBannerCoins = coins;
           });
@@ -4462,8 +4462,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         if (m != null) {
           if (name.isEmpty) name = (m.group(1) ?? '').trim();
           if (coins == 0) {
-            coins =
-                int.tryParse((m.group(2) ?? '').replaceAll(',', '')) ?? 0;
+            coins = int.tryParse((m.group(2) ?? '').replaceAll(',', '')) ?? 0;
           }
         }
         if (!mounted) return;
@@ -4499,9 +4498,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
             userImage: image,
             isSystem: false,
             userId:
-                inner['userId']?.toString() ??
-                map['userId']?.toString() ??
-                '',
+                inner['userId']?.toString() ?? map['userId']?.toString() ?? '',
           ),
         );
         _clientCommentCount++;
@@ -4991,14 +4988,16 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       if (data is Map && !_isThisRoomEvent(data)) return;
       _roomMusicIsPlaying = false;
       if (mounted) setState(() {});
-      if (_musicController?.canControl == false) _musicController?.mirrorPause();
+      if (_musicController?.canControl == false)
+        _musicController?.mirrorPause();
     });
 
     _listenExtraSocket(Const.eventMusicResume, (data) {
       if (data is Map && !_isThisRoomEvent(data)) return;
       _roomMusicIsPlaying = true;
       if (mounted) setState(() {});
-      if (_musicController?.canControl == false) _musicController?.mirrorResume();
+      if (_musicController?.canControl == false)
+        _musicController?.mirrorResume();
     });
 
     _listenExtraSocket(Const.eventMusicSeek, (data) {
@@ -6811,17 +6810,14 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   void _startAnalyticsRefreshTimer() {
     _analyticsRefreshTimer?.cancel();
     if (!_amHost) return;
-    _analyticsRefreshTimer = Timer.periodic(
-      const Duration(seconds: 30),
-      (_) {
-        if (_liveId.isEmpty || !mounted) return;
-        SocketService.instance.emit(Const.eventRoomAnalyticsRequest, {
-          'liveStreamingId': _liveId,
-          'userId': context.read<SessionManager>().userId,
-        });
-        unawaited(_loadLiveRoomAnalytics());
-      },
-    );
+    _analyticsRefreshTimer = Timer.periodic(const Duration(seconds: 30), (_) {
+      if (_liveId.isEmpty || !mounted) return;
+      SocketService.instance.emit(Const.eventRoomAnalyticsRequest, {
+        'liveStreamingId': _liveId,
+        'userId': context.read<SessionManager>().userId,
+      });
+      unawaited(_loadLiveRoomAnalytics());
+    });
   }
 
   void _applyRoomPollEvent(dynamic data) {
@@ -7270,8 +7266,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     // Determine the correct seat role: host > admin > user. Prefer the role
     // supplied by the host during acceptance so admins keep their admin badge.
     final role =
-        preferredRole ??
-        (_amHost ? 'host' : (_iAmAdmin ? 'admin' : 'user'));
+        preferredRole ?? (_amHost ? 'host' : (_iAmAdmin ? 'admin' : 'user'));
 
     // Remember the old seat so we can tell the backend to clear it.
     final oldPosition = _selfPosition;
@@ -7552,8 +7547,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   void _refreshMusicControlFlag() {
     final controller = _musicController;
     if (controller == null) return;
-    final canControl =
-        _amHost || (_iAmAdmin);
+    final canControl = _amHost || (_iAmAdmin);
     controller.setCanControl(canControl);
   }
 
@@ -8250,7 +8244,10 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                   ),
                   subtitle: Text(
                     '${_seats.length} seats',
-                    style: TextStyle(color: AppTheme.fg(ctx, 0.54), fontSize: 12),
+                    style: TextStyle(
+                      color: AppTheme.fg(ctx, 0.54),
+                      fontSize: 12,
+                    ),
                   ),
                   onTap: () {
                     Navigator.pop(ctx);
@@ -8272,7 +8269,10 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                   ),
                   subtitle: Text(
                     'One speaker at a time',
-                    style: TextStyle(color: AppTheme.fg(ctx, 0.54), fontSize: 12),
+                    style: TextStyle(
+                      color: AppTheme.fg(ctx, 0.54),
+                      fontSize: 12,
+                    ),
                   ),
                   value: _stageMode,
                   activeColor: const Color(0xFFFFD700),
@@ -8692,8 +8692,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     // A seat counts as "mine" when its userId matches me OR it's the host
     // seat and I'm the host (backend may tag the host seat with a different
     // id field, which would otherwise hide the Leave Seat button).
-    final isMySeat =
-        seat.userId == myUserId || (_amHost && seat.isHost);
+    final isMySeat = seat.userId == myUserId || (_amHost && seat.isHost);
     showProfileRoomCard(
       context,
       roomUser: widget.roomUser,
@@ -8725,19 +8724,15 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       onLeaveSeat: isMySeat ? () => _leaveSelfSeat(seat.position) : null,
       onToggleMic: isMySeat ? _toggleMic : null,
       onInviteToSeat:
-          (_amHost ||
-                      (_iAmAdmin)) &&
-                  !isMySeat
+          (_amHost || (_iAmAdmin)) && !isMySeat
               ? () => _inviteViewerToSeat(seat.userId, seat.name, seat.image)
               : null,
       onBlock:
-          (_amHost || (_iAmAdmin)) &&
-                  !isMySeat
+          (_amHost || (_iAmAdmin)) && !isMySeat
               ? () => _blockUser(seat.userId ?? '')
               : null,
       onBanChat:
-          (_amHost || (_iAmAdmin)) &&
-                  !isMySeat
+          (_amHost || (_iAmAdmin)) && !isMySeat
               ? () => _banChatUser(seat.userId ?? '')
               : null,
       isChatMuted: _bannedChatUsers.contains(seat.userId),
@@ -8750,9 +8745,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
               ? () => _setStageSpeaker(seat.position)
               : null,
       onAdminToggled:
-          (_amHost ||
-                      (_iAmAdmin)) &&
-                  !isMySeat
+          (_amHost || (_iAmAdmin)) && !isMySeat
               ? (isAdmin) {
                 setState(() {
                   final idx = _seats.indexWhere(
@@ -8791,9 +8784,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
               }
               : null,
       onRemoveFromSeat:
-          (_amHost ||
-                      (_iAmAdmin)) &&
-                  !isMySeat
+          (_amHost || (_iAmAdmin)) && !isMySeat
               ? () {
                 setState(() {
                   final idx = _seats.indexWhere(
@@ -9749,7 +9740,8 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         _LiveComment(
           name: senderName,
           text: '',
-          userId: map['userId']?.toString() ?? map['senderId']?.toString() ?? '',
+          userId:
+              map['userId']?.toString() ?? map['senderId']?.toString() ?? '',
           isGift: true,
           userImage: VideoUtil.getFullImageUrl(senderImage),
           giftImage: commentGiftImage.isNotEmpty ? commentGiftImage : null,
@@ -9934,12 +9926,12 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
             userMap is Map ? Map<String, dynamic>.from(userMap) : null;
         userId =
             (data['userId'] ??
-                data['viewerId'] ??
-                data['id'] ??
-                data['_id'] ??
-                userMapData?['userId'] ??
-                userMapData?['_id'] ??
-                userMapData?['id'])
+                    data['viewerId'] ??
+                    data['id'] ??
+                    data['_id'] ??
+                    userMapData?['userId'] ??
+                    userMapData?['_id'] ??
+                    userMapData?['id'])
                 ?.toString();
       } else if (data is String || data is num) {
         userId = data.toString();
@@ -10502,8 +10494,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
             ),
           ),
         // Admins can also manage seat requests (manage guests).
-        if (_amHost ||
-            (_iAmAdmin))
+        if (_amHost || (_iAmAdmin))
           PopupMenuItem(
             value: 'seatRequests',
             child: Text('Seat Requests (${_seatRequests.length})'),
@@ -10683,20 +10674,6 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     final items = <MenuItem>[];
 
     if (_amHost) {
-      items.add(
-        MenuItem(
-          icon: Icons.bolt,
-          label: 'PK Battle (Coming Soon)',
-          gradient: const LinearGradient(
-            colors: [Color(0xFFFF416C), Color(0xFFFF4B2B)],
-          ),
-          onTap: () {
-            Navigator.pop(context);
-            Fluttertoast.showToast(msg: 'PK Battle — Coming Soon!');
-          },
-        ),
-      );
-
       // Switch from audio room → video live. All seated guests are migrated
       // to the new video live room and the audio room is fully shut down.
       items.add(
@@ -11096,9 +11073,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       ]);
     }
 
-    if (!_amHost &&
-        _musicPermission == 'friends' &&
-        !(_iAmAdmin)) {
+    if (!_amHost && _musicPermission == 'friends' && !(_iAmAdmin)) {
       items.add(
         MenuItem(
           icon: Icons.queue_music,
@@ -11354,7 +11329,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
           Log.w(_tag, 'userHostLiveEnd err: $e');
           return RestResponse(status: false);
         }),
-        ApiService.endLiveStream(audioLiveId).catchError((e) {
+        ApiService.endLiveStream(audioLiveId, userId: myUserId).catchError((e) {
           Log.w(_tag, 'endLiveStream err: $e');
           return RestResponse(status: false);
         }),
@@ -11418,7 +11393,10 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     if (_amHost && _admins.isNotEmpty) {
       try {
         await AudioRoomAdminCache.saveAdmins(myUserId, _admins);
-        Log.d(_tag, 'Admin list cached for host=$myUserId (${_admins.length} admins)');
+        Log.d(
+          _tag,
+          'Admin list cached for host=$myUserId (${_admins.length} admins)',
+        );
       } catch (e) {
         Log.w(_tag, 'Failed to cache admin list: $e');
       }
@@ -11552,7 +11530,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
           Log.w(_tag, 'userHostLiveEnd error: $e');
           return RestResponse(status: false);
         }),
-        ApiService.endLiveStream(liveId).catchError((e) {
+        ApiService.endLiveStream(liveId, userId: myUserId).catchError((e) {
           Log.w(_tag, 'endLiveStream error: $e');
           return RestResponse(status: false);
         }),
@@ -11624,7 +11602,10 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                     _amHost
                         ? 'Minimize, leave, or completely end the live room.'
                         : 'Choose to keep in background or exit the room.',
-                    style: TextStyle(color: AppTheme.fg(ctx, 0.6), fontSize: 13),
+                    style: TextStyle(
+                      color: AppTheme.fg(ctx, 0.6),
+                      fontSize: 13,
+                    ),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
@@ -11807,7 +11788,11 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                 color: borderColor ?? AppTheme.fg(context, 0.4),
               ),
             ),
-            child: Icon(icon, color: iconColor ?? AppTheme.fg(context), size: 28),
+            child: Icon(
+              icon,
+              color: iconColor ?? AppTheme.fg(context),
+              size: 28,
+            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -12090,7 +12075,10 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     // socket-received gifts from other users showed comments.
     // Try static .png first; if none, pass the RAW animation URL so the
     // comment bubble's _giftAsset can show the SVGA's first frame.
-    final commentGiftImage = _staticGiftImageFromUrls(rawGiftImage, rawSvgaImage);
+    final commentGiftImage = _staticGiftImageFromUrls(
+      rawGiftImage,
+      rawSvgaImage,
+    );
     final commentAnimationUrl =
         rawSvgaImage.isNotEmpty
             ? rawSvgaImage
@@ -12629,11 +12617,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   }
 
   void _openPkHandRaise() {
-    showPkHandRaiseSheet(
-      context,
-      isHost: _amHost,
-      liveStreamingId: _liveId,
-    );
+    showPkHandRaiseSheet(context, isHost: _amHost, liveStreamingId: _liveId);
   }
 
   /// In-room background — free/paid audio room themes only.
@@ -13773,8 +13757,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
           hostAtTop: hostAtTop,
           seatKey: topKey,
           isMusicPlaying:
-              _roomMusicIsPlaying &&
-              (topSeat.userId == _musicStartedByUserId),
+              _roomMusicIsPlaying && (topSeat.userId == _musicStartedByUserId),
         ),
         const SizedBox(height: 10),
         _buildFanSeats(normalizedSeats),
@@ -13887,17 +13870,18 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                       (!_amHost || _micEnabled))
                     Positioned(
                       bottom: -8,
-                      child: (topSeat.voiceWaveUrl?.isNotEmpty ?? false)
-                          ? VipMicWaveWidget(
-                            isSpeaking: true,
-                            svgaUrl: topSeat.voiceWaveUrl,
-                            size: 40,
-                          )
-                          : const MicWaveWidget(
-                            active: true,
-                            width: 40,
-                            height: 14,
-                          ),
+                      child:
+                          (topSeat.voiceWaveUrl?.isNotEmpty ?? false)
+                              ? VipMicWaveWidget(
+                                isSpeaking: true,
+                                svgaUrl: topSeat.voiceWaveUrl,
+                                size: 40,
+                              )
+                              : const MicWaveWidget(
+                                active: true,
+                                width: 40,
+                                height: 14,
+                              ),
                     ),
 
                   // Mute badge for host (red mic) — for the local host the
@@ -14316,9 +14300,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         c.isSeatRequest &&
         c.seatRequestUserId != null &&
         _seatRequests.any((r) => r['userId'] == c.seatRequestUserId) &&
-        !_seats.any(
-          (s) => s.isOccupied && s.userId == c.seatRequestUserId,
-        );
+        !_seats.any((s) => s.isOccupied && s.userId == c.seatRequestUserId);
     return AudioRoomCommentBubble(
       comment: _toAudioRoomComment(c),
       myUserId: context.read<SessionManager>().userId,
@@ -14412,10 +14394,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         if (_musicController case final controller?)
           Container(
             margin: const EdgeInsets.only(bottom: 10),
-            child: RoomMusicBar(
-              controller: controller,
-              rightSide: true,
-            ),
+            child: RoomMusicBar(controller: controller, rightSide: true),
           ),
         GestureDetector(
           onTap: _openLucky,
@@ -14685,7 +14664,10 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         // off-screen when the button row is wider than the viewport.
         final innerViewport = viewport - buttonW;
         final fixedWidth = (leftButtons.length + rightButtons.length) * buttonW;
-        final messageWidth = max(110.0, innerViewport - fixedWidth - messageMargin);
+        final messageWidth = max(
+          110.0,
+          innerViewport - fixedWidth - messageMargin,
+        );
         final contentWidth = fixedWidth + messageWidth + messageMargin;
 
         return Row(
@@ -15051,10 +15033,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                     ),
                   ),
                   ListTile(
-                    leading: Icon(
-                      Icons.photo_camera,
-                      color: AppTheme.fg(ctx),
-                    ),
+                    leading: Icon(Icons.photo_camera, color: AppTheme.fg(ctx)),
                     title: Text(
                       'Take Photo',
                       style: TextStyle(color: AppTheme.fg(ctx)),
@@ -15062,10 +15041,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                     onTap: () => Navigator.pop(ctx, ImageSource.camera),
                   ),
                   ListTile(
-                    leading: Icon(
-                      Icons.photo_library,
-                      color: AppTheme.fg(ctx),
-                    ),
+                    leading: Icon(Icons.photo_library, color: AppTheme.fg(ctx)),
                     title: Text(
                       'Choose from Gallery',
                       style: TextStyle(color: AppTheme.fg(ctx)),
@@ -15280,17 +15256,18 @@ class _SeatWidget extends StatelessWidget {
                   if (isOccupied && isSpeaking && !isMuted)
                     Positioned(
                       bottom: -8,
-                      child: (seat.voiceWaveUrl?.isNotEmpty ?? false)
-                          ? VipMicWaveWidget(
-                            isSpeaking: true,
-                            svgaUrl: seat.voiceWaveUrl,
-                            size: 40,
-                          )
-                          : const MicWaveWidget(
-                            active: true,
-                            width: 40,
-                            height: 14,
-                          ),
+                      child:
+                          (seat.voiceWaveUrl?.isNotEmpty ?? false)
+                              ? VipMicWaveWidget(
+                                isSpeaking: true,
+                                svgaUrl: seat.voiceWaveUrl,
+                                size: 40,
+                              )
+                              : const MicWaveWidget(
+                                active: true,
+                                width: 40,
+                                height: 14,
+                              ),
                     ),
                   // Show mic-off icon ONLY when user muted themselves
                   // (mute == 2). When host mutes a seat (mute == 1), no
@@ -15705,10 +15682,7 @@ class _FamilyWarPickerSheetState extends State<_FamilyWarPickerSheet> {
                   ),
                   const Spacer(),
                   IconButton(
-                    icon: Icon(
-                      Icons.close,
-                      color: AppTheme.fg(context, 0.7),
-                    ),
+                    icon: Icon(Icons.close, color: AppTheme.fg(context, 0.7)),
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
@@ -15731,7 +15705,10 @@ class _FamilyWarPickerSheetState extends State<_FamilyWarPickerSheet> {
                   const SizedBox(width: 8),
                   Text(
                     'Your family: ${widget.myFamilyName}',
-                    style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 13),
+                    style: TextStyle(
+                      color: AppTheme.fg(context, 0.7),
+                      fontSize: 13,
+                    ),
                   ),
                 ],
               ),

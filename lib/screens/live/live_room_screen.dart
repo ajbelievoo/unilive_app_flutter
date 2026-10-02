@@ -647,6 +647,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       _comments.removeRange(0, _comments.length - _maxComments);
     }
   }
+
   int _clientCommentCount = 0;
   int _viewerCount = 0;
   int _clientFanCount = 0;
@@ -654,11 +655,13 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   StreamSubscription<void>? _reconnectSub;
   final _viewers = <ViewerEntry>[];
   final _recentlyRemovedViewers = <String, DateTime>{};
+
   /// Every known id for the host. The backend roster can carry the host
   /// under their User `_id` while `widget.liveUser.userId` is the liveUserId
   /// field — a single equality check misses and the host ends up counted as
   /// a viewer. Seeded from the liveUser doc + getUser + own session.
   final Set<String> _hostIds = {};
+
   /// Users chat-muted by host/admin in this room — their comments/photos are
   /// dropped locally, and if it includes my own id I cannot send chat.
   final Set<String> _chatMutedUsers = {};
@@ -1827,338 +1830,325 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       );
 
       _rtcEventHandler = RtcEngineEventHandler(
-          onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
-            Log.i(_tag, 'joined channel ${connection.channelId}');
-            if (mounted && _hostOffline) setState(() => _hostOffline = false);
-          },
-          onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
-            if (!mounted) return;
-            Log.i(
-              _tag,
-              'remote user $remoteUid joined (connection.channelId=${connection.channelId}) pkRemoteUid=$_pkRemoteAgoraUid pkIsHost1=$_pkIsHost1',
-            );
+        onJoinChannelSuccess: (RtcConnection connection, int elapsed) {
+          Log.i(_tag, 'joined channel ${connection.channelId}');
+          if (mounted && _hostOffline) setState(() => _hostOffline = false);
+        },
+        onUserJoined: (RtcConnection connection, int remoteUid, int elapsed) {
+          if (!mounted) return;
+          Log.i(
+            _tag,
+            'remote user $remoteUid joined (connection.channelId=${connection.channelId}) pkRemoteUid=$_pkRemoteAgoraUid pkIsHost1=$_pkIsHost1',
+          );
 
-            // A rejoin inside the grace window cancels the pending teardown.
-            if (_pkRemoteAgoraUid == remoteUid) {
-              _pkDropGraceTimer?.cancel();
-              _pkDropGraceTimer = null;
-            }
-            _coHostDropTimers.remove(remoteUid)?.cancel();
+          // A rejoin inside the grace window cancels the pending teardown.
+          if (_pkRemoteAgoraUid == remoteUid) {
+            _pkDropGraceTimer?.cancel();
+            _pkDropGraceTimer = null;
+          }
+          _coHostDropTimers.remove(remoteUid)?.cancel();
 
-            if (!_isPkActive && _recentlyLeftPkUids.contains(remoteUid)) {
-              Log.i(_tag, 'Ignoring recently-left PK opponent $remoteUid');
-              return;
-            }
+          if (!_isPkActive && _recentlyLeftPkUids.contains(remoteUid)) {
+            Log.i(_tag, 'Ignoring recently-left PK opponent $remoteUid');
+            return;
+          }
 
-            final pendingPk = _pendingPkRequest;
-            if (widget.isHost && !_isPkActive && pendingPk != null) {
-              final myId =
-                  widget.liveUser.userId ??
-                  context.read<SessionManager>().userId;
-              final pendingHost1Id =
-                  (pendingPk['host1Id'] ?? pendingPk['requesterId'])
-                      ?.toString();
-              final pendingHost2Id =
-                  (pendingPk['host2Id'] ?? pendingPk['targetHostId'])
-                      ?.toString();
-              final expectedOpponentUid =
-                  myId == pendingHost1Id
-                      ? parseInt(
-                        pendingPk['host2AgoraUID'] ?? pendingPk['host2AgoraId'],
-                        0,
-                      )
-                      : myId == pendingHost2Id
-                      ? parseInt(
-                        pendingPk['host1AgoraUID'] ?? pendingPk['host1AgoraId'],
-                        0,
-                      )
-                      : 0;
-              if (expectedOpponentUid > 0 && remoteUid == expectedOpponentUid) {
-                Log.i(
-                  _tag,
-                  'PK acceptance detected from opponent relay uid=$remoteUid',
-                );
-                unawaited(_openAcceptedVideoPk(pendingPk, startTimer: true));
-              }
+          final pendingPk = _pendingPkRequest;
+          if (widget.isHost && !_isPkActive && pendingPk != null) {
+            final myId =
+                widget.liveUser.userId ?? context.read<SessionManager>().userId;
+            final pendingHost1Id =
+                (pendingPk['host1Id'] ?? pendingPk['requesterId'])?.toString();
+            final pendingHost2Id =
+                (pendingPk['host2Id'] ?? pendingPk['targetHostId'])?.toString();
+            final expectedOpponentUid =
+                myId == pendingHost1Id
+                    ? parseInt(
+                      pendingPk['host2AgoraUID'] ?? pendingPk['host2AgoraId'],
+                      0,
+                    )
+                    : myId == pendingHost2Id
+                    ? parseInt(
+                      pendingPk['host1AgoraUID'] ?? pendingPk['host1AgoraId'],
+                      0,
+                    )
+                    : 0;
+            if (expectedOpponentUid > 0 && remoteUid == expectedOpponentUid) {
+              Log.i(
+                _tag,
+                'PK acceptance detected from opponent relay uid=$remoteUid',
+              );
+              unawaited(_openAcceptedVideoPk(pendingPk, startTimer: true));
             }
+          }
 
-            // PK opponent video — create dedicated PK remote controller.
-            if (_pkRemoteAgoraUid == remoteUid) {
-              // Audience: re-request the low stream — the initial request at
-              // PK-open is dropped when the opponent uid hasn't appeared yet.
-              if (!widget.isHost && _isPkActive) {
-                unawaited(
-                  _engine
-                      .setRemoteVideoStreamType(
-                        uid: remoteUid,
-                        streamType: VideoStreamType.videoStreamLow,
-                      )
-                      .catchError((_) {}),
-                );
-              }
-              setState(() {
-                _pkRemoteController = VideoViewController.remote(
-                  rtcEngine: _engine,
-                  canvas: VideoCanvas(
-                    uid: remoteUid,
-                    renderMode: RenderModeType.renderModeHidden,
-                    mirrorMode: VideoMirrorModeType.videoMirrorModeDisabled,
-                  ),
-                  connection: RtcConnection(
-                    channelId:
-                        _pkIsHost1
-                            ? (_pkConfig?.host1Channel ?? '')
-                            : (_pkConfig?.host2Channel ?? ''),
-                  ),
-                  useFlutterTexture: false,
-                  useAndroidSurfaceView: true,
-                );
-              });
-              return;
-            }
-            final knownCoHostUids =
-                _coHosts.map(_coHostAgoraUid).where((uid) => uid > 0).toSet();
-            final role = resolveLiveVideoParticipant(
-              isRoomHost: widget.isHost,
-              remoteUid: remoteUid,
-              expectedHostUid: _expectedHostAgoraUid,
-              currentHostUid: _remoteUid,
-              knownCoHostUids: knownCoHostUids,
-              pkOpponentUid: _pkRemoteAgoraUid,
-            );
-            if (role == LiveVideoParticipantRole.host) {
-              setState(() {
-                _hostOffline = false;
-                _promoteToHost(remoteUid);
-              });
-            } else if (role == LiveVideoParticipantRole.coHost &&
-                !_coHostControllers.containsKey(remoteUid)) {
-              _bindRemoteUidToPendingCoHost(remoteUid);
-              _createCoHostController(remoteUid);
-            }
-          },
-          onUserOffline: (
-            RtcConnection connection,
-            int remoteUid,
-            UserOfflineReasonType reason,
-          ) {
-            if (!mounted) return;
-            Log.i(_tag, 'remote user $remoteUid offline: reason=$reason');
-            if (_recentlyLeftPkUids.remove(remoteUid)) {
-              Log.i(_tag, 'PK opponent $remoteUid fully left channel');
-            }
-            final isTransientDrop =
-                reason == UserOfflineReasonType.userOfflineDropped;
-
-            if (_pkRemoteAgoraUid == remoteUid) {
-              if (_isPkActive) {
-                if (isTransientDrop) {
-                  // Media-relay streams flap under load — a transient drop
-                  // must not tear down the whole PK. Grace window: if the
-                  // opponent rejoins (onUserJoined) the timer is cancelled.
-                  Log.i(
-                    _tag,
-                    'PK opponent $remoteUid dropped (transient) — 6s grace',
-                  );
-                  _pkDropGraceTimer?.cancel();
-                  _pkDropGraceTimer = Timer(const Duration(seconds: 6), () {
-                    if (mounted &&
-                        _isPkActive &&
-                        _pkRemoteAgoraUid == remoteUid) {
-                      _leavePkBattle(
-                        reason: 'disconnect',
-                        notifyOpponent: false,
-                      );
-                    }
-                  });
-                } else {
-                  Log.i(
-                    _tag,
-                    'PK opponent $remoteUid quit, leaving PK battle',
-                  );
-                  _leavePkBattle(reason: 'disconnect', notifyOpponent: false);
-                }
-              } else {
-                setState(() => _pkRemoteController = null);
-              }
-              return;
-            }
-
-            if (remoteUid == _expectedHostAgoraUid ||
-                remoteUid == _remoteUid) {
-              setState(() {
-                _remoteUid = null;
-                _remoteController = null;
-                _remoteAgoraView = null;
-              });
-              // Promote a parked broadcaster before telling the user the host
-              // left — a rotated host uid must not flash "Host went offline".
-              _reconcileHostVideo();
-              if (_remoteUid == null) {
-                Fluttertoast.showToast(msg: 'Host went offline');
-              }
-            }
-
-            // Remove co-host controller if present. A transient drop keeps
-            // the tile for a grace window — otherwise every network flap
-            // tears down + rebuilds the whole SurfaceView set.
-            if (_coHostControllers.containsKey(remoteUid)) {
-              if (isTransientDrop) {
-                _coHostDropTimers[remoteUid]?.cancel();
-                _coHostDropTimers[remoteUid] = Timer(
-                  const Duration(seconds: 6),
-                  () {
-                    _coHostDropTimers.remove(remoteUid);
-                    if (!mounted) return;
-                    setState(() {
-                      _coHostControllers.remove(remoteUid);
-                      _coHosts.removeWhere(
-                        (h) => _coHostAgoraUid(h) == remoteUid,
-                      );
-                    });
-                    _coHostUidToUserId.remove(remoteUid);
-                    _refreshMainVideoSurface();
-                  },
-                );
-              } else {
-                _coHostDropTimers.remove(remoteUid)?.cancel();
-                setState(() {
-                  _coHostControllers.remove(remoteUid);
-                  _coHosts.removeWhere(
-                    (h) => _coHostAgoraUid(h) == remoteUid,
-                  );
-                });
-                _coHostUidToUserId.remove(remoteUid);
-                _refreshMainVideoSurface();
-              }
-            }
-          },
-          // When a remote user turns their camera off, the backend does not
-          // reliably relay cameraOffCallJoin — without this the remote tile
-          // keeps showing the frozen last frame instead of the user's DP.
-          // Agora reports the remote video state natively, so treat it as the
-          // authoritative camera on/off signal for co-hosts and the host.
-          onRemoteVideoStateChanged: (
-            RtcConnection connection,
-            int remoteUid,
-            RemoteVideoState state,
-            RemoteVideoStateReason reason,
-            int elapsed,
-          ) {
-            if (!mounted) return;
-            if (state == RemoteVideoState.remoteVideoStateStopped &&
-                (reason ==
-                        RemoteVideoStateReason
-                            .remoteVideoStateReasonRemoteMuted ||
-                    reason ==
-                        RemoteVideoStateReason
-                            .remoteVideoStateReasonAudioFallback)) {
-              _applyRemoteCameraState(remoteUid, true);
-            } else if (reason ==
-                    RemoteVideoStateReason
-                        .remoteVideoStateReasonRemoteUnmuted ||
-                reason ==
-                    RemoteVideoStateReason
-                        .remoteVideoStateReasonAudioFallbackRecovery) {
-              _applyRemoteCameraState(remoteUid, false);
-            }
-          },
-          // Keep co-host mic-off badges in sync from the engine itself — the
-          // muteCallJoin socket event is not always relayed to every viewer.
-          onRemoteAudioStateChanged: (
-            RtcConnection connection,
-            int remoteUid,
-            RemoteAudioState state,
-            RemoteAudioStateReason reason,
-            int elapsed,
-          ) {
-            if (!mounted) return;
-            if (state == RemoteAudioState.remoteAudioStateStopped &&
-                reason == RemoteAudioStateReason.remoteAudioReasonRemoteMuted) {
-              _applyRemoteMuteState(remoteUid, true);
-            } else if (reason ==
-                RemoteAudioStateReason.remoteAudioReasonRemoteUnmuted) {
-              _applyRemoteMuteState(remoteUid, false);
-            }
-          },
-          onError: (ErrorCodeType err, String msg) {
-            Log.e(_tag, 'agora error $err: $msg');
-            if (err == ErrorCodeType.errInvalidToken) {
-              Fluttertoast.showToast(
-                msg: 'Invalid token — live stream may have ended',
+          // PK opponent video — create dedicated PK remote controller.
+          if (_pkRemoteAgoraUid == remoteUid) {
+            // Audience: re-request the low stream — the initial request at
+            // PK-open is dropped when the opponent uid hasn't appeared yet.
+            if (!widget.isHost && _isPkActive) {
+              unawaited(
+                _engine
+                    .setRemoteVideoStreamType(
+                      uid: remoteUid,
+                      streamType: VideoStreamType.videoStreamLow,
+                    )
+                    .catchError((_) {}),
               );
             }
-          },
-          onChannelMediaRelayStateChanged: (state, code) {
-            Log.d(_tag, 'PK media relay state=$state code=$code');
-            if (state == ChannelMediaRelayState.relayStateRunning) {
-              _pkRelayStarted = true;
-              _pkRelayRetryCount = 0;
-              _pkRelayRetryTimer?.cancel();
-              _pkRelayRetryTimer = null;
-            } else if (state == ChannelMediaRelayState.relayStateFailure) {
-              _pkRelayStarted = false;
-            }
-            // state FAILURE — retry relay.
-            if (state == ChannelMediaRelayState.relayStateFailure &&
-                _isPkActive &&
-                _pkConfig != null) {
-              if (_pkRelayRetryCount < _pkRelayMaxRetries) {
-                _pkRelayRetryCount++;
-                Log.d(
+            setState(() {
+              _pkRemoteController = VideoViewController.remote(
+                rtcEngine: _engine,
+                canvas: VideoCanvas(
+                  uid: remoteUid,
+                  renderMode: RenderModeType.renderModeHidden,
+                  mirrorMode: VideoMirrorModeType.videoMirrorModeDisabled,
+                ),
+                connection: RtcConnection(
+                  channelId:
+                      _pkIsHost1
+                          ? (_pkConfig?.host1Channel ?? '')
+                          : (_pkConfig?.host2Channel ?? ''),
+                ),
+                useFlutterTexture: false,
+                useAndroidSurfaceView: true,
+              );
+            });
+            return;
+          }
+          final knownCoHostUids =
+              _coHosts.map(_coHostAgoraUid).where((uid) => uid > 0).toSet();
+          final role = resolveLiveVideoParticipant(
+            isRoomHost: widget.isHost,
+            remoteUid: remoteUid,
+            expectedHostUid: _expectedHostAgoraUid,
+            currentHostUid: _remoteUid,
+            knownCoHostUids: knownCoHostUids,
+            pkOpponentUid: _pkRemoteAgoraUid,
+          );
+          if (role == LiveVideoParticipantRole.host) {
+            setState(() {
+              _hostOffline = false;
+              _promoteToHost(remoteUid);
+            });
+          } else if (role == LiveVideoParticipantRole.coHost &&
+              !_coHostControllers.containsKey(remoteUid)) {
+            _bindRemoteUidToPendingCoHost(remoteUid);
+            _createCoHostController(remoteUid);
+          }
+        },
+        onUserOffline: (
+          RtcConnection connection,
+          int remoteUid,
+          UserOfflineReasonType reason,
+        ) {
+          if (!mounted) return;
+          Log.i(_tag, 'remote user $remoteUid offline: reason=$reason');
+          if (_recentlyLeftPkUids.remove(remoteUid)) {
+            Log.i(_tag, 'PK opponent $remoteUid fully left channel');
+          }
+          final isTransientDrop =
+              reason == UserOfflineReasonType.userOfflineDropped;
+
+          if (_pkRemoteAgoraUid == remoteUid) {
+            if (_isPkActive) {
+              if (isTransientDrop) {
+                // Media-relay streams flap under load — a transient drop
+                // must not tear down the whole PK. Grace window: if the
+                // opponent rejoins (onUserJoined) the timer is cancelled.
+                Log.i(
                   _tag,
-                  'PK relay retry $_pkRelayRetryCount/$_pkRelayMaxRetries in 2s',
+                  'PK opponent $remoteUid dropped (transient) — 6s grace',
                 );
-                _pkRelayRetryTimer?.cancel();
-                _pkRelayRetryTimer = Timer(const Duration(seconds: 2), () {
-                  if (mounted && _isPkActive) {
-                    unawaited(_startPkMediaRelay());
+                _pkDropGraceTimer?.cancel();
+                _pkDropGraceTimer = Timer(const Duration(seconds: 6), () {
+                  if (mounted &&
+                      _isPkActive &&
+                      _pkRemoteAgoraUid == remoteUid) {
+                    _leavePkBattle(reason: 'disconnect', notifyOpponent: false);
                   }
                 });
               } else {
-                Log.e(_tag, 'PK relay max retries reached');
+                Log.i(_tag, 'PK opponent $remoteUid quit, leaving PK battle');
+                _leavePkBattle(reason: 'disconnect', notifyOpponent: false);
               }
+            } else {
+              setState(() => _pkRemoteController = null);
             }
-          },
-          onNetworkQuality: (
-            RtcConnection connection,
-            int remoteUid,
-            QualityType rxQuality,
-            QualityType txQuality,
-          ) {
-            // Use the worse of rx/tx quality as the overall indicator.
-            final worst =
-                rxQuality.index > txQuality.index ? rxQuality : txQuality;
-            if (mounted && worst.index != _networkQuality) {
-              setState(() => _networkQuality = worst.index);
+            return;
+          }
+
+          if (remoteUid == _expectedHostAgoraUid || remoteUid == _remoteUid) {
+            setState(() {
+              _remoteUid = null;
+              _remoteController = null;
+              _remoteAgoraView = null;
+            });
+            // Promote a parked broadcaster before telling the user the host
+            // left — a rotated host uid must not flash "Host went offline".
+            _reconcileHostVideo();
+            if (_remoteUid == null) {
+              Fluttertoast.showToast(msg: 'Host went offline');
             }
-          },
-          onConnectionLost: (RtcConnection connection) {
-            Log.w(_tag, 'agora connection lost');
-            if (mounted) setState(() => _hostOffline = true);
-          },
-          onTokenPrivilegeWillExpire: (RtcConnection connection, String token) {
-            Log.i(_tag, 'token privilege will expire, renewing...');
-            final session = context.read<SessionManager>();
-            final newToken = _generateAgoraToken(
-              appId: session.getSetting()?.agoraKey ?? _agoraAppIdFallback,
-              appCert: session.getSetting()?.agoraCertificate,
-              channel: connection.channelId ?? '',
-              uid:
-                  widget.isHost
-                      ? widget.liveUser.agoraUID
-                      : _isJoined
-                      ? _myAgoraUid
-                      : 0,
+          }
+
+          // Remove co-host controller if present. A transient drop keeps
+          // the tile for a grace window — otherwise every network flap
+          // tears down + rebuilds the whole SurfaceView set.
+          if (_coHostControllers.containsKey(remoteUid)) {
+            if (isTransientDrop) {
+              _coHostDropTimers[remoteUid]?.cancel();
+              _coHostDropTimers[remoteUid] = Timer(
+                const Duration(seconds: 6),
+                () {
+                  _coHostDropTimers.remove(remoteUid);
+                  if (!mounted) return;
+                  setState(() {
+                    _coHostControllers.remove(remoteUid);
+                    _coHosts.removeWhere(
+                      (h) => _coHostAgoraUid(h) == remoteUid,
+                    );
+                  });
+                  _coHostUidToUserId.remove(remoteUid);
+                  _refreshMainVideoSurface();
+                },
+              );
+            } else {
+              _coHostDropTimers.remove(remoteUid)?.cancel();
+              setState(() {
+                _coHostControllers.remove(remoteUid);
+                _coHosts.removeWhere((h) => _coHostAgoraUid(h) == remoteUid);
+              });
+              _coHostUidToUserId.remove(remoteUid);
+              _refreshMainVideoSurface();
+            }
+          }
+        },
+        // When a remote user turns their camera off, the backend does not
+        // reliably relay cameraOffCallJoin — without this the remote tile
+        // keeps showing the frozen last frame instead of the user's DP.
+        // Agora reports the remote video state natively, so treat it as the
+        // authoritative camera on/off signal for co-hosts and the host.
+        onRemoteVideoStateChanged: (
+          RtcConnection connection,
+          int remoteUid,
+          RemoteVideoState state,
+          RemoteVideoStateReason reason,
+          int elapsed,
+        ) {
+          if (!mounted) return;
+          if (state == RemoteVideoState.remoteVideoStateStopped &&
+              (reason ==
+                      RemoteVideoStateReason
+                          .remoteVideoStateReasonRemoteMuted ||
+                  reason ==
+                      RemoteVideoStateReason
+                          .remoteVideoStateReasonAudioFallback)) {
+            _applyRemoteCameraState(remoteUid, true);
+          } else if (reason ==
+                  RemoteVideoStateReason.remoteVideoStateReasonRemoteUnmuted ||
+              reason ==
+                  RemoteVideoStateReason
+                      .remoteVideoStateReasonAudioFallbackRecovery) {
+            _applyRemoteCameraState(remoteUid, false);
+          }
+        },
+        // Keep co-host mic-off badges in sync from the engine itself — the
+        // muteCallJoin socket event is not always relayed to every viewer.
+        onRemoteAudioStateChanged: (
+          RtcConnection connection,
+          int remoteUid,
+          RemoteAudioState state,
+          RemoteAudioStateReason reason,
+          int elapsed,
+        ) {
+          if (!mounted) return;
+          if (state == RemoteAudioState.remoteAudioStateStopped &&
+              reason == RemoteAudioStateReason.remoteAudioReasonRemoteMuted) {
+            _applyRemoteMuteState(remoteUid, true);
+          } else if (reason ==
+              RemoteAudioStateReason.remoteAudioReasonRemoteUnmuted) {
+            _applyRemoteMuteState(remoteUid, false);
+          }
+        },
+        onError: (ErrorCodeType err, String msg) {
+          Log.e(_tag, 'agora error $err: $msg');
+          if (err == ErrorCodeType.errInvalidToken) {
+            Fluttertoast.showToast(
+              msg: 'Invalid token — live stream may have ended',
             );
-            if (newToken.isNotEmpty) {
-              _engine.renewToken(newToken);
+          }
+        },
+        onChannelMediaRelayStateChanged: (state, code) {
+          Log.d(_tag, 'PK media relay state=$state code=$code');
+          if (state == ChannelMediaRelayState.relayStateRunning) {
+            _pkRelayStarted = true;
+            _pkRelayRetryCount = 0;
+            _pkRelayRetryTimer?.cancel();
+            _pkRelayRetryTimer = null;
+          } else if (state == ChannelMediaRelayState.relayStateFailure) {
+            _pkRelayStarted = false;
+          }
+          // state FAILURE — retry relay.
+          if (state == ChannelMediaRelayState.relayStateFailure &&
+              _isPkActive &&
+              _pkConfig != null) {
+            if (_pkRelayRetryCount < _pkRelayMaxRetries) {
+              _pkRelayRetryCount++;
+              Log.d(
+                _tag,
+                'PK relay retry $_pkRelayRetryCount/$_pkRelayMaxRetries in 2s',
+              );
+              _pkRelayRetryTimer?.cancel();
+              _pkRelayRetryTimer = Timer(const Duration(seconds: 2), () {
+                if (mounted && _isPkActive) {
+                  unawaited(_startPkMediaRelay());
+                }
+              });
+            } else {
+              Log.e(_tag, 'PK relay max retries reached');
             }
-          },
-          onAudioMixingStateChanged: (state, reason) {
-            Log.d(_tag, 'audioMixing state=$state reason=$reason');
-            _musicController?.onAudioMixingStateChanged(state, reason);
-          },
+          }
+        },
+        onNetworkQuality: (
+          RtcConnection connection,
+          int remoteUid,
+          QualityType rxQuality,
+          QualityType txQuality,
+        ) {
+          // Use the worse of rx/tx quality as the overall indicator.
+          final worst =
+              rxQuality.index > txQuality.index ? rxQuality : txQuality;
+          if (mounted && worst.index != _networkQuality) {
+            setState(() => _networkQuality = worst.index);
+          }
+        },
+        onConnectionLost: (RtcConnection connection) {
+          Log.w(_tag, 'agora connection lost');
+          if (mounted) setState(() => _hostOffline = true);
+        },
+        onTokenPrivilegeWillExpire: (RtcConnection connection, String token) {
+          Log.i(_tag, 'token privilege will expire, renewing...');
+          final session = context.read<SessionManager>();
+          final newToken = _generateAgoraToken(
+            appId: session.getSetting()?.agoraKey ?? _agoraAppIdFallback,
+            appCert: session.getSetting()?.agoraCertificate,
+            channel: connection.channelId ?? '',
+            uid:
+                widget.isHost
+                    ? widget.liveUser.agoraUID
+                    : _isJoined
+                    ? _myAgoraUid
+                    : 0,
+          );
+          if (newToken.isNotEmpty) {
+            _engine.renewToken(newToken);
+          }
+        },
+        onAudioMixingStateChanged: (state, reason) {
+          Log.d(_tag, 'audioMixing state=$state reason=$reason');
+          _musicController?.onAudioMixingStateChanged(state, reason);
+        },
       );
       _engine.registerEventHandler(_rtcEventHandler!);
 
@@ -3101,8 +3091,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             pendingJoin &&
             (_isSelfId(targetUserId) ||
                 _isSelfId(senderId) ||
-                (myName.isNotEmpty &&
-                    commentText.startsWith('$myName '))) &&
+                (myName.isNotEmpty && commentText.startsWith('$myName '))) &&
             !widget.isHost) {
           final coHostEntry = {
             'userId': myUserId,
@@ -4605,8 +4594,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             map['userId'] is Map
                 ? (map['userId']['_id'] ?? map['userId']['id'])?.toString()
                 : (map['userId'] ?? map['liveUserId'])?.toString();
-        final myLiveId =
-            widget.liveUser.liveRoomId ?? widget.liveUser.id ?? '';
+        final myLiveId = widget.liveUser.liveRoomId ?? widget.liveUser.id ?? '';
         final sameRoom =
             (roomLiveId != null &&
                 roomLiveId.isNotEmpty &&
@@ -5252,7 +5240,8 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           if (rid != null && rid.isNotEmpty) {
             _linkCoHostUid(r, _coHostAgoraUid(r));
             final rn = r['name']?.toString();
-            final ri = (r['image'] ?? r['userImage'] ?? r['avatar'])?.toString();
+            final ri =
+                (r['image'] ?? r['userImage'] ?? r['avatar'])?.toString();
             if ((rn?.isNotEmpty ?? false) || (ri?.isNotEmpty ?? false)) {
               final base = _coHostProfileCache[rid];
               _coHostProfileCache[rid] = {
@@ -6010,9 +5999,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         // Never let a rejoin ack drop the count below the viewers we
         // already know are inside — some backends send a stale/low `view`.
         if (view > 0 && mounted) {
-          setState(
-            () => _viewerCount = max(_viewers.length, max(0, view - 1)),
-          );
+          setState(() => _viewerCount = max(_viewers.length, max(0, view - 1)));
         }
       } catch (_) {}
     });
@@ -6907,27 +6894,27 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
 
     final hasName =
         (coHost['name'] ??
-                    coHost['userName'] ??
-                    coHost['username'] ??
-                    coHost['nickName'] ??
-                    coHost['userNickname'] ??
-                    nestedMap['name'] ??
-                    nestedMap['userName'] ??
-                    nestedMap['username'] ??
-                    nestedMap['nickName'])
-                ?.toString()
-                .isNotEmpty ==
-            true;
+                coHost['userName'] ??
+                coHost['username'] ??
+                coHost['nickName'] ??
+                coHost['userNickname'] ??
+                nestedMap['name'] ??
+                nestedMap['userName'] ??
+                nestedMap['username'] ??
+                nestedMap['nickName'])
+            ?.toString()
+            .isNotEmpty ==
+        true;
     final hasImage =
         (coHost['image'] ??
-                    coHost['userImage'] ??
-                    coHost['avatar'] ??
-                    nestedMap['image'] ??
-                    nestedMap['userImage'] ??
-                    nestedMap['avatar'])
-                ?.toString()
-                .isNotEmpty ==
-            true;
+                coHost['userImage'] ??
+                coHost['avatar'] ??
+                nestedMap['image'] ??
+                nestedMap['userImage'] ??
+                nestedMap['avatar'])
+            ?.toString()
+            .isNotEmpty ==
+        true;
     if (hasName && hasImage) return;
 
     // Host side: the pending join request already carries name/image.
@@ -7328,8 +7315,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
 
       if (!mounted) return;
       final hostMutedSelf = _coHosts.any(
-        (h) =>
-            _isSelfId(h['userId']?.toString()) && parseBool(h['isMute']),
+        (h) => _isSelfId(h['userId']?.toString()) && parseBool(h['isMute']),
       );
       if (!_micEnabled || hostMutedSelf) {
         if (mounted) setState(() => _micEnabled = false);
@@ -7734,10 +7720,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                       const Spacer(),
                       GestureDetector(
                         onTap: () => Navigator.pop(ctx),
-                        child: Icon(
-                          Icons.close,
-                          color: AppTheme.fg(ctx, 0.54),
-                        ),
+                        child: Icon(Icons.close, color: AppTheme.fg(ctx, 0.54)),
                       ),
                     ],
                   ),
@@ -8033,8 +8016,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   /// client drops them from the grid and the removed guest stops publishing.
   void _removeCoHostFromCall(String userId) {
     if (userId.isEmpty) return;
-    final coHost =
-        _coHosts.where((h) => h['userId'] == userId).firstOrNull;
+    final coHost = _coHosts.where((h) => h['userId'] == userId).firstOrNull;
     SocketService.instance.emit(Const.eventLessParticipatesCallJoin, {
       'userId': userId,
       'liveUserMongoId': widget.liveUser.id,
@@ -8276,7 +8258,6 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         const Color(0xFF26A69A),
         _toggleChatTranslation,
       ),
-      _liveMenuItem(Icons.group, 'Fan Club', Colors.pink, _openFanClub),
     ];
     showHostMenuSheet(context, title: 'Host Menu', items: items);
   }
@@ -8351,13 +8332,6 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         const Color(0xFF26A69A),
         _toggleChatTranslation,
       ),
-      _liveMenuItem(
-        Icons.celebration,
-        'Live Events',
-        Colors.yellow,
-        _openLiveEvents,
-      ),
-      _liveMenuItem(Icons.group, 'Fan Club', Colors.pink, _openFanClub),
       _liveMenuItem(Icons.share, 'Share Live', Colors.white70, _openInboxShare),
       _liveMenuItem(
         Icons.ios_share,
@@ -9093,14 +9067,6 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     }
   }
 
-  void _openLiveEvents() {
-    context.pushNamed(AppRoutes.liveEvents);
-  }
-
-  void _openFanClub() {
-    context.pushNamed(AppRoutes.fanClub);
-  }
-
   Future<void> _toggleClipCapture() async {
     if (_isClipCapturing) {
       LiveClipService.instance.cancelClipCapture();
@@ -9199,7 +9165,6 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       onLuckyBag: _openLuckyBag,
       onPK: _openVS,
       onVideoMusic: _openVideoMusic,
-      onLudo: _openLudo,
     );
   }
 
@@ -9214,10 +9179,6 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
 
   void _openVideoMusic() {
     _openMusic();
-  }
-
-  void _openLudo() {
-    context.pushNamed(AppRoutes.ludoGame);
   }
 
   void _openMyItems() {
@@ -11494,7 +11455,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     final liveUserDocId = widget.liveUser.id ?? myUserId;
     try {
       await Future.wait([
-        ApiService.endLiveStream(liveId).catchError((e) {
+        ApiService.endLiveStream(liveId, userId: myUserId).catchError((e) {
           Log.w(_tag, 'endLiveStream err: $e');
           return RestResponse(status: false);
         }),
@@ -12946,10 +12907,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                   ),
                   Divider(color: AppTheme.hairline(ctx)),
                   ListTile(
-                    leading: Icon(
-                      Icons.person,
-                      color: AppTheme.fg(ctx, 0.7),
-                    ),
+                    leading: Icon(Icons.person, color: AppTheme.fg(ctx, 0.7)),
                     title: Text(
                       'View Profile',
                       style: TextStyle(color: AppTheme.fg(ctx)),
@@ -13008,9 +12966,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                             'userId': targetId,
                             'mute': 3,
                           });
-                          Fluttertoast.showToast(
-                            msg: 'User muted from chat',
-                          );
+                          Fluttertoast.showToast(msg: 'User muted from chat');
                         },
                         onKick: () {
                           // VIP anti-kick protection — cannot kick protected viewers.
@@ -14819,10 +14775,8 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
               : null,
       onMention: () {},
       onGift: _openGifts,
-      onBanChat:
-          _canModerate ? () => _muteViewerFromCard(userId) : null,
-      onKickOut:
-          _canModerate ? () => _kickViewerFromCard(userId) : null,
+      onBanChat: _canModerate ? () => _muteViewerFromCard(userId) : null,
+      onKickOut: _canModerate ? () => _kickViewerFromCard(userId) : null,
       isChatMuted: _chatMutedUsers.contains(userId),
     );
   }
@@ -14882,10 +14836,8 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
               : null,
       onMention: () {},
       onGift: _openGifts,
-      onBanChat:
-          _canModerate ? () => _muteViewerFromCard(userId) : null,
-      onKickOut:
-          _canModerate ? () => _kickViewerFromCard(userId) : null,
+      onBanChat: _canModerate ? () => _muteViewerFromCard(userId) : null,
+      onKickOut: _canModerate ? () => _kickViewerFromCard(userId) : null,
       isChatMuted: _chatMutedUsers.contains(userId),
     );
   }

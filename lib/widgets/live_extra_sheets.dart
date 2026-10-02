@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
@@ -28,12 +27,13 @@ void showPkVoteSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => _PkVoteSheet(
-      liveStreamingId: liveStreamingId,
-      userId: userId,
-      host1Name: host1Name,
-      host2Name: host2Name,
-    ),
+    builder:
+        (_) => _PkVoteSheet(
+          liveStreamingId: liveStreamingId,
+          userId: userId,
+          host1Name: host1Name,
+          host2Name: host2Name,
+        ),
   );
 }
 
@@ -72,14 +72,23 @@ class _PkVoteSheet extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Text('Vote', style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold)),
+            Text(
+              'Vote',
+              style: TextStyle(
+                color: AppTheme.fg(context),
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () => _vote(context, 'host1'),
-                    style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7E3FF2)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF7E3FF2),
+                    ),
                     child: Text(host1Name),
                   ),
                 ),
@@ -87,7 +96,9 @@ class _PkVoteSheet extends StatelessWidget {
                 Expanded(
                   child: ElevatedButton(
                     onPressed: () => _vote(context, 'host2'),
-                    style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.redAccent,
+                    ),
                     child: Text(host2Name),
                   ),
                 ),
@@ -102,294 +113,6 @@ class _PkVoteSheet extends StatelessWidget {
 }
 
 /// Host lucky menu: draw or send a lucky bag.
-void showHostLuckySheet(
-  BuildContext context, {
-  required String liveStreamingId,
-  required String userId,
-  required List<String> viewerNames,
-}) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) => _HostLuckySheet(
-      liveStreamingId: liveStreamingId,
-      userId: userId,
-      viewerNames: viewerNames,
-    ),
-  );
-}
-
-class _HostLuckySheet extends StatefulWidget {
-  const _HostLuckySheet({
-    required this.liveStreamingId,
-    required this.userId,
-    required this.viewerNames,
-  });
-
-  final String liveStreamingId;
-  final String userId;
-  final List<String> viewerNames;
-
-  @override
-  State<_HostLuckySheet> createState() => _HostLuckySheetState();
-}
-
-class _HostLuckySheetState extends State<_HostLuckySheet> {
-  final _coinsCtrl = TextEditingController();
-  final _countCtrl = TextEditingController(text: '5');
-  String? _drawResult;
-  bool _drawing = false;
-
-  @override
-  void dispose() {
-    _coinsCtrl.dispose();
-    _countCtrl.dispose();
-    super.dispose();
-  }
-
-  void _spin() {
-    if (widget.viewerNames.isEmpty) {
-      Fluttertoast.showToast(msg: 'No viewers to draw');
-      return;
-    }
-    setState(() => _drawing = true);
-    final names = [...widget.viewerNames];
-    var ticks = 0;
-    Timer.periodic(const Duration(milliseconds: 120), (timer) {
-      if (!mounted) {
-        timer.cancel();
-        return;
-      }
-      setState(() => _drawResult = names[Random().nextInt(names.length)]);
-      ticks++;
-      if (ticks > 20) {
-        timer.cancel();
-        final winner = names[Random().nextInt(names.length)];
-        final diamonds = Random().nextInt(91) + 10;
-        setState(() {
-          _drawResult = '$winner won $diamonds diamonds!';
-          _drawing = false;
-        });
-        SocketService.instance.emit(Const.luckyGift, {
-          'liveStreamingId': widget.liveStreamingId,
-          'userId': widget.userId,
-          'winner': winner,
-          'diamonds': diamonds,
-        });
-      }
-    });
-  }
-
-  void _sendLuckyBag() {
-    final coins = int.tryParse(_coinsCtrl.text.trim()) ?? 0;
-    final count = int.tryParse(_countCtrl.text.trim()) ?? 0;
-    if (coins <= 0 || count <= 0) {
-      Fluttertoast.showToast(msg: 'Enter valid diamonds and count');
-      return;
-    }
-    SocketService.instance.emit(Const.eventLuckyBagCreate, {
-      'liveStreamingId': widget.liveStreamingId,
-      'userId': widget.userId,
-      'totalCoins': coins,
-      'bagCount': count,
-    });
-    Fluttertoast.showToast(msg: 'Lucky bag sent!');
-    Navigator.pop(context);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: 2,
-      child: Container(
-        decoration: BoxDecoration(
-          color: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        padding: const EdgeInsets.all(16),
-        child: SafeArea(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('Lucky', style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 8),
-              TabBar(
-                indicatorColor: const Color(0xFF7E3FF2),
-                labelColor: AppTheme.fg(context),
-                unselectedLabelColor: AppTheme.fg(context, 0.7),
-                tabs: const [Tab(text: 'Draw'), Tab(text: 'Lucky Bag')],
-              ),
-              const SizedBox(height: 8),
-              SizedBox(
-                height: 260,
-                child: TabBarView(
-                  children: [
-                    // Draw tab
-                    Column(
-                      children: [
-                        Expanded(
-                          child: Center(
-                            child: _drawing
-                                ? const Preloader()
-                                : Text(
-                                    _drawResult ?? 'Tap Spin to pick a lucky viewer',
-                                    style: TextStyle(color: AppTheme.fg(context), fontSize: 16),
-                                    textAlign: TextAlign.center,
-                                  ),
-                          ),
-                        ),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _drawing ? null : _spin,
-                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7E3FF2)),
-                            child: const Text('Spin'),
-                          ),
-                        ),
-                      ],
-                    ),
-                    // Lucky Bag tab
-                    Column(
-                      children: [
-                        TextField(
-                          controller: _coinsCtrl,
-                          keyboardType: TextInputType.number,
-                          style: TextStyle(color: AppTheme.fg(context)),
-                          decoration: InputDecoration(
-                            labelText: 'Total Diamonds',
-                            labelStyle: TextStyle(color: AppTheme.fg(context, 0.7)),
-                            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppTheme.hairline(context))),
-                          ),
-                        ),
-                        TextField(
-                          controller: _countCtrl,
-                          keyboardType: TextInputType.number,
-                          style: TextStyle(color: AppTheme.fg(context)),
-                          decoration: InputDecoration(
-                            labelText: 'Number of Bags',
-                            labelStyle: TextStyle(color: AppTheme.fg(context, 0.7)),
-                            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppTheme.hairline(context))),
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            onPressed: _sendLuckyBag,
-                            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7E3FF2)),
-                            child: const Text('Send Lucky Bag'),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-/// Audience lucky bag claim.
-void showLuckyBagClaimSheet(
-  BuildContext context, {
-  required String liveStreamingId,
-    required String userId,
-}) {
-  showModalBottomSheet(
-    context: context,
-    isScrollControlled: true,
-    backgroundColor: Colors.transparent,
-    builder: (_) => _LuckyBagClaimSheet(
-      liveStreamingId: liveStreamingId,
-      userId: userId,
-    ),
-  );
-}
-
-class _LuckyBagClaimSheet extends StatefulWidget {
-  const _LuckyBagClaimSheet({required this.liveStreamingId, required this.userId});
-
-  final String liveStreamingId;
-  final String userId;
-
-  @override
-  State<_LuckyBagClaimSheet> createState() => _LuckyBagClaimSheetState();
-}
-
-class _LuckyBagClaimSheetState extends State<_LuckyBagClaimSheet> {
-  Function? _cancel;
-  bool _available = false;
-  bool _claimed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _cancel = SocketService.instance.on(Const.eventLuckyBagCreate, (data) {
-      if (data is Map && (data['liveStreamingId']?.toString() == widget.liveStreamingId)) {
-        setState(() => _available = true);
-      }
-    });
-    // No initial query — wait for socket event from host.
-  }
-
-  @override
-  void dispose() {
-    _cancel?.call();
-    super.dispose();
-  }
-
-  void _claim() {
-    SocketService.instance.emit(Const.eventLuckyBagClaim, {
-      'liveStreamingId': widget.liveStreamingId,
-      'userId': widget.userId,
-    });
-    setState(() => _claimed = true);
-    Fluttertoast.showToast(msg: 'Claimed!');
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        color: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      padding: const EdgeInsets.all(16),
-      child: SafeArea(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text('Lucky Bag', style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 24),
-            if (!_available && !_claimed)
-              Text('No lucky bag active right now', style: TextStyle(color: AppTheme.fg(context, 0.7)))
-            else if (_claimed)
-              const Icon(Icons.check_circle, color: Colors.green, size: 64)
-            else
-            ...[
-              const ImageIcon(const AssetImage("assets/gift/official_gift.png"), color: Color(0xFF7E3FF2), size: 64),
-              const SizedBox(height: 16),
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: _claim,
-                  style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF7E3FF2)),
-                  child: const Text('Open Lucky Bag'),
-                ),
-              ),
-            ],
-            const SizedBox(height: 8),
-          ],
-        ),
-      ),
-    );
-  }
-}
 
 // ---------------------------------------------------------------------------
 // Audio room live stats + host earnings dashboard.

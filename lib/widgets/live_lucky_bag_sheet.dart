@@ -4,16 +4,15 @@
 ///   - Host: choose total diamonds + number of bags and send.
 ///   - Viewer: countdown, tap the red envelope to open, see result.
 ///
-/// Client-side fallback: if the backend endpoints are not yet implemented,
-/// coins are deducted / awarded locally and the socket events still broadcast
-/// so the room sees the bag + winner.
+/// Wallet movement is server-authoritative: `luckyBagCreate` debits the
+/// sender and `luckyBagClaim` credits the winner atomically in the backend.
+/// Socket events are broadcast for display only — this client never mutates
+/// balances locally.
 library live_lucky_bag_sheet;
 
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:go_router/go_router.dart';
@@ -315,36 +314,20 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
     });
   }
 
-  /// True when the backend has not yet implemented the endpoint.
-  bool _shouldClientSideFallback(dynamic e, RestResponse? res) {
-    if (e is DioException) {
-      final code = e.response?.statusCode;
-      if (code == 404 || code == 405 || code == 501 || code == 503) return true;
-      final msg = e.message?.toLowerCase() ?? '';
-      if (msg.contains('not found') ||
-          msg.contains('not implemented') ||
-          msg.contains('not available')) {
-        return true;
+  /// Refetch the user from the backend and update the session wallet.
+  Future<void> _refreshSessionUser(SessionManager session) async {
+    try {
+      final fresh = await ApiService.getUser({
+        'userId': session.userId,
+        'loginUserId': session.userId,
+      });
+      if (fresh.status && fresh.user != null) {
+        session.saveUser(fresh.user!);
+        if (mounted) _loadCoins();
       }
+    } catch (e, s) {
+      Log.e(_tag, 'user refresh failed', e, s);
     }
-    final m = res?.message?.toLowerCase() ?? '';
-    if (m.contains('not implemented') ||
-        m.contains('not found') ||
-        m.contains('coming soon') ||
-        m.contains('not available')) {
-      return true;
-    }
-    return false;
-  }
-
-  /// Compute a fun random share for client-side fallback.
-  int _computeFallbackWin() {
-    if (_totalCoins <= 0 || _bagCount <= 0) return 0;
-    final avg = _totalCoins ~/ _bagCount;
-    if (avg <= 1) return 1;
-    const min = 1;
-    final max = (avg * 1.5).ceil();
-    return min + Random().nextInt(max - min + 1);
   }
 
   Future<void> _send() async {
@@ -373,7 +356,7 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
       }
 
       final bool apiOk = res?.status == true;
-      if (apiOk || _shouldClientSideFallback(null, res)) {
+      if (apiOk) {
         final responsePayload = _unwrap(res?.data) ?? const <String, dynamic>{};
         final bagId = _string(responsePayload, const [
           'bagId',
@@ -402,7 +385,6 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
           'isGlobalBroadcast': true,
           'broadcastScope': 'global',
           if (bagId.isNotEmpty) 'bagId': bagId,
-          if (!apiOk) 'clientSideFallback': true,
         };
         await LuckyBagHistoryService.instance.recordCreated(payload);
         // Broadcast to room.
@@ -425,26 +407,20 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
           },
         );
 
-        // Deduct locally.
-        final user = session.getUser();
-        if (user != null) {
-          session.saveUser(user.copyWith(coin: user.coin - _selectedCoin));
-        }
+        // Wallet was debited server-side by luckyBagCreate — refresh the
+        // local session copy from the server.
+        await _refreshSessionUser(session);
 
-        if (apiOk) {
-          Fluttertoast.showToast(msg: 'Lucky bag sent!');
-        } else {
-          Fluttertoast.showToast(
-            msg: 'Lucky bag sent (demo mode — backend not ready)',
-          );
-        }
+        Fluttertoast.showToast(msg: 'Lucky bag sent!');
         if (mounted) {
           _loadCoins();
           Navigator.pop(context);
         }
       } else {
         var msg = res?.message ?? 'Failed to send lucky bag';
-        msg = msg.replaceAll('rCoin', 'diamonds').replaceAll('RCoin', 'diamonds');
+        msg = msg
+            .replaceAll('rCoin', 'diamonds')
+            .replaceAll('RCoin', 'diamonds');
         Fluttertoast.showToast(msg: msg);
       }
     } catch (e, s) {
@@ -476,9 +452,6 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
       bool apiOk = res?.status == true && res?.data is Map;
       if (apiOk) {
         coins = _claimCoins(res!.data);
-      } else if (_shouldClientSideFallback(null, res)) {
-        coins = _computeFallbackWin();
-        apiOk = true; // treated as success for UX
       } else {
         coins = 0;
       }
@@ -486,11 +459,9 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
       setState(() => _resultCoins = coins);
 
       if (apiOk) {
-        // Update local wallet.
-        final user = session.getUser();
-        if (user != null && coins > 0) {
-          session.saveUser(user.copyWith(coin: user.coin + coins));
-        }
+        // Wallet was credited server-side by luckyBagClaim — refresh the
+        // local session copy from the server.
+        await _refreshSessionUser(session);
 
         // Broadcast the win to room chat.
         SocketService.instance.emit(Const.eventComment, {
@@ -512,7 +483,9 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
         });
       } else {
         var msg = res?.message ?? 'You missed this lucky bag';
-        msg = msg.replaceAll('rCoin', 'diamonds').replaceAll('RCoin', 'diamonds');
+        msg = msg
+            .replaceAll('rCoin', 'diamonds')
+            .replaceAll('RCoin', 'diamonds');
         Fluttertoast.showToast(msg: msg);
       }
     } catch (e, s) {
@@ -903,7 +876,10 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
               const SizedBox(height: 4),
               Text(
                 subtitle,
-                style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 13),
+                style: TextStyle(
+                  color: AppTheme.fg(context, 0.7),
+                  fontSize: 13,
+                ),
               ),
             ],
           ),
@@ -953,9 +929,7 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
                     color:
-                        isSelected
-                            ? Colors.white
-                            : AppTheme.hairline(context),
+                        isSelected ? Colors.white : AppTheme.hairline(context),
                     width: 2,
                   ),
                 ),
@@ -963,9 +937,7 @@ class _LiveLuckyBagSheetState extends State<LiveLuckyBagSheet> {
                   _formatNumber(v),
                   style: TextStyle(
                     color:
-                        isSelected
-                            ? Colors.white
-                            : AppTheme.fg(context, 0.87),
+                        isSelected ? Colors.white : AppTheme.fg(context, 0.87),
                     fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                     fontSize: 13,
                   ),

@@ -8,6 +8,7 @@ class UserRoot {
   UserRoot({this.message, this.reason, this.status = false, this.user});
 
   final String? message;
+
   /// Admin-supplied block reason. Populated by backend when an account or
   /// device block is enforced on login/refresh. See
   /// `docs/FLUTTER_DEVICE_BLOCK_INTEGRATION.md` §E.
@@ -16,11 +17,11 @@ class UserRoot {
   final User? user;
 
   factory UserRoot.fromJson(Map<String, dynamic> json) => UserRoot(
-        message: parseString(json['message']),
-        reason: parseString(json['reason']),
-        status: parseBool(json['status'] ?? json['success']),
-        user: _asUser(json['user'] ?? json['data'] ?? json['userData']),
-      );
+    message: parseString(json['message']),
+    reason: parseString(json['reason']),
+    status: parseBool(json['status'] ?? json['success']),
+    user: _asUser(json['user'] ?? json['data'] ?? json['userData']),
+  );
 
   static User? _asUser(dynamic raw) {
     if (raw is Map<String, dynamic>) return User.fromJson(raw);
@@ -29,11 +30,11 @@ class UserRoot {
   }
 
   Map<String, dynamic> toJson() => {
-        'message': message,
-        'reason': reason,
-        'status': status,
-        'user': user?.toJson(),
-      };
+    'message': message,
+    'reason': reason,
+    'status': status,
+    'user': user?.toJson(),
+  };
 }
 
 /// Nested `UserRoot.User` from native.
@@ -220,13 +221,17 @@ class User {
   final String? bankDetails;
   final String? statusText;
   final String? family;
+
   /// Family ID (Mongo ObjectId) — used for family room, PK, etc.
   final String? familyId;
+
   /// Family display name (same as [family] but explicitly parsed from
   /// `familyName` / `family.name` for clarity).
   final String? familyName;
+
   /// Family badge icon URL (shown next to user name in chat, profile, rooms).
   final String? familyBadgeUrl;
+
   /// Family logo image URL.
   final String? familyImage;
   final String? avatarFrameImage;
@@ -256,12 +261,16 @@ class User {
   final num withdrawalRcoin;
   final int liveType;
   final List<Channel>? channels;
+
   /// Backend-assigned tags/badges (e.g. "Official Manager", "Region Head").
   final List<AssignedTag> tags;
+
   /// Primary role/designation string when the backend does not use [tags].
   final String? role;
+
   /// Earned medal image URLs (e.g. VIP medals, activity medals).
   final List<String> medals;
+
   /// Achievement badge image URLs.
   final List<String> achievements;
 
@@ -290,9 +299,28 @@ class User {
       identity: parseString(json['identity']),
       referralCode: parseString(json['referralCode']),
       loginType: parseIntOrNull(json['loginType']),
-      coin: parseNum(json['coin'] ?? json['coins'] ?? json['coinBalance'] ?? json['walletCoin'] ?? json['balance'], 0),
-      diamond: parseNum(json['diamond'] ?? json['diamonds'] ?? json['diamondBalance'] ?? json['walletDiamond'], 0),
-      rCoin: parseInt(json['rCoin'] ?? json['rcoin'] ?? json['rcCoin'] ?? json['rcCoinBalance'], 0),
+      coin: parseNum(
+        json['coin'] ??
+            json['coins'] ??
+            json['coinBalance'] ??
+            json['walletCoin'] ??
+            json['balance'],
+        0,
+      ),
+      diamond: parseNum(
+        json['diamond'] ??
+            json['diamonds'] ??
+            json['diamondBalance'] ??
+            json['walletDiamond'],
+        0,
+      ),
+      rCoin: parseInt(
+        json['rCoin'] ??
+            json['rcoin'] ??
+            json['rcCoin'] ??
+            json['rcCoinBalance'],
+        0,
+      ),
       spentCoin: parseNum(json['spentCoin'], 0),
       earnCoin: parseNum(json['earnCoin'], 0),
       followers: parseInt(json['followers'], 0),
@@ -306,7 +334,8 @@ class User {
       // Defensive VIP parsing — backends variously send `isVIP`, `isVip`,
       // `vip`, or only `vipDetails.isActive`. Without this the whole VIP
       // feature set silently never activates.
-      isVIP: parseBool(json['isVIP'] ?? json['isVip'] ?? json['vip']) ||
+      isVIP:
+          parseBool(json['isVIP'] ?? json['isVip'] ?? json['vip']) ||
           (json['vipDetails'] is Map &&
               parseBool((json['vipDetails'] as Map)['isActive'])),
       isVerified: parseBool(json['isVerified']),
@@ -316,7 +345,11 @@ class User {
       isBd: parseBool(json['isBd']),
       isSuperAdmin: parseBool(json['isSuperAdmin']),
       isSuperSeller: parseBool(json['isSuperSeller']),
-      isOfficialManager: parseBool(json['isOfficialManager'] ?? json['isOfficial'] ?? json['officialManager']),
+      isOfficialManager: parseBool(
+        json['isOfficialManager'] ??
+            json['isOfficial'] ??
+            json['officialManager'],
+      ),
       isRegionHead: parseBool(json['isRegionHead'] ?? json['regionHead']),
       isBlock: parseBool(json['isBlock']),
       isBusy: parseBool(json['isBusy']),
@@ -344,14 +377,36 @@ class User {
       bankDetails: parseString(json['bankDetails']),
       statusText: parseString(json['statusText']),
       family: parseString(json['family']),
-      familyId: parseString(json['familyId'] ?? json['family_id'] ??
-          (json['familyDetails'] is Map ? json['familyDetails']['_id'] ?? json['familyDetails']['id'] : null)),
-      familyName: parseString(json['familyName'] ?? json['family_name'] ?? json['family'] ??
-          (json['familyDetails'] is Map ? json['familyDetails']['name'] : null)),
-      familyBadgeUrl: parseString(json['familyBadgeUrl'] ?? json['familyBadge'] ??
-          (json['familyDetails'] is Map ? json['familyDetails']['badgeUrl'] ?? json['familyDetails']['image'] : null)),
-      familyImage: parseString(json['familyImage'] ?? json['family_image'] ??
-          (json['familyDetails'] is Map ? json['familyDetails']['image'] : null)),
+      familyId: parseString(
+        json['familyId'] ??
+            json['family_id'] ??
+            (json['familyDetails'] is Map
+                ? json['familyDetails']['_id'] ?? json['familyDetails']['id']
+                : null),
+      ),
+      familyName: parseString(
+        json['familyName'] ??
+            json['family_name'] ??
+            json['family'] ??
+            (json['familyDetails'] is Map
+                ? json['familyDetails']['name']
+                : null),
+      ),
+      familyBadgeUrl: parseString(
+        json['familyBadgeUrl'] ??
+            json['familyBadge'] ??
+            (json['familyDetails'] is Map
+                ? json['familyDetails']['badgeUrl'] ??
+                    json['familyDetails']['image']
+                : null),
+      ),
+      familyImage: parseString(
+        json['familyImage'] ??
+            json['family_image'] ??
+            (json['familyDetails'] is Map
+                ? json['familyDetails']['image']
+                : null),
+      ),
       avatarFrameImage: parseString(
         json['avatarFrameImage'] ??
             json['avatar_frame_image'] ??
@@ -366,7 +421,9 @@ class User {
             json['activeFrame'] ??
             json['active_frame'] ??
             (json['store'] is Map ? json['store']['avatarFrameImage'] : null) ??
-            (json['frame'] is Map ? json['frame']['image'] ?? json['frame']['url'] : null),
+            (json['frame'] is Map
+                ? json['frame']['image'] ?? json['frame']['url']
+                : null),
       ),
       vipBadgeUrl: parseString(json['vipBadgeUrl']),
       vipChatColor: parseString(json['vipChatColor']),
@@ -383,38 +440,63 @@ class User {
       nextLevel: _asLevel(json['nextLevel']),
       nexhostLevel: _asHostLevel(json['nexhostLevel']),
       vipDetails: _asVipDetails(json['vipDetails']),
-      vip: json['vip'] is Map<String, dynamic>
-          ? VipInfo.fromJson(json['vip'] as Map<String, dynamic>)
-          : null,
-      vipStatus: json['vipStatus'] is Map<String, dynamic>
-          ? VipStatus.fromJson(json['vipStatus'] as Map<String, dynamic>)
-          : null,
-      vipCoinTracking: json['vipCoinTracking'] is Map<String, dynamic>
-          ? VipCoinTracking.fromJson(json['vipCoinTracking'] as Map<String, dynamic>)
-          : null,
-      avatarFrame: json['avatarFrame'] is Map<String, dynamic>
-          ? AvatarFrame.fromJson(json['avatarFrame'] as Map<String, dynamic>)
-          : null,
-      liveJoinSvga: json['liveJoinSvga'] is Map<String, dynamic>
-          ? LiveJoinSvga.fromJson(json['liveJoinSvga'] as Map<String, dynamic>)
-          : null,
-      notification: json['notification'] is Map<String, dynamic>
-          ? NotificationPref.fromJson(json['notification'] as Map<String, dynamic>)
-          : null,
-      plan: json['plan'] is Map<String, dynamic>
-          ? Plan.fromJson(json['plan'] as Map<String, dynamic>)
-          : null,
-      ad: json['ad'] is Map<String, dynamic>
-          ? Ad.fromJson(json['ad'] as Map<String, dynamic>)
-          : null,
+      vip:
+          json['vip'] is Map<String, dynamic>
+              ? VipInfo.fromJson(json['vip'] as Map<String, dynamic>)
+              : null,
+      vipStatus:
+          json['vipStatus'] is Map<String, dynamic>
+              ? VipStatus.fromJson(json['vipStatus'] as Map<String, dynamic>)
+              : null,
+      vipCoinTracking:
+          json['vipCoinTracking'] is Map<String, dynamic>
+              ? VipCoinTracking.fromJson(
+                json['vipCoinTracking'] as Map<String, dynamic>,
+              )
+              : null,
+      avatarFrame:
+          json['avatarFrame'] is Map<String, dynamic>
+              ? AvatarFrame.fromJson(
+                json['avatarFrame'] as Map<String, dynamic>,
+              )
+              : null,
+      liveJoinSvga:
+          json['liveJoinSvga'] is Map<String, dynamic>
+              ? LiveJoinSvga.fromJson(
+                json['liveJoinSvga'] as Map<String, dynamic>,
+              )
+              : null,
+      notification:
+          json['notification'] is Map<String, dynamic>
+              ? NotificationPref.fromJson(
+                json['notification'] as Map<String, dynamic>,
+              )
+              : null,
+      plan:
+          json['plan'] is Map<String, dynamic>
+              ? Plan.fromJson(json['plan'] as Map<String, dynamic>)
+              : null,
+      ad:
+          json['ad'] is Map<String, dynamic>
+              ? Ad.fromJson(json['ad'] as Map<String, dynamic>)
+              : null,
       withdrawalRcoin: parseNum(json['withdrawalRcoin'], 0),
       liveType: parseInt(json['liveType'], 0),
       channels: _asChannels(json['channels']),
       tags: parseAssignedTags(json['tags']),
-      role: parseString(json['role'] ?? json['designation'] ?? json['userRole'] ??
-          json['adminRole'] ?? json['staffRole']),
-      medals: parseStringList(json['medals'] ?? json['badgeUrls'] ?? json['badges']),
-      achievements: parseStringList(json['achievements'] ?? json['achievementBadges']),
+      role: parseString(
+        json['role'] ??
+            json['designation'] ??
+            json['userRole'] ??
+            json['adminRole'] ??
+            json['staffRole'],
+      ),
+      medals: parseStringList(
+        json['medals'] ?? json['badgeUrls'] ?? json['badges'],
+      ),
+      achievements: parseStringList(
+        json['achievements'] ?? json['achievementBadges'],
+      ),
     );
   }
 
@@ -447,114 +529,114 @@ class User {
   }
 
   Map<String, dynamic> toJson() => {
-        '_id': id,
-        'name': name,
-        'username': username,
-        'uniqueId': uniqueId,
-        'email': email,
-        'mobileNumber': mobileNumber,
-        'googleEmail': googleEmail,
-        'facebookId': facebookId,
-        'image': image,
-        'coverImage': coverImage,
-        'bio': bio,
-        'gender': gender,
-        'age': age,
-        'country': country,
-        'city': city,
-        'zodiac': zodiac,
-        'birthDate': birthDate,
-        'website': website,
-        'relationship': relationship,
-        'channel': channel,
-        'identity': identity,
-        'referralCode': referralCode,
-        'loginType': loginType,
-        'coin': coin,
-        'diamond': diamond,
-        'rCoin': rCoin,
-        'spentCoin': spentCoin,
-        'earnCoin': earnCoin,
-        'followers': followers,
-        'following': following,
-        'visitors': visitors,
-        'friends': friends,
-        'likeCount': likeCount,
-        'post': post,
-        'video': video,
-        'referralCount': referralCount,
-        'isVIP': isVIP,
-        'isVerified': isVerified,
-        'isHost': isHost,
-        'isCoinSeller': isCoinSeller,
-        'isAgency': isAgency,
-        'isBd': isBd,
-        'isSuperAdmin': isSuperAdmin,
-        'isSuperSeller': isSuperSeller,
-        'isOfficialManager': isOfficialManager,
-        'isRegionHead': isRegionHead,
-        'isBlock': isBlock,
-        'isBusy': isBusy,
-        'isOnline': isOnline,
-        'isLiked': isLiked,
-        'isInvisible': isInvisible,
-        'isReferral': isReferral,
-        'enableToLive': enableToLive,
-        'videoCallOptIn': videoCallOptIn,
-        'isPhoneBound': isPhoneBound,
-        'isGoogleBound': isGoogleBound,
-        'isFacebookBound': isFacebookBound,
-        'showPhonePublic': showPhonePublic,
-        'showEmailPublic': showEmailPublic,
-        'token': token,
-        'fcmToken': fcmToken,
-        'ip': ip,
-        'lastLogin': lastLogin,
-        'createdAt': createdAt,
-        'updatedAt': updatedAt,
-        'analyticDate': analyticDate,
-        'hostLoginString': hostLoginString,
-        'agencyLoginString': agencyLoginString,
-        'bdLoginString': bdLoginString,
-        'bankDetails': bankDetails,
-        'statusText': statusText,
-        'family': family,
-        'familyId': familyId,
-        'familyName': familyName,
-        'familyBadgeUrl': familyBadgeUrl,
-        'familyImage': familyImage,
-        'avatarFrameImage': avatarFrameImage,
-        'vipBadgeUrl': vipBadgeUrl,
-        'vipChatColor': vipChatColor,
-        'vipBackgroundImage': vipBackgroundImage,
-        'profileBackgroundImage': profileBackgroundImage,
-        'svgaImage': svgaImage,
-        'isVipProtected': isVipProtected,
-        'averageRating': averageRating,
-        'totalRatings': totalRatings,
-        'userRating': userRating,
-        'userFeedback': userFeedback,
-        'level': level?.toJson(),
-        'hostLevel': hostLevel?.toJson(),
-        'nextLevel': nextLevel?.toJson(),
-        'nexhostLevel': nexhostLevel?.toJson(),
-        'vipDetails': vipDetails?.toJson(),
-        'vip': vip?.toJson(),
-        'vipStatus': vipStatus?.toJson(),
-        'vipCoinTracking': vipCoinTracking?.toJson(),
-        'avatarFrame': avatarFrame?.toJson(),
-        'liveJoinSvga': liveJoinSvga?.toJson(),
-        'notification': notification?.toJson(),
-        'plan': plan?.toJson(),
-        'ad': ad?.toJson(),
-        'withdrawalRcoin': withdrawalRcoin,
-        'liveType': liveType,
-        'channels': channels?.map((e) => e.toJson()).toList(),
-        'tags': tags.map((e) => e.toJson()).toList(),
-        'role': role,
-        'medals': medals,
-        'achievements': achievements,
-      };
+    '_id': id,
+    'name': name,
+    'username': username,
+    'uniqueId': uniqueId,
+    'email': email,
+    'mobileNumber': mobileNumber,
+    'googleEmail': googleEmail,
+    'facebookId': facebookId,
+    'image': image,
+    'coverImage': coverImage,
+    'bio': bio,
+    'gender': gender,
+    'age': age,
+    'country': country,
+    'city': city,
+    'zodiac': zodiac,
+    'birthDate': birthDate,
+    'website': website,
+    'relationship': relationship,
+    'channel': channel,
+    'identity': identity,
+    'referralCode': referralCode,
+    'loginType': loginType,
+    'coin': coin,
+    'diamond': diamond,
+    'rCoin': rCoin,
+    'spentCoin': spentCoin,
+    'earnCoin': earnCoin,
+    'followers': followers,
+    'following': following,
+    'visitors': visitors,
+    'friends': friends,
+    'likeCount': likeCount,
+    'post': post,
+    'video': video,
+    'referralCount': referralCount,
+    'isVIP': isVIP,
+    'isVerified': isVerified,
+    'isHost': isHost,
+    'isCoinSeller': isCoinSeller,
+    'isAgency': isAgency,
+    'isBd': isBd,
+    'isSuperAdmin': isSuperAdmin,
+    'isSuperSeller': isSuperSeller,
+    'isOfficialManager': isOfficialManager,
+    'isRegionHead': isRegionHead,
+    'isBlock': isBlock,
+    'isBusy': isBusy,
+    'isOnline': isOnline,
+    'isLiked': isLiked,
+    'isInvisible': isInvisible,
+    'isReferral': isReferral,
+    'enableToLive': enableToLive,
+    'videoCallOptIn': videoCallOptIn,
+    'isPhoneBound': isPhoneBound,
+    'isGoogleBound': isGoogleBound,
+    'isFacebookBound': isFacebookBound,
+    'showPhonePublic': showPhonePublic,
+    'showEmailPublic': showEmailPublic,
+    'token': token,
+    'fcmToken': fcmToken,
+    'ip': ip,
+    'lastLogin': lastLogin,
+    'createdAt': createdAt,
+    'updatedAt': updatedAt,
+    'analyticDate': analyticDate,
+    'hostLoginString': hostLoginString,
+    'agencyLoginString': agencyLoginString,
+    'bdLoginString': bdLoginString,
+    'bankDetails': bankDetails,
+    'statusText': statusText,
+    'family': family,
+    'familyId': familyId,
+    'familyName': familyName,
+    'familyBadgeUrl': familyBadgeUrl,
+    'familyImage': familyImage,
+    'avatarFrameImage': avatarFrameImage,
+    'vipBadgeUrl': vipBadgeUrl,
+    'vipChatColor': vipChatColor,
+    'vipBackgroundImage': vipBackgroundImage,
+    'profileBackgroundImage': profileBackgroundImage,
+    'svgaImage': svgaImage,
+    'isVipProtected': isVipProtected,
+    'averageRating': averageRating,
+    'totalRatings': totalRatings,
+    'userRating': userRating,
+    'userFeedback': userFeedback,
+    'level': level?.toJson(),
+    'hostLevel': hostLevel?.toJson(),
+    'nextLevel': nextLevel?.toJson(),
+    'nexhostLevel': nexhostLevel?.toJson(),
+    'vipDetails': vipDetails?.toJson(),
+    'vip': vip?.toJson(),
+    'vipStatus': vipStatus?.toJson(),
+    'vipCoinTracking': vipCoinTracking?.toJson(),
+    'avatarFrame': avatarFrame?.toJson(),
+    'liveJoinSvga': liveJoinSvga?.toJson(),
+    'notification': notification?.toJson(),
+    'plan': plan?.toJson(),
+    'ad': ad?.toJson(),
+    'withdrawalRcoin': withdrawalRcoin,
+    'liveType': liveType,
+    'channels': channels?.map((e) => e.toJson()).toList(),
+    'tags': tags.map((e) => e.toJson()).toList(),
+    'role': role,
+    'medals': medals,
+    'achievements': achievements,
+  };
 
   User copyWith({
     String? name,
@@ -716,28 +798,29 @@ class Level {
   final AccessibleFunction? accessibleFunction;
 
   factory Level.fromJson(Map<String, dynamic> json) => Level(
-        id: parseString(json['_id']),
-        name: parseString(json['name']),
-        image: parseString(json['image']),
-        coin: parseNum(json['coin'], 0),
-        commentColor: parseString(json['commentColor']),
-        createdAt: parseString(json['createdAt']),
-        updatedAt: parseString(json['updatedAt']),
-        accessibleFunction: json['accessibleFunction'] == null
-            ? null
-            : AccessibleFunction.fromJson(json['accessibleFunction'] as Map<String, dynamic>),
-      );
+    id: parseString(json['_id']),
+    name: parseString(json['name']),
+    image: parseString(json['image']),
+    coin: parseNum(json['coin'], 0),
+    commentColor: parseString(json['commentColor']),
+    createdAt: parseString(json['createdAt']),
+    updatedAt: parseString(json['updatedAt']),
+    accessibleFunction: () {
+      final m = parseMap(json['accessibleFunction']);
+      return m != null ? AccessibleFunction.fromJson(m) : null;
+    }(),
+  );
 
   Map<String, dynamic> toJson() => {
-        '_id': id,
-        'name': name,
-        'image': image,
-        'coin': coin,
-        'commentColor': commentColor,
-        'createdAt': createdAt,
-        'updatedAt': updatedAt,
-        'accessibleFunction': accessibleFunction?.toJson(),
-      };
+    '_id': id,
+    'name': name,
+    'image': image,
+    'coin': coin,
+    'commentColor': commentColor,
+    'createdAt': createdAt,
+    'updatedAt': updatedAt,
+    'accessibleFunction': accessibleFunction?.toJson(),
+  };
 }
 
 class HostLevel {
@@ -760,24 +843,24 @@ class HostLevel {
   final String? updatedAt;
 
   factory HostLevel.fromJson(Map<String, dynamic> json) => HostLevel(
-        id: parseString(json['_id']),
-        name: parseString(json['name']),
-        image: parseString(json['image']),
-        bgColor: parseString(json['bgColor']),
-        coin: parseNum(json['coin'], 0),
-        createdAt: parseString(json['createdAt']),
-        updatedAt: parseString(json['updatedAt']),
-      );
+    id: parseString(json['_id']),
+    name: parseString(json['name']),
+    image: parseString(json['image']),
+    bgColor: parseString(json['bgColor']),
+    coin: parseNum(json['coin'], 0),
+    createdAt: parseString(json['createdAt']),
+    updatedAt: parseString(json['updatedAt']),
+  );
 
   Map<String, dynamic> toJson() => {
-        '_id': id,
-        'name': name,
-        'image': image,
-        'bgColor': bgColor,
-        'coin': coin,
-        'createdAt': createdAt,
-        'updatedAt': updatedAt,
-      };
+    '_id': id,
+    'name': name,
+    'image': image,
+    'bgColor': bgColor,
+    'coin': coin,
+    'createdAt': createdAt,
+    'updatedAt': updatedAt,
+  };
 }
 
 class AccessibleFunction {
@@ -797,7 +880,8 @@ class AccessibleFunction {
   final bool liveStreaming;
   final bool game;
 
-  factory AccessibleFunction.fromJson(Map<String, dynamic> json) => AccessibleFunction(
+  factory AccessibleFunction.fromJson(Map<String, dynamic> json) =>
+      AccessibleFunction(
         uploadPost: parseBool(json['uploadPost']),
         freeCall: parseBool(json['freeCall']),
         uploadVideo: parseBool(json['uploadVideo']),
@@ -807,13 +891,13 @@ class AccessibleFunction {
       );
 
   Map<String, dynamic> toJson() => {
-        'uploadPost': uploadPost,
-        'freeCall': freeCall,
-        'uploadVideo': uploadVideo,
-        'cashOut': cashOut,
-        'liveStreaming': liveStreaming,
-        'game': game,
-      };
+    'uploadPost': uploadPost,
+    'freeCall': freeCall,
+    'uploadVideo': uploadVideo,
+    'cashOut': cashOut,
+    'liveStreaming': liveStreaming,
+    'game': game,
+  };
 }
 
 class NotificationPref {
@@ -829,7 +913,8 @@ class NotificationPref {
   final bool favoriteLive;
   final bool message;
 
-  factory NotificationPref.fromJson(Map<String, dynamic> json) => NotificationPref(
+  factory NotificationPref.fromJson(Map<String, dynamic> json) =>
+      NotificationPref(
         likeCommentShare: parseBool(json['likeCommentShare']),
         newFollow: parseBool(json['newFollow']),
         favoriteLive: parseBool(json['favoriteLive']),
@@ -837,11 +922,11 @@ class NotificationPref {
       );
 
   Map<String, dynamic> toJson() => {
-        'likeCommentShare': likeCommentShare,
-        'newFollow': newFollow,
-        'favoriteLive': favoriteLive,
-        'message': message,
-      };
+    'likeCommentShare': likeCommentShare,
+    'newFollow': newFollow,
+    'favoriteLive': favoriteLive,
+    'message': message,
+  };
 }
 
 class Plan {
@@ -851,11 +936,14 @@ class Plan {
   final String? planStartDate;
 
   factory Plan.fromJson(Map<String, dynamic> json) => Plan(
-        planId: parseString(json['planId']),
-        planStartDate: parseString(json['planStartDate']),
-      );
+    planId: parseString(json['planId']),
+    planStartDate: parseString(json['planStartDate']),
+  );
 
-  Map<String, dynamic> toJson() => {'planId': planId, 'planStartDate': planStartDate};
+  Map<String, dynamic> toJson() => {
+    'planId': planId,
+    'planStartDate': planStartDate,
+  };
 }
 
 class Ad {
@@ -864,10 +952,8 @@ class Ad {
   final String? date;
   final int count;
 
-  factory Ad.fromJson(Map<String, dynamic> json) => Ad(
-        date: parseString(json['date']),
-        count: parseInt(json['count'], 0),
-      );
+  factory Ad.fromJson(Map<String, dynamic> json) =>
+      Ad(date: parseString(json['date']), count: parseInt(json['count'], 0));
 
   Map<String, dynamic> toJson() => {'date': date, 'count': count};
 }
@@ -880,10 +966,10 @@ class Channel {
   final String? image;
 
   factory Channel.fromJson(Map<String, dynamic> json) => Channel(
-        id: parseString(json['_id'] ?? json['id']),
-        name: parseString(json['name']),
-        image: parseString(json['image']),
-      );
+    id: parseString(json['_id'] ?? json['id']),
+    name: parseString(json['name']),
+    image: parseString(json['image']),
+  );
 
   Map<String, dynamic> toJson() => {'_id': id, 'name': name, 'image': image};
 }
@@ -980,108 +1066,133 @@ class VipDetails {
   final bool isExclusiveProfileThemesAndBackgroundsEnabled;
 
   factory VipDetails.fromJson(Map<String, dynamic> json) => VipDetails(
-        profileFrameUrl: parseString(json['profileFrameUrl']),
-        entranceAnimationUrl: parseString(json['entranceAnimationUrl']),
-        tier: parseString(json['tier']),
-        planId: parseString(json['planId']),
-        startDate: parseString(json['startDate']),
-        endDate: parseString(json['endDate']),
-        isActive: parseBool(json['isActive']),
-        levelBadgeUrl: parseString(json['levelBadgeUrl']),
-        nameColor: parseString(json['nameColor']),
-        vipNameColor: parseString(json['vipNameColor']),
-        chatBubbleUrl: parseString(json['chatBubbleUrl']),
-        roomCardUrl: parseString(json['roomCardUrl'] ?? json['profileCardUrl']),
-        profileCardUrl: parseString(json['profileCardUrl']),
-        backgroundImage: parseString(json['backgroundImage']),
-        nameUrl: parseString(json['nameUrl']),
-        profileBackgroundUrl: parseString(json['profileBackgroundUrl']),
-        voiceWaveUrl: parseString(json['voiceWaveUrl']),
-        tagUrl: parseString(json['tagUrl']),
-        isViewVisitorRecordsEnabled: parseBool(json['isViewVisitorRecordsEnabled']),
-        isProfileBackgroundEnabled: parseBool(json['isProfileBackgroundEnabled']),
-        isMultipleProfileBackgroundsEnabled: parseBool(json['isMultipleProfileBackgroundsEnabled']),
-        isCustomizedThemeEnabled: parseBool(json['isCustomizedThemeEnabled']),
-        isDedicatedSupportEnabled: parseBool(json['isDedicatedSupportEnabled']),
-        isHideVisitRecordsEnabled: parseBool(json['isHideVisitRecordsEnabled']),
-        isPremiumEmojiAndStickersEnabled: parseBool(json['isPremiumEmojiAndStickersEnabled']),
-        isSendMessagePicturesEnabled: parseBool(json['isSendMessagePicturesEnabled']),
-        isSvipGiftsEnabled: parseBool(json['isSvipGiftsEnabled']),
-        isGoldenNameEnabled: parseBool(json['isGoldenNameEnabled']),
-        isExpBoostEnabled: parseBool(json['isExpBoostEnabled']),
-        isColoredChatEnabled: parseBool(json['isColoredChatEnabled']),
-        isAntiKickEnabled: parseBool(json['isAntiKickEnabled']),
-        isAntiMuteEnabled: parseBool(json['isAntiMuteEnabled']),
-        isBadgeAndFrameEnabled: parseBool(json['isBadgeAndFrameEnabled']),
-        isSpecialRoomEntranceAnimationEnabled: parseBool(json['isSpecialRoomEntranceAnimationEnabled']),
-        isNameAnimationEnabled: parseBool(json['isNameAnimationEnabled']),
-        isRoomOnlineListTopEnabled: parseBool(json['isRoomOnlineListTopEnabled']),
-        isSendRoomPicturesEnabled: parseBool(json['isSendRoomPicturesEnabled']),
-        isLudoDiceSkinEnabled: parseBool(json['isLudoDiceSkinEnabled']),
-        isLudoDiceRefreshEnabled: parseBool(json['isLudoDiceRefreshEnabled']),
-        isPremiumThemeEnabled: parseBool(json['isPremiumThemeEnabled']),
-        isHigherProfileVisibilityEnabled: parseBool(json['isHigherProfileVisibilityEnabled']),
-        isHigherPositionInViewerListsEnabled: parseBool(json['isHigherPositionInViewerListsEnabled']),
-        isExclusiveProfileThemesAndBackgroundsEnabled: parseBool(json['isExclusiveProfileThemesAndBackgroundsEnabled']),
-      );
+    profileFrameUrl: parseString(json['profileFrameUrl']),
+    entranceAnimationUrl: parseString(json['entranceAnimationUrl']),
+    tier: parseString(json['tier']),
+    planId: parseString(json['planId']),
+    startDate: parseString(json['startDate']),
+    endDate: parseString(json['endDate']),
+    isActive: parseBool(json['isActive']),
+    levelBadgeUrl: parseString(json['levelBadgeUrl']),
+    nameColor: parseString(json['nameColor']),
+    vipNameColor: parseString(json['vipNameColor']),
+    chatBubbleUrl: parseString(json['chatBubbleUrl']),
+    roomCardUrl: parseString(json['roomCardUrl'] ?? json['profileCardUrl']),
+    profileCardUrl: parseString(json['profileCardUrl']),
+    backgroundImage: parseString(json['backgroundImage']),
+    nameUrl: parseString(json['nameUrl']),
+    profileBackgroundUrl: parseString(json['profileBackgroundUrl']),
+    voiceWaveUrl: parseString(json['voiceWaveUrl']),
+    tagUrl: parseString(json['tagUrl']),
+    isViewVisitorRecordsEnabled: parseBool(json['isViewVisitorRecordsEnabled']),
+    isProfileBackgroundEnabled: parseBool(json['isProfileBackgroundEnabled']),
+    isMultipleProfileBackgroundsEnabled: parseBool(
+      json['isMultipleProfileBackgroundsEnabled'],
+    ),
+    isCustomizedThemeEnabled: parseBool(json['isCustomizedThemeEnabled']),
+    isDedicatedSupportEnabled: parseBool(json['isDedicatedSupportEnabled']),
+    isHideVisitRecordsEnabled: parseBool(json['isHideVisitRecordsEnabled']),
+    isPremiumEmojiAndStickersEnabled: parseBool(
+      json['isPremiumEmojiAndStickersEnabled'],
+    ),
+    isSendMessagePicturesEnabled: parseBool(
+      json['isSendMessagePicturesEnabled'],
+    ),
+    isSvipGiftsEnabled: parseBool(json['isSvipGiftsEnabled']),
+    isGoldenNameEnabled: parseBool(json['isGoldenNameEnabled']),
+    isExpBoostEnabled: parseBool(json['isExpBoostEnabled']),
+    isColoredChatEnabled: parseBool(json['isColoredChatEnabled']),
+    isAntiKickEnabled: parseBool(json['isAntiKickEnabled']),
+    isAntiMuteEnabled: parseBool(json['isAntiMuteEnabled']),
+    isBadgeAndFrameEnabled: parseBool(json['isBadgeAndFrameEnabled']),
+    isSpecialRoomEntranceAnimationEnabled: parseBool(
+      json['isSpecialRoomEntranceAnimationEnabled'],
+    ),
+    isNameAnimationEnabled: parseBool(json['isNameAnimationEnabled']),
+    isRoomOnlineListTopEnabled: parseBool(json['isRoomOnlineListTopEnabled']),
+    isSendRoomPicturesEnabled: parseBool(json['isSendRoomPicturesEnabled']),
+    isLudoDiceSkinEnabled: parseBool(json['isLudoDiceSkinEnabled']),
+    isLudoDiceRefreshEnabled: parseBool(json['isLudoDiceRefreshEnabled']),
+    isPremiumThemeEnabled: parseBool(json['isPremiumThemeEnabled']),
+    isHigherProfileVisibilityEnabled: parseBool(
+      json['isHigherProfileVisibilityEnabled'],
+    ),
+    isHigherPositionInViewerListsEnabled: parseBool(
+      json['isHigherPositionInViewerListsEnabled'],
+    ),
+    isExclusiveProfileThemesAndBackgroundsEnabled: parseBool(
+      json['isExclusiveProfileThemesAndBackgroundsEnabled'],
+    ),
+  );
 
   /// Effective room card URL: prefers `roomCardUrl`, then `backgroundImage`.
   String? get effectiveRoomCardUrl {
     if (roomCardUrl != null && roomCardUrl!.isNotEmpty) return roomCardUrl;
-    if (profileCardUrl != null && profileCardUrl!.isNotEmpty) return profileCardUrl;
-    if (backgroundImage != null && backgroundImage!.isNotEmpty) return backgroundImage;
+    if (profileCardUrl != null && profileCardUrl!.isNotEmpty)
+      return profileCardUrl;
+    if (backgroundImage != null && backgroundImage!.isNotEmpty)
+      return backgroundImage;
     return profileBackgroundUrl;
   }
 
   Map<String, dynamic> toJson() => {
-        'profileFrameUrl': profileFrameUrl,
-        'entranceAnimationUrl': entranceAnimationUrl,
-        'tier': tier,
-        'planId': planId,
-        'startDate': startDate,
-        'endDate': endDate,
-        'isActive': isActive,
-        'levelBadgeUrl': levelBadgeUrl,
-        'nameColor': nameColor,
-        'vipNameColor': vipNameColor,
-        'chatBubbleUrl': chatBubbleUrl,
-        'roomCardUrl': roomCardUrl,
-        'profileCardUrl': profileCardUrl,
-        'backgroundImage': backgroundImage,
-        'nameUrl': nameUrl,
-        'profileBackgroundUrl': profileBackgroundUrl,
-        'voiceWaveUrl': voiceWaveUrl,
-        'tagUrl': tagUrl,
-        'isViewVisitorRecordsEnabled': isViewVisitorRecordsEnabled,
-        'isProfileBackgroundEnabled': isProfileBackgroundEnabled,
-        'isMultipleProfileBackgroundsEnabled': isMultipleProfileBackgroundsEnabled,
-        'isCustomizedThemeEnabled': isCustomizedThemeEnabled,
-        'isDedicatedSupportEnabled': isDedicatedSupportEnabled,
-        'isHideVisitRecordsEnabled': isHideVisitRecordsEnabled,
-        'isPremiumEmojiAndStickersEnabled': isPremiumEmojiAndStickersEnabled,
-        'isSendMessagePicturesEnabled': isSendMessagePicturesEnabled,
-        'isSvipGiftsEnabled': isSvipGiftsEnabled,
-        'isGoldenNameEnabled': isGoldenNameEnabled,
-        'isExpBoostEnabled': isExpBoostEnabled,
-        'isColoredChatEnabled': isColoredChatEnabled,
-        'isAntiKickEnabled': isAntiKickEnabled,
-        'isAntiMuteEnabled': isAntiMuteEnabled,
-        'isBadgeAndFrameEnabled': isBadgeAndFrameEnabled,
-        'isSpecialRoomEntranceAnimationEnabled': isSpecialRoomEntranceAnimationEnabled,
-        'isNameAnimationEnabled': isNameAnimationEnabled,
-        'isRoomOnlineListTopEnabled': isRoomOnlineListTopEnabled,
-        'isSendRoomPicturesEnabled': isSendRoomPicturesEnabled,
-        'isLudoDiceSkinEnabled': isLudoDiceSkinEnabled,
-        'isLudoDiceRefreshEnabled': isLudoDiceRefreshEnabled,
-        'isPremiumThemeEnabled': isPremiumThemeEnabled,
-        'isHigherProfileVisibilityEnabled': isHigherProfileVisibilityEnabled,
-        'isHigherPositionInViewerListsEnabled': isHigherPositionInViewerListsEnabled,
-        'isExclusiveProfileThemesAndBackgroundsEnabled': isExclusiveProfileThemesAndBackgroundsEnabled,
-      };
+    'profileFrameUrl': profileFrameUrl,
+    'entranceAnimationUrl': entranceAnimationUrl,
+    'tier': tier,
+    'planId': planId,
+    'startDate': startDate,
+    'endDate': endDate,
+    'isActive': isActive,
+    'levelBadgeUrl': levelBadgeUrl,
+    'nameColor': nameColor,
+    'vipNameColor': vipNameColor,
+    'chatBubbleUrl': chatBubbleUrl,
+    'roomCardUrl': roomCardUrl,
+    'profileCardUrl': profileCardUrl,
+    'backgroundImage': backgroundImage,
+    'nameUrl': nameUrl,
+    'profileBackgroundUrl': profileBackgroundUrl,
+    'voiceWaveUrl': voiceWaveUrl,
+    'tagUrl': tagUrl,
+    'isViewVisitorRecordsEnabled': isViewVisitorRecordsEnabled,
+    'isProfileBackgroundEnabled': isProfileBackgroundEnabled,
+    'isMultipleProfileBackgroundsEnabled': isMultipleProfileBackgroundsEnabled,
+    'isCustomizedThemeEnabled': isCustomizedThemeEnabled,
+    'isDedicatedSupportEnabled': isDedicatedSupportEnabled,
+    'isHideVisitRecordsEnabled': isHideVisitRecordsEnabled,
+    'isPremiumEmojiAndStickersEnabled': isPremiumEmojiAndStickersEnabled,
+    'isSendMessagePicturesEnabled': isSendMessagePicturesEnabled,
+    'isSvipGiftsEnabled': isSvipGiftsEnabled,
+    'isGoldenNameEnabled': isGoldenNameEnabled,
+    'isExpBoostEnabled': isExpBoostEnabled,
+    'isColoredChatEnabled': isColoredChatEnabled,
+    'isAntiKickEnabled': isAntiKickEnabled,
+    'isAntiMuteEnabled': isAntiMuteEnabled,
+    'isBadgeAndFrameEnabled': isBadgeAndFrameEnabled,
+    'isSpecialRoomEntranceAnimationEnabled':
+        isSpecialRoomEntranceAnimationEnabled,
+    'isNameAnimationEnabled': isNameAnimationEnabled,
+    'isRoomOnlineListTopEnabled': isRoomOnlineListTopEnabled,
+    'isSendRoomPicturesEnabled': isSendRoomPicturesEnabled,
+    'isLudoDiceSkinEnabled': isLudoDiceSkinEnabled,
+    'isLudoDiceRefreshEnabled': isLudoDiceRefreshEnabled,
+    'isPremiumThemeEnabled': isPremiumThemeEnabled,
+    'isHigherProfileVisibilityEnabled': isHigherProfileVisibilityEnabled,
+    'isHigherPositionInViewerListsEnabled':
+        isHigherPositionInViewerListsEnabled,
+    'isExclusiveProfileThemesAndBackgroundsEnabled':
+        isExclusiveProfileThemesAndBackgroundsEnabled,
+  };
 }
 
 class VipInfo {
-  VipInfo({this.isActive = false, this.tier, this.tierId, this.badgeUrl, this.expiresAt});
+  VipInfo({
+    this.isActive = false,
+    this.tier,
+    this.tierId,
+    this.badgeUrl,
+    this.expiresAt,
+  });
 
   final bool isActive;
   final String? tier;
@@ -1090,20 +1201,20 @@ class VipInfo {
   final String? expiresAt;
 
   factory VipInfo.fromJson(Map<String, dynamic> json) => VipInfo(
-        isActive: parseBool(json['isActive']),
-        tier: parseString(json['tier']),
-        tierId: parseString(json['tierId'] ?? json['tier']),
-        badgeUrl: parseString(json['badgeUrl']),
-        expiresAt: parseString(json['expiresAt']),
-      );
+    isActive: parseBool(json['isActive']),
+    tier: parseString(json['tier']),
+    tierId: parseString(json['tierId'] ?? json['tier']),
+    badgeUrl: parseString(json['badgeUrl']),
+    expiresAt: parseString(json['expiresAt']),
+  );
 
   Map<String, dynamic> toJson() => {
-        'isActive': isActive,
-        'tier': tier,
-        'tierId': tierId,
-        'badgeUrl': badgeUrl,
-        'expiresAt': expiresAt,
-      };
+    'isActive': isActive,
+    'tier': tier,
+    'tierId': tierId,
+    'badgeUrl': badgeUrl,
+    'expiresAt': expiresAt,
+  };
 }
 
 class VipStatus {
@@ -1138,36 +1249,36 @@ class VipStatus {
   final List<VipHiddenItem> hiddenItems;
 
   factory VipStatus.fromJson(Map<String, dynamic> json) => VipStatus(
-        isActive: parseBool(json['isActive']),
-        daysRemaining: parseInt(json['daysRemaining'], 0),
-        isVip: parseBool(json['isVip']),
-        currentLevel: parseInt(json['currentLevel'], 0),
-        currentLevelName: parseString(json['currentLevelName']),
-        currentMonthEarnedPoints: parseInt(json['currentMonthEarnedPoints'], 0),
-        totalVipPoints: parseInt(json['totalVipPoints'], 0),
-        nextLevelMinPoints: parseInt(json['nextLevelMinPoints'], 0),
-        nextLevelName: parseString(json['nextLevelName']),
-        pointsNeededForNextLevel: parseInt(json['pointsNeededForNextLevel'], 0),
-        vipBadgeUrl: parseString(json['vipBadgeUrl']),
-        retainUntil: parseString(json['retainUntil']),
-        hiddenItems: parseList(json['hiddenItems'], VipHiddenItem.fromJson),
-      );
+    isActive: parseBool(json['isActive']),
+    daysRemaining: parseInt(json['daysRemaining'], 0),
+    isVip: parseBool(json['isVip']),
+    currentLevel: parseInt(json['currentLevel'], 0),
+    currentLevelName: parseString(json['currentLevelName']),
+    currentMonthEarnedPoints: parseInt(json['currentMonthEarnedPoints'], 0),
+    totalVipPoints: parseInt(json['totalVipPoints'], 0),
+    nextLevelMinPoints: parseInt(json['nextLevelMinPoints'], 0),
+    nextLevelName: parseString(json['nextLevelName']),
+    pointsNeededForNextLevel: parseInt(json['pointsNeededForNextLevel'], 0),
+    vipBadgeUrl: parseString(json['vipBadgeUrl']),
+    retainUntil: parseString(json['retainUntil']),
+    hiddenItems: parseList(json['hiddenItems'], VipHiddenItem.fromJson),
+  );
 
   Map<String, dynamic> toJson() => {
-        'isActive': isActive,
-        'daysRemaining': daysRemaining,
-        'isVip': isVip,
-        'currentLevel': currentLevel,
-        'currentLevelName': currentLevelName,
-        'currentMonthEarnedPoints': currentMonthEarnedPoints,
-        'totalVipPoints': totalVipPoints,
-        'nextLevelMinPoints': nextLevelMinPoints,
-        'nextLevelName': nextLevelName,
-        'pointsNeededForNextLevel': pointsNeededForNextLevel,
-        'vipBadgeUrl': vipBadgeUrl,
-        'retainUntil': retainUntil,
-        'hiddenItems': hiddenItems.map((e) => e.toJson()).toList(),
-      };
+    'isActive': isActive,
+    'daysRemaining': daysRemaining,
+    'isVip': isVip,
+    'currentLevel': currentLevel,
+    'currentLevelName': currentLevelName,
+    'currentMonthEarnedPoints': currentMonthEarnedPoints,
+    'totalVipPoints': totalVipPoints,
+    'nextLevelMinPoints': nextLevelMinPoints,
+    'nextLevelName': nextLevelName,
+    'pointsNeededForNextLevel': pointsNeededForNextLevel,
+    'vipBadgeUrl': vipBadgeUrl,
+    'retainUntil': retainUntil,
+    'hiddenItems': hiddenItems.map((e) => e.toJson()).toList(),
+  };
 }
 
 class VipHiddenItem {
@@ -1186,20 +1297,23 @@ class VipHiddenItem {
   final bool active;
 
   factory VipHiddenItem.fromJson(Map<String, dynamic> json) => VipHiddenItem(
-        name: parseString(json['name']),
-        description: parseString(json['description']),
-        iconUrl: parseString(json['iconUrl']),
-        requiredLevel: parseInt(json['requiredLevel'] ?? json['unlockLevel'] ?? json['level'], 0),
-        active: parseBool(json['active']),
-      );
+    name: parseString(json['name']),
+    description: parseString(json['description']),
+    iconUrl: parseString(json['iconUrl']),
+    requiredLevel: parseInt(
+      json['requiredLevel'] ?? json['unlockLevel'] ?? json['level'],
+      0,
+    ),
+    active: parseBool(json['active']),
+  );
 
   Map<String, dynamic> toJson() => {
-        'name': name,
-        'description': description,
-        'iconUrl': iconUrl,
-        'requiredLevel': requiredLevel,
-        'active': active,
-      };
+    'name': name,
+    'description': description,
+    'iconUrl': iconUrl,
+    'requiredLevel': requiredLevel,
+    'active': active,
+  };
 }
 
 class VipCoinTracking {
@@ -1219,7 +1333,8 @@ class VipCoinTracking {
   final String? monthYear;
   final bool isRewarded;
 
-  factory VipCoinTracking.fromJson(Map<String, dynamic> json) => VipCoinTracking(
+  factory VipCoinTracking.fromJson(Map<String, dynamic> json) =>
+      VipCoinTracking(
         totalSpent: parseNum(json['totalSpent'], 0),
         currentTierSpent: parseNum(json['currentTierSpent'], 0),
         lastUpdated: parseString(json['lastUpdated']),
@@ -1229,13 +1344,13 @@ class VipCoinTracking {
       );
 
   Map<String, dynamic> toJson() => {
-        'totalSpent': totalSpent,
-        'currentTierSpent': currentTierSpent,
-        'lastUpdated': lastUpdated,
-        'spent': spent,
-        'monthYear': monthYear,
-        'isRewarded': isRewarded,
-      };
+    'totalSpent': totalSpent,
+    'currentTierSpent': currentTierSpent,
+    'lastUpdated': lastUpdated,
+    'spent': spent,
+    'monthYear': monthYear,
+    'isRewarded': isRewarded,
+  };
 }
 
 class AvatarFrame {
@@ -1246,10 +1361,10 @@ class AvatarFrame {
   final String? image;
 
   factory AvatarFrame.fromJson(Map<String, dynamic> json) => AvatarFrame(
-        id: parseString(json['_id'] ?? json['id']),
-        name: parseString(json['name']),
-        image: parseString(json['image']),
-      );
+    id: parseString(json['_id'] ?? json['id']),
+    name: parseString(json['name']),
+    image: parseString(json['image']),
+  );
 
   Map<String, dynamic> toJson() => {'_id': id, 'name': name, 'image': image};
 }
@@ -1262,10 +1377,10 @@ class LiveJoinSvga {
   final String? image;
 
   factory LiveJoinSvga.fromJson(Map<String, dynamic> json) => LiveJoinSvga(
-        id: parseString(json['_id'] ?? json['id']),
-        name: parseString(json['name']),
-        image: parseString(json['image']),
-      );
+    id: parseString(json['_id'] ?? json['id']),
+    name: parseString(json['name']),
+    image: parseString(json['image']),
+  );
 
   Map<String, dynamic> toJson() => {'_id': id, 'name': name, 'image': image};
 }

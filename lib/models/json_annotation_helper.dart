@@ -134,7 +134,10 @@ List<String> parseStringList(dynamic v) {
     if (e is String) {
       if (e.isNotEmpty) result.add(e);
     } else if (e is Map) {
-      final url = e['image']?.toString() ?? e['url']?.toString() ?? e['badge']?.toString();
+      final url =
+          e['image']?.toString() ??
+          e['url']?.toString() ??
+          e['badge']?.toString();
       if (url?.isNotEmpty == true) result.add(url!);
     } else if (e != null) {
       final s = e.toString();
@@ -144,14 +147,28 @@ List<String> parseStringList(dynamic v) {
   return result;
 }
 
+/// Parses a `Map<String, dynamic>` from [v].
+///
+/// Returns `null` when [v] is `null` or not a map (e.g. a list, string or
+/// number sent by a malformed/error response) — never throws. Use this in
+/// `fromJson` factories instead of `as Map<String, dynamic>` casts.
+Map<String, dynamic>? parseMap(dynamic v) {
+  if (v is Map<String, dynamic>) return v;
+  if (v is Map) {
+    try {
+      return Map<String, dynamic>.from(v);
+    } catch (_) {
+      return null;
+    }
+  }
+  return null;
+}
+
 /// Parses a [List] of model objects from [v] using [fromJson].
 ///
 /// Each element of [v] must be a `Map`; elements that are not maps are
 /// skipped. Returns an empty list when [v] is `null` or not a list.
-List<T> parseList<T>(
-  dynamic v,
-  T Function(Map<String, dynamic>) fromJson,
-) {
+List<T> parseList<T>(dynamic v, T Function(Map<String, dynamic>) fromJson) {
   if (v is List) {
     final result = <T>[];
     for (final element in v) {

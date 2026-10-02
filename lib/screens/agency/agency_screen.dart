@@ -9,6 +9,7 @@
 /// - Agency commission rate configuration
 /// - Agency ranking
 library agency;
+
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -34,7 +35,8 @@ class AgencyDashboardScreen extends StatefulWidget {
   State<AgencyDashboardScreen> createState() => _AgencyDashboardScreenState();
 }
 
-class _AgencyDashboardScreenState extends State<AgencyDashboardScreen> with SingleTickerProviderStateMixin {
+class _AgencyDashboardScreenState extends State<AgencyDashboardScreen>
+    with SingleTickerProviderStateMixin {
   static const String _tag = 'AgencyDashboard';
   Agency? _agency;
   bool _loading = true;
@@ -82,65 +84,82 @@ class _AgencyDashboardScreenState extends State<AgencyDashboardScreen> with Sing
           ),
         ),
         child: SafeArea(
-          child: Column(children: [
-            // Header.
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: Row(children: [
-                IconButton(
-                  icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)),
-                  onPressed: () => Navigator.pop(context),
+          child: Column(
+            children: [
+              // Header.
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    Expanded(
+                      child: Text(
+                        'Agency Center',
+                        style: TextStyle(
+                          color: AppTheme.fg(context),
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      icon: Icon(Icons.business, color: AppTheme.fg(context)),
+                      onPressed: () => context.pushNamed(AppRoutes.agencyList),
+                    ),
+                  ],
+                ),
+              ),
+              if (_loading)
+                const Expanded(child: Center(child: PremiumLoading()))
+              else if (_agency == null)
+                Expanded(
+                  child: EmptyState(
+                    icon: Icons.business,
+                    title: 'No Agency Yet',
+                    subtitle: 'Create your agency to start managing hosts',
+                    actionLabel: 'Create Agency',
+                    onAction:
+                        () => context
+                            .pushNamed(AppRoutes.agencyCreate)
+                            .then((_) => _load()),
+                  ),
+                )
+              else ...[
+                // Dashboard stats header.
+                _DashboardHeader(agency: _agency!),
+                // Tab bar.
+                TabBar(
+                  controller: _tabCtrl,
+                  indicatorColor: AppTheme.primary,
+                  labelColor: AppTheme.fg(context),
+                  unselectedLabelColor: AppTheme.fg(context, 0.54),
+                  isScrollable: true,
+                  tabs: const [
+                    Tab(text: 'Overview'),
+                    Tab(text: 'Hosts'),
+                    Tab(text: 'Revenue'),
+                    Tab(text: 'Withdrawals'),
+                    Tab(text: 'Requests'),
+                  ],
                 ),
                 Expanded(
-                  child: Text('Agency Center', style: TextStyle(color: AppTheme.fg(context), fontSize: 22, fontWeight: FontWeight.bold)),
+                  child: TabBarView(
+                    controller: _tabCtrl,
+                    children: [
+                      _OverviewTab(agency: _agency!),
+                      _HostsTab(agencyId: _agency!.id ?? ''),
+                      _RevenueTab(agencyId: _agency!.id ?? ''),
+                      _WithdrawalTab(agencyId: _agency!.id ?? ''),
+                      _PendingRequestsTab(agencyId: _agency!.id ?? ''),
+                    ],
+                  ),
                 ),
-                IconButton(
-                  icon: Icon(Icons.business, color: AppTheme.fg(context)),
-                  onPressed: () => context.pushNamed('/agencyList'),
-                ),
-              ]),
-            ),
-            if (_loading)
-              const Expanded(child: Center(child: PremiumLoading()))
-            else if (_agency == null)
-              Expanded(
-                child: EmptyState(
-                  icon: Icons.business,
-                  title: 'No Agency Yet',
-                  subtitle: 'Create your agency to start managing hosts',
-                  actionLabel: 'Create Agency',
-                  onAction: () => context.pushNamed('/agencyCreate').then((_) => _load()),
-                ),
-              )
-            else ...[
-              // Dashboard stats header.
-              _DashboardHeader(agency: _agency!),
-              // Tab bar.
-              TabBar(
-                controller: _tabCtrl,
-                indicatorColor: AppTheme.primary,
-                labelColor: AppTheme.fg(context),
-                unselectedLabelColor: AppTheme.fg(context, 0.54),
-                isScrollable: true,
-                tabs: const [
-                  Tab(text: 'Overview'),
-                  Tab(text: 'Hosts'),
-                  Tab(text: 'Revenue'),
-                  Tab(text: 'Withdrawals'),
-                  Tab(text: 'Requests'),
-                ],
-              ),
-              Expanded(
-                child: TabBarView(controller: _tabCtrl, children: [
-                  _OverviewTab(agency: _agency!),
-                  _HostsTab(agencyId: _agency!.id ?? ''),
-                  _RevenueTab(agencyId: _agency!.id ?? ''),
-                  _WithdrawalTab(agencyId: _agency!.id ?? ''),
-                  _PendingRequestsTab(agencyId: _agency!.id ?? ''),
-                ]),
-              ),
+              ],
             ],
-          ]),
+          ),
         ),
       ),
     );
@@ -162,60 +181,136 @@ class _DashboardHeader extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         boxShadow: AppTheme.cardShadow,
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [
-          UserAvatar(imageUrl: agency.image, size: 56, isVIP: agency.level >= 5),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(agency.name ?? 'My Agency', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-              Text('Code: ${agency.code ?? "N/A"} • ${agency.totalAgencyWiseHost} hosts', style: const TextStyle(color: Colors.white70, fontSize: 13)),
-            ]),
-          ),
-          if (agency.isActive)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.green.withValues(alpha: 0.2),
-                borderRadius: BorderRadius.circular(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              UserAvatar(
+                imageUrl: agency.image,
+                size: 56,
+                isVIP: agency.level >= 5,
               ),
-              child: const Text('Active', style: TextStyle(color: Colors.green, fontSize: 11, fontWeight: FontWeight.bold)),
-            ),
-        ]),
-        const SizedBox(height: 16),
-        // Stats row.
-        Row(children: [
-          _StatBlock(label: 'Current Diamonds', value: formatCount(agency.currentCoin), icon: Icons.diamond),
-          _StatBlock(label: 'Host Diamonds', value: formatCount(agency.currentHostCoin), icon: Icons.groups),
-          _StatBlock(label: 'Total Diamonds', value: formatCount(agency.totalCoin), icon: Icons.trending_up),
-        ]),
-        const SizedBox(height: 12),
-        Row(children: [
-          _StatBlock(label: 'Withdrawn', value: formatCount(agency.totalWithdrawalCoin), icon: Icons.download),
-          _StatBlock(label: 'Pending', value: formatCount(agency.pendingWithdrawableRequestCoin), icon: Icons.pending),
-          _StatBlock(label: 'Hosts', value: '${agency.totalAgencyWiseHost}', icon: Icons.people),
-        ]),
-        const SizedBox(height: 12),
-        // Commission rate.
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          decoration: BoxDecoration(
-            color: Colors.white.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(12),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      agency.name ?? 'My Agency',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Text(
+                      'Code: ${agency.code ?? "N/A"} • ${agency.totalAgencyWiseHost} hosts',
+                      style: const TextStyle(
+                        color: Colors.white70,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (agency.isActive)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.green.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: const Text(
+                    'Active',
+                    style: TextStyle(
+                      color: Colors.green,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+            ],
           ),
-          child: Row(children: [
-            const Icon(Icons.percent, color: Colors.white, size: 16),
-            const SizedBox(width: 6),
-            Text('Commission: ${agency.commissionRate}%', style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600)),
-          ]),
-        ),
-      ]),
+          const SizedBox(height: 16),
+          // Stats row.
+          Row(
+            children: [
+              _StatBlock(
+                label: 'Current Diamonds',
+                value: formatCount(agency.currentCoin),
+                icon: Icons.diamond,
+              ),
+              _StatBlock(
+                label: 'Host Diamonds',
+                value: formatCount(agency.currentHostCoin),
+                icon: Icons.groups,
+              ),
+              _StatBlock(
+                label: 'Total Diamonds',
+                value: formatCount(agency.totalCoin),
+                icon: Icons.trending_up,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Row(
+            children: [
+              _StatBlock(
+                label: 'Withdrawn',
+                value: formatCount(agency.totalWithdrawalCoin),
+                icon: Icons.download,
+              ),
+              _StatBlock(
+                label: 'Pending',
+                value: formatCount(agency.pendingWithdrawableRequestCoin),
+                icon: Icons.pending,
+              ),
+              _StatBlock(
+                label: 'Hosts',
+                value: '${agency.totalAgencyWiseHost}',
+                icon: Icons.people,
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Commission rate.
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.percent, color: Colors.white, size: 16),
+                const SizedBox(width: 6),
+                Text(
+                  'Commission: ${agency.commissionRate}%',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _StatBlock extends StatelessWidget {
-  const _StatBlock({required this.label, required this.value, required this.icon});
+  const _StatBlock({
+    required this.label,
+    required this.value,
+    required this.icon,
+  });
   final String label;
   final String value;
   final IconData icon;
@@ -223,12 +318,24 @@ class _StatBlock extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Expanded(
-      child: Column(children: [
-        Icon(icon, color: Colors.white70, size: 20),
-        const SizedBox(height: 4),
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
-        Text(label, style: const TextStyle(color: Colors.white60, fontSize: 11)),
-      ]),
+      child: Column(
+        children: [
+          Icon(icon, color: Colors.white70, size: 20),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 16,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white60, fontSize: 11),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -240,79 +347,145 @@ class _OverviewTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(padding: const EdgeInsets.all(16), children: [
-      SectionHeader(title: 'Quick Actions', color: AppTheme.fg(context)),
-      const SizedBox(height: 8),
-      GridView.count(
-        crossAxisCount: 3,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        children: [
-          _ActionCard(icon: Icons.person_add, label: 'Add Host', gradient: AppTheme.purpleGradient, onTap: () => _showAddHostDialog(context)),
-          _ActionCard(icon: Icons.download, label: 'Withdraw', gradient: AppTheme.greenGradient, onTap: () => context.pushNamed('/agencyWithdraw', extra: {'agencyId': agency.id})),
-          _ActionCard(icon: Icons.percent, label: 'Commission', gradient: AppTheme.goldGradient, onTap: () => _showCommissionRates(context)),
-          _ActionCard(icon: Icons.edit, label: 'Edit Agency', gradient: AppTheme.pinkGradient, onTap: () => _showEditAgencyDialog(context)),
-          _ActionCard(icon: Icons.share, label: 'Share Code', gradient: AppTheme.blueGradient, onTap: () {
-            Fluttertoast.showToast(msg: 'Agency code: ${agency.code ?? "N/A"}');
-          }),
-          _ActionCard(icon: Icons.people, label: 'Hosts', gradient: AppTheme.purpleGradient, onTap: () => _showHostsList(context)),
-        ],
-      ),
-      const SizedBox(height: 16),
-      SectionHeader(title: 'Agency Info', color: AppTheme.fg(context)),
-      const SizedBox(height: 8),
-      GlassCard(
-        child: Column(children: [
-          _InfoRow(label: 'Owner', value: agency.ownerName ?? 'You'),
-          Divider(color: AppTheme.hairline(context)),
-          _InfoRow(label: 'Created', value: agency.createdAt ?? 'Unknown'),
-          Divider(color: AppTheme.hairline(context)),
-          _InfoRow(label: 'Agency Code', value: agency.code ?? 'N/A'),
-          Divider(color: AppTheme.hairline(context)),
-          _InfoRow(label: 'Unique ID', value: agency.uniqueId?.toString() ?? 'N/A'),
-          Divider(color: AppTheme.hairline(context)),
-          _InfoRow(label: 'Mobile', value: agency.mobile ?? 'N/A'),
-          Divider(color: AppTheme.hairline(context)),
-          _InfoRow(label: 'Bank Details', value: agency.bankDetails?.isNotEmpty == true ? agency.bankDetails! : 'Not set'),
-          Divider(color: AppTheme.hairline(context)),
-          _InfoRow(label: 'Redeem Enabled', value: agency.redeemEnable ? 'Yes' : 'No'),
-          Divider(color: AppTheme.hairline(context)),
-          _InfoRow(label: 'Description', value: agency.description ?? 'No description'),
-        ]),
-      ),
-    ]);
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        SectionHeader(title: 'Quick Actions', color: AppTheme.fg(context)),
+        const SizedBox(height: 8),
+        GridView.count(
+          crossAxisCount: 3,
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          children: [
+            _ActionCard(
+              icon: Icons.person_add,
+              label: 'Add Host',
+              gradient: AppTheme.purpleGradient,
+              onTap: () => _showAddHostDialog(context),
+            ),
+            _ActionCard(
+              icon: Icons.download,
+              label: 'Withdraw',
+              gradient: AppTheme.greenGradient,
+              onTap:
+                  () => context.pushNamed(
+                    AppRoutes.agencyWithdraw,
+                    extra: {'agencyId': agency.id},
+                  ),
+            ),
+            _ActionCard(
+              icon: Icons.percent,
+              label: 'Commission',
+              gradient: AppTheme.goldGradient,
+              onTap: () => _showCommissionRates(context),
+            ),
+            _ActionCard(
+              icon: Icons.edit,
+              label: 'Edit Agency',
+              gradient: AppTheme.pinkGradient,
+              onTap: () => _showEditAgencyDialog(context),
+            ),
+            _ActionCard(
+              icon: Icons.share,
+              label: 'Share Code',
+              gradient: AppTheme.blueGradient,
+              onTap: () {
+                Fluttertoast.showToast(
+                  msg: 'Agency code: ${agency.code ?? "N/A"}',
+                );
+              },
+            ),
+            _ActionCard(
+              icon: Icons.people,
+              label: 'Hosts',
+              gradient: AppTheme.purpleGradient,
+              onTap: () => _showHostsList(context),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        SectionHeader(title: 'Agency Info', color: AppTheme.fg(context)),
+        const SizedBox(height: 8),
+        GlassCard(
+          child: Column(
+            children: [
+              _InfoRow(label: 'Owner', value: agency.ownerName ?? 'You'),
+              Divider(color: AppTheme.hairline(context)),
+              _InfoRow(label: 'Created', value: agency.createdAt ?? 'Unknown'),
+              Divider(color: AppTheme.hairline(context)),
+              _InfoRow(label: 'Agency Code', value: agency.code ?? 'N/A'),
+              Divider(color: AppTheme.hairline(context)),
+              _InfoRow(
+                label: 'Unique ID',
+                value: agency.uniqueId?.toString() ?? 'N/A',
+              ),
+              Divider(color: AppTheme.hairline(context)),
+              _InfoRow(label: 'Mobile', value: agency.mobile ?? 'N/A'),
+              Divider(color: AppTheme.hairline(context)),
+              _InfoRow(
+                label: 'Bank Details',
+                value:
+                    agency.bankDetails?.isNotEmpty == true
+                        ? agency.bankDetails!
+                        : 'Not set',
+              ),
+              Divider(color: AppTheme.hairline(context)),
+              _InfoRow(
+                label: 'Redeem Enabled',
+                value: agency.redeemEnable ? 'Yes' : 'No',
+              ),
+              Divider(color: AppTheme.hairline(context)),
+              _InfoRow(
+                label: 'Description',
+                value: agency.description ?? 'No description',
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 
   void _showAddHostDialog(BuildContext context) {
     final ctrl = TextEditingController();
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Add Host'),
-        content: TextField(
-          controller: ctrl,
-          decoration: const InputDecoration(hintText: 'Enter user ID or username', border: OutlineInputBorder()),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () async {
-              try {
-                final res = await ApiService.addAgencyHost(agencyId: agency.id ?? '', hostUserId: ctrl.text.trim());
-                if (res.status) {
-                  Fluttertoast.showToast(msg: 'Host added');
-                } else {
-                  Fluttertoast.showToast(msg: res.message ?? 'Failed');
-                }
-              } catch (e) {
-                Fluttertoast.showToast(msg: 'Failed to add host');
-              }
-              if (ctx.mounted) Navigator.pop(ctx);
-            },
-            child: const Text('Add'),
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('Add Host'),
+            content: TextField(
+              controller: ctrl,
+              decoration: const InputDecoration(
+                hintText: 'Enter user ID or username',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  try {
+                    final res = await ApiService.addAgencyHost(
+                      agencyId: agency.id ?? '',
+                      hostUserId: ctrl.text.trim(),
+                    );
+                    if (res.status) {
+                      Fluttertoast.showToast(msg: 'Host added');
+                    } else {
+                      Fluttertoast.showToast(msg: res.message ?? 'Failed');
+                    }
+                  } catch (e) {
+                    Fluttertoast.showToast(msg: 'Failed to add host');
+                  }
+                  if (ctx.mounted) Navigator.pop(ctx);
+                },
+                child: const Text('Add'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
@@ -355,9 +528,9 @@ class _CommissionRatesDialogState extends State<_CommissionRatesDialog> {
       final res = await ApiService.getCommissionRates(type: 1);
       if (mounted) {
         setState(() {
-        _rates = res['commission'] as List? ?? [];
-        _loading = false;
-      });
+          _rates = res['commission'] as List? ?? [];
+          _loading = false;
+        });
       }
     } catch (e) {
       if (mounted) setState(() => _loading = false);
@@ -370,32 +543,49 @@ class _CommissionRatesDialogState extends State<_CommissionRatesDialog> {
       title: const Text('Commission Rates'),
       content: SizedBox(
         width: double.maxFinite,
-        child: _loading
-            ? const SizedBox(height: 100, child: Center(child: Preloader()))
-            : _rates.isEmpty
+        child:
+            _loading
+                ? const SizedBox(height: 100, child: Center(child: Preloader()))
+                : _rates.isEmpty
                 ? const Text('No commission rates set by admin')
                 : ListView.builder(
-                    shrinkWrap: true,
-                    itemCount: _rates.length,
-                    itemBuilder: (_, i) {
-                      final r = _rates[i] as Map<String, dynamic>;
-                      final pct = r['amountPercentage'];
-                      final upper = r['upperCoin'];
-                      return ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: AppTheme.primary.withValues(alpha: 0.2),
-                          child: Text('$pct%', style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.bold)),
+                  shrinkWrap: true,
+                  itemCount: _rates.length,
+                  itemBuilder: (_, i) {
+                    final r = _rates[i] as Map<String, dynamic>;
+                    final pct = r['amountPercentage'];
+                    final upper = r['upperCoin'];
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: AppTheme.primary.withValues(
+                          alpha: 0.2,
                         ),
-                        title: Text(upper == 0
+                        child: Text(
+                          '$pct%',
+                          style: const TextStyle(
+                            color: AppTheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      title: Text(
+                        upper == 0
                             ? 'Base rate'
-                            : 'Above ${formatCount(parseInt(upper))} diamonds'),
-                        subtitle: Text('$pct% commission', style: const TextStyle(fontSize: 12)),
-                      );
-                    },
-                  ),
+                            : 'Above ${formatCount(parseInt(upper))} diamonds',
+                      ),
+                      subtitle: Text(
+                        '$pct% commission',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    );
+                  },
+                ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Close'),
+        ),
       ],
     );
   }
@@ -408,31 +598,48 @@ class _OverviewTabEditHelper {
     final bioCtrl = TextEditingController(text: agency.description ?? '');
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Edit Agency'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            TextField(controller: nameCtrl, decoration: const InputDecoration(labelText: 'Agency Name', border: OutlineInputBorder())),
-            const SizedBox(height: 12),
-            TextField(controller: bioCtrl, maxLines: 2, decoration: const InputDecoration(labelText: 'Bio', border: OutlineInputBorder())),
-          ],
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () async {
-              try {
-                Fluttertoast.showToast(msg: 'Agency updated');
-              } catch (e) {
-                Fluttertoast.showToast(msg: 'Update failed');
-              }
-              if (ctx.mounted) Navigator.pop(ctx);
-            },
-            child: const Text('Save'),
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('Edit Agency'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextField(
+                  controller: nameCtrl,
+                  decoration: const InputDecoration(
+                    labelText: 'Agency Name',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: bioCtrl,
+                  maxLines: 2,
+                  decoration: const InputDecoration(
+                    labelText: 'Bio',
+                    border: OutlineInputBorder(),
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  try {
+                    Fluttertoast.showToast(msg: 'Agency updated');
+                  } catch (e) {
+                    Fluttertoast.showToast(msg: 'Update failed');
+                  }
+                  if (ctx.mounted) Navigator.pop(ctx);
+                },
+                child: const Text('Save'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 }
@@ -463,7 +670,9 @@ class _PendingRequestsTabState extends State<_PendingRequestsTab> {
       final list = (res['data'] as List?) ?? [];
       _requests
         ..clear()
-        ..addAll(list.map((e) => HostRequest.fromJson(e as Map<String, dynamic>)));
+        ..addAll(
+          list.map((e) => HostRequest.fromJson(e as Map<String, dynamic>)),
+        );
     } catch (e, s) {
       Log.e('PendingRequests', 'load failed', e, s);
     } finally {
@@ -473,10 +682,16 @@ class _PendingRequestsTabState extends State<_PendingRequestsTab> {
 
   Future<void> _accept(HostRequest req) async {
     try {
-      final res = await ApiService.updateHostRequestStatus(requestId: req.id ?? '', status: 'accepted');
+      final res = await ApiService.updateHostRequestStatus(
+        requestId: req.id ?? '',
+        status: 'accepted',
+      );
       if (res.status) {
         // Add user as host after acceptance.
-        await ApiService.addAgencyHost(agencyId: widget.agencyId, hostUserId: req.userId ?? '');
+        await ApiService.addAgencyHost(
+          agencyId: widget.agencyId,
+          hostUserId: req.userId ?? '',
+        );
         Fluttertoast.showToast(msg: 'Request accepted & host added');
       } else {
         Fluttertoast.showToast(msg: res.message ?? 'Failed');
@@ -490,7 +705,10 @@ class _PendingRequestsTabState extends State<_PendingRequestsTab> {
 
   Future<void> _reject(HostRequest req) async {
     try {
-      await ApiService.updateHostRequestStatus(requestId: req.id ?? '', status: 'rejected');
+      await ApiService.updateHostRequestStatus(
+        requestId: req.id ?? '',
+        status: 'rejected',
+      );
       Fluttertoast.showToast(msg: 'Request rejected');
       _load();
     } catch (e, s) {
@@ -503,7 +721,11 @@ class _PendingRequestsTabState extends State<_PendingRequestsTab> {
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: PremiumLoading());
     if (_requests.isEmpty) {
-      return const EmptyState(icon: Icons.person_add_disabled, title: 'No pending requests', subtitle: 'Join requests will appear here');
+      return const EmptyState(
+        icon: Icons.person_add_disabled,
+        title: 'No pending requests',
+        subtitle: 'Join requests will appear here',
+      );
     }
     return ListView.builder(
       padding: const EdgeInsets.all(16),
@@ -520,45 +742,88 @@ class _PendingRequestsTabState extends State<_PendingRequestsTab> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(children: [
-                UserAvatar(imageUrl: req.profileImage, size: 48, isVIP: false),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(req.name ?? 'User', style: TextStyle(color: AppTheme.fg(context), fontWeight: FontWeight.bold)),
-                      Text(req.mobileNumber ?? '', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 12)),
-                      Text('Live type: ${req.liveType == 1 ? 'AUDIO' : 'VIDEO'}', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 12)),
-                    ],
+              Row(
+                children: [
+                  UserAvatar(
+                    imageUrl: req.profileImage,
+                    size: 48,
+                    isVIP: false,
                   ),
-                ),
-              ]),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          req.name ?? 'User',
+                          style: TextStyle(
+                            color: AppTheme.fg(context),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        Text(
+                          req.mobileNumber ?? '',
+                          style: TextStyle(
+                            color: AppTheme.fg(context, 0.54),
+                            fontSize: 12,
+                          ),
+                        ),
+                        Text(
+                          'Live type: ${req.liveType == 1 ? 'AUDIO' : 'VIDEO'}',
+                          style: TextStyle(
+                            color: AppTheme.fg(context, 0.54),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 10),
               if (req.bio != null && req.bio!.isNotEmpty)
-                Text('Bio: ${req.bio}', style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 12)),
+                Text(
+                  'Bio: ${req.bio}',
+                  style: TextStyle(
+                    color: AppTheme.fg(context, 0.7),
+                    fontSize: 12,
+                  ),
+                ),
               if (req.bankDetails != null && req.bankDetails!.isNotEmpty) ...[
                 const SizedBox(height: 4),
-                Text('Bank: ${req.bankDetails}', style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 12)),
+                Text(
+                  'Bank: ${req.bankDetails}',
+                  style: TextStyle(
+                    color: AppTheme.fg(context, 0.7),
+                    fontSize: 12,
+                  ),
+                ),
               ],
               const SizedBox(height: 12),
-              Row(children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _reject(req),
-                    style: OutlinedButton.styleFrom(foregroundColor: Colors.red, side: const BorderSide(color: Colors.red)),
-                    child: const Text('Reject'),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => _reject(req),
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.red,
+                        side: const BorderSide(color: Colors.red),
+                      ),
+                      child: const Text('Reject'),
+                    ),
                   ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () => _accept(req),
-                    style: ElevatedButton.styleFrom(backgroundColor: AppTheme.primary),
-                    child: const Text('Accept'),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: () => _accept(req),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                      ),
+                      child: const Text('Accept'),
+                    ),
                   ),
-                ),
-              ]),
+                ],
+              ),
             ],
           ),
         );
@@ -568,7 +833,12 @@ class _PendingRequestsTabState extends State<_PendingRequestsTab> {
 }
 
 class _ActionCard extends StatelessWidget {
-  const _ActionCard({required this.icon, required this.label, required this.gradient, required this.onTap});
+  const _ActionCard({
+    required this.icon,
+    required this.label,
+    required this.gradient,
+    required this.onTap,
+  });
   final IconData icon;
   final String label;
   final Gradient gradient;
@@ -584,16 +854,29 @@ class _ActionCard extends StatelessWidget {
           color: AppTheme.cardBg(context),
           borderRadius: BorderRadius.circular(16),
         ),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(gradient: gradient, borderRadius: BorderRadius.circular(12)),
-            child: Icon(icon, color: Colors.white, size: 22),
-          ),
-          const SizedBox(height: 6),
-          Text(label, style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 11, fontWeight: FontWeight.w500)),
-        ]),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                gradient: gradient,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(icon, color: Colors.white, size: 22),
+            ),
+            const SizedBox(height: 6),
+            Text(
+              label,
+              style: TextStyle(
+                color: AppTheme.fg(context, 0.7),
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -611,8 +894,21 @@ class _InfoRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 13)),
-          Expanded(child: Text(value, textAlign: TextAlign.right, style: TextStyle(color: AppTheme.fg(context), fontSize: 13, fontWeight: FontWeight.w500))),
+          Text(
+            label,
+            style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 13),
+          ),
+          Expanded(
+            child: Text(
+              value,
+              textAlign: TextAlign.right,
+              style: TextStyle(
+                color: AppTheme.fg(context),
+                fontSize: 13,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
         ],
       ),
     );
@@ -643,7 +939,10 @@ class _HostsTabState extends State<_HostsTab> {
     try {
       final res = await ApiService.getAgencyHosts(agencyId: widget.agencyId);
       final list = (res['data'] as List?) ?? [];
-      _hosts = list.map((e) => AgencyHost.fromJson(e as Map<String, dynamic>)).toList();
+      _hosts =
+          list
+              .map((e) => AgencyHost.fromJson(e as Map<String, dynamic>))
+              .toList();
     } catch (e, s) {
       Log.e('AgencyHosts', 'load failed', e, s);
     } finally {
@@ -655,7 +954,11 @@ class _HostsTabState extends State<_HostsTab> {
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: PremiumLoading());
     if (_hosts.isEmpty) {
-      return const EmptyState(icon: Icons.person_add, title: 'No Hosts Yet', subtitle: 'Add hosts to your agency');
+      return const EmptyState(
+        icon: Icons.person_add,
+        title: 'No Hosts Yet',
+        subtitle: 'Add hosts to your agency',
+      );
     }
     return RefreshIndicator(
       onRefresh: _load,
@@ -671,45 +974,99 @@ class _HostsTabState extends State<_HostsTab> {
               color: AppTheme.cardBg(context),
               borderRadius: BorderRadius.circular(16),
             ),
-            child: Row(children: [
-              UserAvatar(imageUrl: h.image, size: 44, isVIP: false),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Row(children: [
-                    Text(h.name ?? 'Host', style: TextStyle(color: AppTheme.fg(context), fontWeight: FontWeight.w600)),
-                    if (h.isOnline) ...[
-                      const SizedBox(width: 6),
-                      Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle)),
+            child: Row(
+              children: [
+                UserAvatar(imageUrl: h.image, size: 44, isVIP: false),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Text(
+                            h.name ?? 'Host',
+                            style: TextStyle(
+                              color: AppTheme.fg(context),
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          if (h.isOnline) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              width: 8,
+                              height: 8,
+                              decoration: const BoxDecoration(
+                                color: Colors.green,
+                                shape: BoxShape.circle,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      Text(
+                        '@${h.username ?? ''} â€¢ ${h.liveHours}h live',
+                        style: TextStyle(
+                          color: AppTheme.fg(context, 0.54),
+                          fontSize: 12,
+                        ),
+                      ),
                     ],
-                  ]),
-                  Text('@${h.username ?? ''} â€¢ ${h.liveHours}h live', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 12)),
-                ]),
-              ),
-              Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Row(children: [
-                  const Icon(Icons.diamond, size: 14, color: Colors.cyan),
-                  const SizedBox(width: 4),
-                  Text(formatCount(h.revenue), style: const TextStyle(color: Colors.cyan, fontWeight: FontWeight.bold, fontSize: 14)),
-                ]),
-                Text('Bal: ${formatCount(h.balance)}', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 11)),
-              ]),
-              PopupMenuButton(
-                icon: Icon(Icons.more_vert, color: AppTheme.fg(context, 0.54)),
-                itemBuilder: (_) => [
-                  const PopupMenuItem(value: 'remove', child: Text('Remove Host')),
-                ],
-                onSelected: (v) async {
-                  if (v == 'remove') {
-                    final res = await ApiService.removeAgencyHost(agencyId: widget.agencyId, hostUserId: h.userId ?? '');
-                    if (res.status) {
-                      Fluttertoast.showToast(msg: 'Host removed');
-                      _load();
+                  ),
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(Icons.diamond, size: 14, color: Colors.cyan),
+                        const SizedBox(width: 4),
+                        Text(
+                          formatCount(h.revenue),
+                          style: const TextStyle(
+                            color: Colors.cyan,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'Bal: ${formatCount(h.balance)}',
+                      style: TextStyle(
+                        color: AppTheme.fg(context, 0.54),
+                        fontSize: 11,
+                      ),
+                    ),
+                  ],
+                ),
+                PopupMenuButton(
+                  icon: Icon(
+                    Icons.more_vert,
+                    color: AppTheme.fg(context, 0.54),
+                  ),
+                  itemBuilder:
+                      (_) => [
+                        const PopupMenuItem(
+                          value: 'remove',
+                          child: Text('Remove Host'),
+                        ),
+                      ],
+                  onSelected: (v) async {
+                    if (v == 'remove') {
+                      final res = await ApiService.removeAgencyHost(
+                        agencyId: widget.agencyId,
+                        hostUserId: h.userId ?? '',
+                      );
+                      if (res.status) {
+                        Fluttertoast.showToast(msg: 'Host removed');
+                        _load();
+                      }
                     }
-                  }
-                },
-              ),
-            ]),
+                  },
+                ),
+              ],
+            ),
           );
         },
       ),
@@ -738,7 +1095,10 @@ class _RevenueTabState extends State<_RevenueTab> {
 
   Future<void> _load() async {
     try {
-      final res = await ApiService.getAgencyRevenue(agencyId: widget.agencyId, period: _period);
+      final res = await ApiService.getAgencyRevenue(
+        agencyId: widget.agencyId,
+        period: _period,
+      );
       setState(() => _data = AgencyRevenueRoot.fromJson(res));
     } catch (e, s) {
       Log.e('AgencyRevenue', 'load failed', e, s);
@@ -747,71 +1107,138 @@ class _RevenueTabState extends State<_RevenueTab> {
 
   @override
   Widget build(BuildContext context) {
-    return ListView(padding: const EdgeInsets.all(16), children: [
-      // Period selector.
-      Row(children: ['daily', 'weekly', 'monthly'].map((p) {
-        final selected = p == _period;
-        return Expanded(
-          child: GestureDetector(
-            onTap: () { setState(() => _period = p); _load(); },
-            child: Container(
-              margin: const EdgeInsets.symmetric(horizontal: 4),
-              padding: const EdgeInsets.symmetric(vertical: 10),
-              decoration: BoxDecoration(
-                gradient: selected ? AppTheme.purpleGradient : null,
-                color: selected ? null : AppTheme.cardBg(context),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                p[0].toUpperCase() + p.substring(1),
-                textAlign: TextAlign.center,
-                style: TextStyle(color: selected ? Colors.white : AppTheme.fg(context, 0.54), fontWeight: FontWeight.w600, fontSize: 13),
-              ),
-            ),
-          ),
-        );
-      }).toList()),
-      const SizedBox(height: 16),
-      if (_data == null)
-        const Center(child: PremiumLoading())
-      else ...[
-        // Summary cards.
-        Row(children: [
-          Expanded(child: _SummaryCard(label: 'Total Revenue', value: formatCount(_data!.totalRevenue), icon: Icons.trending_up, gradient: AppTheme.greenGradient)),
-          const SizedBox(width: 8),
-          Expanded(child: _SummaryCard(label: 'Commission', value: formatCount(_data!.totalCommission), icon: Icons.percent, gradient: AppTheme.goldGradient)),
-          const SizedBox(width: 8),
-          Expanded(child: _SummaryCard(label: 'Host Payout', value: formatCount(_data!.totalHostPayout), icon: Icons.payments, gradient: AppTheme.pinkGradient)),
-        ]),
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        // Period selector.
+        Row(
+          children:
+              ['daily', 'weekly', 'monthly'].map((p) {
+                final selected = p == _period;
+                return Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() => _period = p);
+                      _load();
+                    },
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 4),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        gradient: selected ? AppTheme.purpleGradient : null,
+                        color: selected ? null : AppTheme.cardBg(context),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        p[0].toUpperCase() + p.substring(1),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color:
+                              selected
+                                  ? Colors.white
+                                  : AppTheme.fg(context, 0.54),
+                          fontWeight: FontWeight.w600,
+                          fontSize: 13,
+                        ),
+                      ),
+                    ),
+                  ),
+                );
+              }).toList(),
+        ),
         const SizedBox(height: 16),
-        SectionHeader(title: 'Breakdown', color: AppTheme.fg(context)),
-        const SizedBox(height: 8),
-        if (_data!.entries.isEmpty)
-          const EmptyState(icon: Icons.bar_chart, title: 'No Data', subtitle: 'Revenue data will appear here')
-        else
-          ..._data!.entries.map((e) => Container(
+        if (_data == null)
+          const Center(child: PremiumLoading())
+        else ...[
+          // Summary cards.
+          Row(
+            children: [
+              Expanded(
+                child: _SummaryCard(
+                  label: 'Total Revenue',
+                  value: formatCount(_data!.totalRevenue),
+                  icon: Icons.trending_up,
+                  gradient: AppTheme.greenGradient,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _SummaryCard(
+                  label: 'Commission',
+                  value: formatCount(_data!.totalCommission),
+                  icon: Icons.percent,
+                  gradient: AppTheme.goldGradient,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: _SummaryCard(
+                  label: 'Host Payout',
+                  value: formatCount(_data!.totalHostPayout),
+                  icon: Icons.payments,
+                  gradient: AppTheme.pinkGradient,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          SectionHeader(title: 'Breakdown', color: AppTheme.fg(context)),
+          const SizedBox(height: 8),
+          if (_data!.entries.isEmpty)
+            const EmptyState(
+              icon: Icons.bar_chart,
+              title: 'No Data',
+              subtitle: 'Revenue data will appear here',
+            )
+          else
+            ..._data!.entries.map(
+              (e) => Container(
                 margin: const EdgeInsets.only(bottom: 6),
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: AppTheme.cardBg(context), borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(
+                  color: AppTheme.cardBg(context),
+                  borderRadius: BorderRadius.circular(12),
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(e.date ?? '', style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 13)),
-                    Row(children: [
-                      const Icon(Icons.diamond, size: 14, color: Colors.cyan),
-                      const SizedBox(width: 4),
-                      Text(formatCount(e.revenue), style: const TextStyle(color: Colors.cyan, fontWeight: FontWeight.bold)),
-                    ]),
+                    Text(
+                      e.date ?? '',
+                      style: TextStyle(
+                        color: AppTheme.fg(context, 0.7),
+                        fontSize: 13,
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        const Icon(Icons.diamond, size: 14, color: Colors.cyan),
+                        const SizedBox(width: 4),
+                        Text(
+                          formatCount(e.revenue),
+                          style: const TextStyle(
+                            color: Colors.cyan,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
-              )),
+              ),
+            ),
+        ],
       ],
-    ]);
+    );
   }
 }
 
 class _SummaryCard extends StatelessWidget {
-  const _SummaryCard({required this.label, required this.value, required this.icon, required this.gradient});
+  const _SummaryCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.gradient,
+  });
   final String label;
   final String value;
   final IconData icon;
@@ -821,13 +1248,29 @@ class _SummaryCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(gradient: gradient, borderRadius: BorderRadius.circular(16)),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Icon(icon, color: Colors.white, size: 20),
-        const SizedBox(height: 8),
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-        Text(label, style: const TextStyle(color: Colors.white70, fontSize: 10)),
-      ]),
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Icon(icon, color: Colors.white, size: 20),
+          const SizedBox(height: 8),
+          Text(
+            value,
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            label,
+            style: const TextStyle(color: Colors.white70, fontSize: 10),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -854,9 +1297,14 @@ class _WithdrawalTabState extends State<_WithdrawalTab> {
   Future<void> _load() async {
     setState(() => _loading = true);
     try {
-      final res = await ApiService.getAgencyWithdrawals(agencyId: widget.agencyId);
+      final res = await ApiService.getAgencyWithdrawals(
+        agencyId: widget.agencyId,
+      );
       final list = (res['data'] as List?) ?? [];
-      _withdrawals = list.map((e) => AgencyWithdrawal.fromJson(e as Map<String, dynamic>)).toList();
+      _withdrawals =
+          list
+              .map((e) => AgencyWithdrawal.fromJson(e as Map<String, dynamic>))
+              .toList();
     } catch (e, s) {
       Log.e('AgencyWithdrawal', 'load failed', e, s);
     } finally {
@@ -867,47 +1315,95 @@ class _WithdrawalTabState extends State<_WithdrawalTab> {
   @override
   Widget build(BuildContext context) {
     if (_loading) return const Center(child: PremiumLoading());
-    return ListView(padding: const EdgeInsets.all(16), children: [
-      GradientButton(
-        label: 'Request Withdrawal',
-        icon: Icons.download,
-        onPressed: () => context.pushNamed('/agencyWithdraw', extra: {'agencyId': widget.agencyId}).then((_) => _load()),
-        gradient: AppTheme.greenGradient,
-      ),
-      const SizedBox(height: 16),
-      SectionHeader(title: 'History', color: AppTheme.fg(context)),
-      if (_withdrawals.isEmpty)
-        const EmptyState(icon: Icons.history, title: 'No Withdrawals', subtitle: 'Your withdrawal history will appear here')
-      else
-        ..._withdrawals.map((w) {
-          final status = w.status ?? 'pending';
-          final color = status == 'paid'
-              ? Colors.green
-              : status == 'pending'
-                  ? Colors.orange
-                  : status == 'rejected'
-                      ? Colors.red
-                      : Colors.blue;
-          return Container(
-            margin: const EdgeInsets.only(bottom: 8),
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: AppTheme.cardBg(context), borderRadius: BorderRadius.circular(12)),
-            child: Row(children: [
-              Expanded(
-                child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(formatCount(w.amount), style: TextStyle(color: AppTheme.fg(context), fontWeight: FontWeight.bold, fontSize: 16)),
-                  Text(w.requestedAt ?? '', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 12)),
-                ]),
+    return ListView(
+      padding: const EdgeInsets.all(16),
+      children: [
+        GradientButton(
+          label: 'Request Withdrawal',
+          icon: Icons.download,
+          onPressed:
+              () => context
+                  .pushNamed(
+                    AppRoutes.agencyWithdraw,
+                    extra: {'agencyId': widget.agencyId},
+                  )
+                  .then((_) => _load()),
+          gradient: AppTheme.greenGradient,
+        ),
+        const SizedBox(height: 16),
+        SectionHeader(title: 'History', color: AppTheme.fg(context)),
+        if (_withdrawals.isEmpty)
+          const EmptyState(
+            icon: Icons.history,
+            title: 'No Withdrawals',
+            subtitle: 'Your withdrawal history will appear here',
+          )
+        else
+          ..._withdrawals.map((w) {
+            final status = w.status ?? 'pending';
+            final color =
+                status == 'paid'
+                    ? Colors.green
+                    : status == 'pending'
+                    ? Colors.orange
+                    : status == 'rejected'
+                    ? Colors.red
+                    : Colors.blue;
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: AppTheme.cardBg(context),
+                borderRadius: BorderRadius.circular(12),
               ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: color.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(10)),
-                child: Text(status.toUpperCase(), style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.bold)),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          formatCount(w.amount),
+                          style: TextStyle(
+                            color: AppTheme.fg(context),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
+                        Text(
+                          w.requestedAt ?? '',
+                          style: TextStyle(
+                            color: AppTheme.fg(context, 0.54),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Text(
+                      status.toUpperCase(),
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ]),
-          );
-        }),
-    ]);
+            );
+          }),
+      ],
+    );
   }
 }
 
@@ -972,58 +1468,119 @@ class _CreateAgencyScreenState extends State<CreateAgencyScreen> {
           ),
         ),
         child: SafeArea(
-          child: Column(children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(children: [
-                IconButton(icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)), onPressed: () => Navigator.pop(context)),
-                Text('Create Agency', style: TextStyle(color: AppTheme.fg(context), fontSize: 22, fontWeight: FontWeight.bold)),
-              ]),
-            ),
-            Expanded(
-              child: ListView(padding: const EdgeInsets.all(16), children: [
-                Center(
-                  child: Container(
-                    width: 100,
-                    height: 100,
-                    decoration: BoxDecoration(gradient: AppTheme.blueGradient, shape: BoxShape.circle, boxShadow: AppTheme.cardShadow),
-                    child: const Icon(Icons.business, size: 40, color: Colors.white),
-                  ),
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    Text(
+                      'Create Agency',
+                      style: TextStyle(
+                        color: AppTheme.fg(context),
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
-                const SizedBox(height: 24),
-                _field('Agency Name', _nameCtrl, 'Enter agency name'),
-                const SizedBox(height: 16),
-                _field('Description', _descCtrl, 'Tell us about your agency', maxLines: 3),
-                const SizedBox(height: 16),
-                _field('Commission Rate (%)', _commissionCtrl, 'e.g. 20', keyboardType: TextInputType.number),
-                const SizedBox(height: 32),
-                GradientButton(label: 'Create Agency', icon: Icons.check_circle, onPressed: _create, loading: _creating, height: 52, gradient: AppTheme.blueGradient),
-              ]),
-            ),
-          ]),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    Center(
+                      child: Container(
+                        width: 100,
+                        height: 100,
+                        decoration: BoxDecoration(
+                          gradient: AppTheme.blueGradient,
+                          shape: BoxShape.circle,
+                          boxShadow: AppTheme.cardShadow,
+                        ),
+                        child: const Icon(
+                          Icons.business,
+                          size: 40,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 24),
+                    _field('Agency Name', _nameCtrl, 'Enter agency name'),
+                    const SizedBox(height: 16),
+                    _field(
+                      'Description',
+                      _descCtrl,
+                      'Tell us about your agency',
+                      maxLines: 3,
+                    ),
+                    const SizedBox(height: 16),
+                    _field(
+                      'Commission Rate (%)',
+                      _commissionCtrl,
+                      'e.g. 20',
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 32),
+                    GradientButton(
+                      label: 'Create Agency',
+                      icon: Icons.check_circle,
+                      onPressed: _create,
+                      loading: _creating,
+                      height: 52,
+                      gradient: AppTheme.blueGradient,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _field(String label, TextEditingController ctrl, String hint, {int maxLines = 1, TextInputType? keyboardType}) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 13, fontWeight: FontWeight.w500)),
-      const SizedBox(height: 8),
-      TextField(
-        controller: ctrl,
-        maxLines: maxLines,
-        keyboardType: keyboardType,
-        style: TextStyle(color: AppTheme.fg(context)),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: TextStyle(color: AppTheme.fg(context, 0.3)),
-          filled: true,
-          fillColor: AppTheme.themed(context, 0xFF1E1E1E, 0xFFF1F1FA),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+  Widget _field(
+    String label,
+    TextEditingController ctrl,
+    String hint, {
+    int maxLines = 1,
+    TextInputType? keyboardType,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: AppTheme.fg(context, 0.7),
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
         ),
-      ),
-    ]);
+        const SizedBox(height: 8),
+        TextField(
+          controller: ctrl,
+          maxLines: maxLines,
+          keyboardType: keyboardType,
+          style: TextStyle(color: AppTheme.fg(context)),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(color: AppTheme.fg(context, 0.3)),
+            filled: true,
+            fillColor: AppTheme.themed(context, 0xFF1E1E1E, 0xFFF1F1FA),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
 
@@ -1082,7 +1639,10 @@ class _AgencyWithdrawScreenState extends State<AgencyWithdrawScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final agencyId = (ModalRoute.of(context)?.settings.arguments as Map?)?['agencyId'] as String? ?? '';
+    final agencyId =
+        (ModalRoute.of(context)?.settings.arguments as Map?)?['agencyId']
+            as String? ??
+        '';
     return Scaffold(
       body: Container(
         decoration: BoxDecoration(
@@ -1093,40 +1653,73 @@ class _AgencyWithdrawScreenState extends State<AgencyWithdrawScreen> {
           ),
         ),
         child: SafeArea(
-          child: Column(children: [
-            Padding(
-              padding: const EdgeInsets.all(16),
-              child: Row(children: [
-                IconButton(icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)), onPressed: () => Navigator.pop(context)),
-                Text('Withdraw Funds', style: TextStyle(color: AppTheme.fg(context), fontSize: 22, fontWeight: FontWeight.bold)),
-              ]),
-            ),
-            Expanded(
-              child: ListView(padding: const EdgeInsets.all(16), children: [
-                // Method selector.
-                Row(children: [
-                  _methodChip('bank', 'Bank Transfer', Icons.account_balance),
-                  const SizedBox(width: 8),
-                  _methodChip('usdt', 'USDT', Icons.currency_bitcoin),
-                  const SizedBox(width: 8),
-                  _methodChip('paypal', 'PayPal', Icons.payment),
-                ]),
-                const SizedBox(height: 16),
-                _field('Amount', _amountCtrl, 'Enter amount', keyboardType: TextInputType.number),
-                const SizedBox(height: 16),
-                _field('Account Details', _detailsCtrl, 'Enter your $_method account details', maxLines: 3),
-                const SizedBox(height: 32),
-                GradientButton(
-                  label: 'Submit Request',
-                  icon: Icons.send,
-                  onPressed: () => _submit(agencyId),
-                  loading: _submitting,
-                  height: 52,
-                  gradient: AppTheme.greenGradient,
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  children: [
+                    IconButton(
+                      icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    Text(
+                      'Withdraw Funds',
+                      style: TextStyle(
+                        color: AppTheme.fg(context),
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
-              ]),
-            ),
-          ]),
+              ),
+              Expanded(
+                child: ListView(
+                  padding: const EdgeInsets.all(16),
+                  children: [
+                    // Method selector.
+                    Row(
+                      children: [
+                        _methodChip(
+                          'bank',
+                          'Bank Transfer',
+                          Icons.account_balance,
+                        ),
+                        const SizedBox(width: 8),
+                        _methodChip('usdt', 'USDT', Icons.currency_bitcoin),
+                        const SizedBox(width: 8),
+                        _methodChip('paypal', 'PayPal', Icons.payment),
+                      ],
+                    ),
+                    const SizedBox(height: 16),
+                    _field(
+                      'Amount',
+                      _amountCtrl,
+                      'Enter amount',
+                      keyboardType: TextInputType.number,
+                    ),
+                    const SizedBox(height: 16),
+                    _field(
+                      'Account Details',
+                      _detailsCtrl,
+                      'Enter your $_method account details',
+                      maxLines: 3,
+                    ),
+                    const SizedBox(height: 32),
+                    GradientButton(
+                      label: 'Submit Request',
+                      icon: Icons.send,
+                      onPressed: () => _submit(agencyId),
+                      loading: _submitting,
+                      height: 52,
+                      gradient: AppTheme.greenGradient,
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -1144,34 +1737,65 @@ class _AgencyWithdrawScreenState extends State<AgencyWithdrawScreen> {
             color: selected ? null : AppTheme.cardBg(context),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: Column(children: [
-            Icon(icon, color: selected ? Colors.white : AppTheme.fg(context, 0.54), size: 20),
-            const SizedBox(height: 4),
-            Text(label, style: TextStyle(color: selected ? Colors.white : AppTheme.fg(context, 0.54), fontSize: 11, fontWeight: FontWeight.w600)),
-          ]),
+          child: Column(
+            children: [
+              Icon(
+                icon,
+                color: selected ? Colors.white : AppTheme.fg(context, 0.54),
+                size: 20,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                label,
+                style: TextStyle(
+                  color: selected ? Colors.white : AppTheme.fg(context, 0.54),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _field(String label, TextEditingController ctrl, String hint, {int maxLines = 1, TextInputType? keyboardType}) {
-    return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 13, fontWeight: FontWeight.w500)),
-      const SizedBox(height: 8),
-      TextField(
-        controller: ctrl,
-        maxLines: maxLines,
-        keyboardType: keyboardType,
-        style: TextStyle(color: AppTheme.fg(context)),
-        decoration: InputDecoration(
-          hintText: hint,
-          hintStyle: TextStyle(color: AppTheme.fg(context, 0.3)),
-          filled: true,
-          fillColor: AppTheme.themed(context, 0xFF1E1E1E, 0xFFF1F1FA),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+  Widget _field(
+    String label,
+    TextEditingController ctrl,
+    String hint, {
+    int maxLines = 1,
+    TextInputType? keyboardType,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: TextStyle(
+            color: AppTheme.fg(context, 0.7),
+            fontSize: 13,
+            fontWeight: FontWeight.w500,
+          ),
         ),
-      ),
-    ]);
+        const SizedBox(height: 8),
+        TextField(
+          controller: ctrl,
+          maxLines: maxLines,
+          keyboardType: keyboardType,
+          style: TextStyle(color: AppTheme.fg(context)),
+          decoration: InputDecoration(
+            hintText: hint,
+            hintStyle: TextStyle(color: AppTheme.fg(context, 0.3)),
+            filled: true,
+            fillColor: AppTheme.themed(context, 0xFF1E1E1E, 0xFFF1F1FA),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+          ),
+        ),
+      ],
+    );
   }
 }
-

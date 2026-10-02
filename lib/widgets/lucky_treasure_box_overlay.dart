@@ -11,7 +11,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 
-import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 
@@ -251,7 +250,7 @@ class LuckyTreasureBoxOverlayState extends State<LuckyTreasureBoxOverlay>
     }
   }
 
-  /// Client-side fallback win amount.
+  /// Extract the awarded amount from the backend claim response.
   int _claimCoins(Map<String, dynamic>? response) {
     if (response == null) return 0;
     final direct = _integer(response, const [
@@ -332,39 +331,6 @@ class LuckyTreasureBoxOverlayState extends State<LuckyTreasureBoxOverlay>
     return '';
   }
 
-  /// True when the backend has not yet implemented the claim endpoint —
-  /// the same client-side fallback used by [LiveLuckyBagSheet].
-  bool _shouldClientSideFallback(dynamic e, RestResponse? res) {
-    if (e is DioException) {
-      final code = e.response?.statusCode;
-      if (code == 404 || code == 405 || code == 501 || code == 503) return true;
-      final msg = e.message?.toLowerCase() ?? '';
-      if (msg.contains('not found') ||
-          msg.contains('not implemented') ||
-          msg.contains('not available')) {
-        return true;
-      }
-    }
-    final m = res?.message?.toLowerCase() ?? '';
-    if (m.contains('not implemented') ||
-        m.contains('not found') ||
-        m.contains('coming soon') ||
-        m.contains('not available')) {
-      return true;
-    }
-    return false;
-  }
-
-  /// Compute a fun random share for client-side fallback.
-  int _computeFallbackWin() {
-    if (_totalCoins <= 0 || _bagCount <= 0) return 0;
-    final avg = _totalCoins ~/ _bagCount;
-    if (avg <= 1) return 1;
-    const min = 1;
-    final max = (avg * 1.5).ceil();
-    return min + Random().nextInt(max - min + 1);
-  }
-
   Future<void> _claim(int bagIndex) async {
     if (_claimed || _claiming || widget.isHost || !_dropping) return;
     setState(() {
@@ -373,7 +339,6 @@ class LuckyTreasureBoxOverlayState extends State<LuckyTreasureBoxOverlay>
     });
     try {
       RestResponse? response;
-      dynamic apiError;
       try {
         response = await ApiService.claimLuckyBag(
           roomId: widget.liveStreamingId,
@@ -382,44 +347,38 @@ class LuckyTreasureBoxOverlayState extends State<LuckyTreasureBoxOverlay>
           luckyBagId: _bagId,
         );
       } catch (e, s) {
-        apiError = e;
         Log.e(_tag, 'claimLuckyBag API error', e, s);
       }
       if (!mounted) return;
 
-      int coins;
-      if (response?.status == true) {
-        coins = _claimCoins(response!.data);
-        // Backend returned success but no coin field — award a local share so
-        // the viewer still receives something instead of an empty result.
-        if (coins <= 0) coins = _computeFallbackWin();
-      } else if (_shouldClientSideFallback(apiError, response)) {
-        coins = _computeFallbackWin();
-      } else {
+      // Only the backend decides wins — never fabricate a local amount.
+      final coins = response?.status == true ? _claimCoins(response!.data) : 0;
+      if (coins <= 0) {
         setState(() {
           _claiming = false;
           _selectedBag = null;
         });
-        var msg = response?.message ?? 'This bag was already claimed';
+        var msg =
+            response?.status == true
+                ? 'You missed this lucky bag'
+                : (response?.message ?? 'This bag was already claimed');
         msg = msg
             .replaceAll('rCoin', 'diamonds')
             .replaceAll('RCoin', 'diamonds');
         Fluttertoast.showToast(msg: msg);
         return;
       }
-      if (coins <= 0) {
-        setState(() {
-          _claiming = false;
-          _selectedBag = null;
-        });
-        Fluttertoast.showToast(msg: 'You missed this lucky bag');
-        return;
-      }
       final session = SessionManager.instance;
-      final user = session?.getUser();
-      if (user != null && coins > 0) {
-        session?.saveUser(user.copyWith(coin: user.coin + coins));
-      }
+      // Wallet was credited server-side — refresh the local session copy.
+      try {
+        final fresh = await ApiService.getUser({
+          'userId': widget.userId,
+          'loginUserId': widget.userId,
+        });
+        if (fresh.status && fresh.user != null) {
+          session?.saveUser(fresh.user!);
+        }
+      } catch (_) {}
       setState(() {
         _claimed = true;
         _claiming = false;
@@ -529,8 +488,7 @@ class LuckyTreasureBoxOverlayState extends State<LuckyTreasureBoxOverlay>
     final urgent = _remainingSeconds <= 10;
     return GestureDetector(
       onTap: () {
-        final sender =
-            (_senderName ?? '').isNotEmpty ? '$_senderName\'s ' : '';
+        final sender = (_senderName ?? '').isNotEmpty ? '$_senderName\'s ' : '';
         Fluttertoast.showToast(
           msg:
               _remainingSeconds > 0
@@ -558,9 +516,7 @@ class LuckyTreasureBoxOverlayState extends State<LuckyTreasureBoxOverlay>
                     color: (urgent
                             ? const Color(0xFFFF5252)
                             : const Color(0xFF2196F3))
-                        .withValues(
-                          alpha: 0.45 + _glowController.value * 0.25,
-                        ),
+                        .withValues(alpha: 0.45 + _glowController.value * 0.25),
                     blurRadius: 18 + _glowController.value * 8,
                     spreadRadius: 1,
                   ),
@@ -573,9 +529,7 @@ class LuckyTreasureBoxOverlayState extends State<LuckyTreasureBoxOverlay>
               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
               decoration: BoxDecoration(
                 color:
-                    urgent
-                        ? const Color(0xFFFF5252)
-                        : const Color(0xE6081426),
+                    urgent ? const Color(0xFFFF5252) : const Color(0xE6081426),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color:

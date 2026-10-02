@@ -62,12 +62,16 @@ class _WalletScreenState extends State<WalletScreen> {
 
   Future<void> _loadIapProducts() async {
     if (_plans.isEmpty) return;
-    final ids = _plans
-        .map((p) => (p.productKey?.isNotEmpty == true)
-            ? p.productKey!
-            : (p.id ?? p.coin.toString()))
-        .where((id) => id.isNotEmpty)
-        .toSet();
+    final ids =
+        _plans
+            .map(
+              (p) =>
+                  (p.productKey?.isNotEmpty == true)
+                      ? p.productKey!
+                      : (p.id ?? p.coin.toString()),
+            )
+            .where((id) => id.isNotEmpty)
+            .toSet();
     if (ids.isNotEmpty) {
       try {
         await IapService.instance.loadProducts(ids);
@@ -95,33 +99,40 @@ class _WalletScreenState extends State<WalletScreen> {
   void _showNoInternetDialog(String url) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('No Internet'),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text('Please check your internet connection.'),
-            const SizedBox(height: 8),
-            SelectableText(url, style: const TextStyle(color: AppTheme.primary, fontWeight: FontWeight.w600)),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('OK'),
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('No Internet'),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text('Please check your internet connection.'),
+                const SizedBox(height: 8),
+                SelectableText(
+                  url,
+                  style: const TextStyle(
+                    color: AppTheme.primary,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('OK'),
+              ),
+              TextButton(
+                onPressed: () async {
+                  final uri = Uri.parse(url);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
+                },
+                child: const Text('Open'),
+              ),
+            ],
           ),
-          TextButton(
-            onPressed: () async {
-              final uri = Uri.parse(url);
-              if (await canLaunchUrl(uri)) {
-                await launchUrl(uri, mode: LaunchMode.externalApplication);
-              }
-            },
-            child: const Text('Open'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -129,10 +140,11 @@ class _WalletScreenState extends State<WalletScreen> {
     return PopupMenuButton<String>(
       initialValue: _selectedCurrency,
       onSelected: (v) => setState(() => _selectedCurrency = v),
-      itemBuilder: (ctx) => const [
-        PopupMenuItem(value: 'USD', child: Text('USD (\$)')),
-        PopupMenuItem(value: 'INR', child: Text('INR (₹)')),
-      ],
+      itemBuilder:
+          (ctx) => const [
+            PopupMenuItem(value: 'USD', child: Text('USD (\$)')),
+            PopupMenuItem(value: 'INR', child: Text('INR (₹)')),
+          ],
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Row(
@@ -157,7 +169,9 @@ class _WalletScreenState extends State<WalletScreen> {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('My Wallet'),
-          bottom: const TabBar(tabs: [Tab(text: 'Recharge'), Tab(text: 'Income')]),
+          bottom: const TabBar(
+            tabs: [Tab(text: 'Recharge'), Tab(text: 'Income')],
+          ),
           actions: [
             _currencySelector(),
             IconButton(
@@ -170,25 +184,41 @@ class _WalletScreenState extends State<WalletScreen> {
               tooltip: 'Buy Diamonds',
               onPressed: () => context.pushNamed(AppRoutes.recharge),
             ),
-            PopupMenuButton(itemBuilder: (ctx) => [
-              const PopupMenuItem(value: 'cashout', child: Text('Cash Out')),
-              const PopupMenuItem(value: 'transactions', child: Text('Transaction History')),
-              const PopupMenuItem(value: 'coinSellers', child: Text('Diamond Sellers')),
-            ], onSelected: (v) {
-              if (v == 'cashout') {
-                context.pushNamed(AppRoutes.cashOut);
-              } else if (v == 'transactions') {
-                context.pushNamed(AppRoutes.transactionHistory);
-              } else if (v == 'coinSellers') {
-                context.pushNamed(AppRoutes.coinSellers);
-              }
-            }),
+            PopupMenuButton(
+              itemBuilder:
+                  (ctx) => [
+                    const PopupMenuItem(
+                      value: 'cashout',
+                      child: Text('Cash Out'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'transactions',
+                      child: Text('Transaction History'),
+                    ),
+                    const PopupMenuItem(
+                      value: 'coinSellers',
+                      child: Text('Diamond Sellers'),
+                    ),
+                  ],
+              onSelected: (v) {
+                if (v == 'cashout') {
+                  context.pushNamed(AppRoutes.cashOut);
+                } else if (v == 'transactions') {
+                  context.pushNamed(AppRoutes.transactionHistory);
+                } else if (v == 'coinSellers') {
+                  context.pushNamed(AppRoutes.coinSellers);
+                }
+              },
+            ),
           ],
         ),
         body: TabBarView(
           children: [
             _buildRechargeTab(user?.coin.toInt() ?? 0),
-            _buildIncomeTab(user?.rCoin.toInt() ?? 0, user?.withdrawalRcoin.toInt() ?? 0),
+            _buildIncomeTab(
+              user?.rCoin.toInt() ?? 0,
+              user?.withdrawalRcoin.toInt() ?? 0,
+            ),
           ],
         ),
       ),
@@ -205,15 +235,23 @@ class _WalletScreenState extends State<WalletScreen> {
           const SizedBox(height: 16),
           _OfflineRechargeTile(onTap: _openOfflineRecharge),
           const SizedBox(height: 24),
-          const Text('Recharge Plans', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const Text(
+            'Recharge Plans',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 12),
           if (_loading)
-            const Center(child: Padding(padding: EdgeInsets.all(32), child: Preloader()))
+            const Center(
+              child: Padding(padding: EdgeInsets.all(32), child: Preloader()),
+            )
           else if (_plans.isEmpty)
             const Center(
               child: Padding(
                 padding: EdgeInsets.all(32),
-                child: Text('No plans available', style: TextStyle(color: AppTheme.textSecondary)),
+                child: Text(
+                  'No plans available',
+                  style: TextStyle(color: AppTheme.textSecondary),
+                ),
               ),
             )
           else
@@ -227,7 +265,12 @@ class _WalletScreenState extends State<WalletScreen> {
                 childAspectRatio: 0.92,
               ),
               itemCount: _plans.length,
-              itemBuilder: (_, i) => _PlanCard(plan: _plans[i], onTap: () => _purchase(_plans[i]), currency: _selectedCurrency),
+              itemBuilder:
+                  (_, i) => _PlanCard(
+                    plan: _plans[i],
+                    onTap: () => _purchase(_plans[i]),
+                    currency: _selectedCurrency,
+                  ),
             ),
         ],
       ),
@@ -290,8 +333,90 @@ class _WalletScreenState extends State<WalletScreen> {
       Fluttertoast.showToast(msg: 'No Beans to convert');
       return;
     }
+    final setting = session.getSetting();
+    final rate =
+        (setting?.rCoinForDiamond ?? 0) > 0 ? setting!.rCoinForDiamond : 40;
+    final min = setting?.minRcoinForConvertToDiamond ?? 0;
+    if (rCoin < min) {
+      Fluttertoast.showToast(msg: 'Minimum $min Beans required to convert');
+      return;
+    }
+
+    // Amount + confirm dialog — converting used to drain the WHOLE balance
+    // on a single tap with no confirmation.
+    final ctrl = TextEditingController(text: '$rCoin');
+    final amount = await showDialog<int>(
+      context: context,
+      builder: (ctx) {
+        int parse() => int.tryParse(ctrl.text.trim()) ?? 0;
+        return StatefulBuilder(
+          builder: (ctx, setD) {
+            final amt = parse();
+            final diamonds = rate > 0 ? amt ~/ rate : 0;
+            return AlertDialog(
+              title: const Text('Convert Beans to Diamonds'),
+              content: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextField(
+                    controller: ctrl,
+                    keyboardType: TextInputType.number,
+                    autofocus: true,
+                    decoration: InputDecoration(
+                      labelText: 'Beans to convert',
+                      hintText: 'Max $rCoin',
+                      suffixText: '/ $rCoin',
+                    ),
+                    onChanged: (_) => setD(() {}),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'You will receive ≈ $diamonds diamonds ($rate beans = 1 diamond)',
+                    style: const TextStyle(fontSize: 13),
+                  ),
+                  if (min > 0)
+                    Text(
+                      'Minimum conversion: $min beans',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                ],
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Cancel'),
+                ),
+                FilledButton(
+                  onPressed: () {
+                    final v = parse();
+                    if (v <= 0 || v > rCoin) {
+                      Fluttertoast.showToast(
+                        msg: 'Enter an amount between 1 and $rCoin',
+                      );
+                      return;
+                    }
+                    Navigator.pop(ctx, v);
+                  },
+                  child: const Text('Convert'),
+                ),
+              ],
+            );
+          },
+        );
+      },
+    );
+    if (amount == null) return;
+    if (!mounted) return;
+
     try {
-      final res = await ApiService.convertRcoinToDiamond(userId: session.userId, rCoin: rCoin);
+      final res = await ApiService.convertRcoinToDiamond(
+        userId: session.userId,
+        rCoin: amount,
+      );
       if (res.status) {
         Fluttertoast.showToast(msg: res.message ?? 'Converted successfully');
         if (mounted) context.read<AuthProvider>().refreshUser();
@@ -324,9 +449,10 @@ class _WalletScreenState extends State<WalletScreen> {
       color = AppTheme.green;
       icon = Icons.verified;
       title = 'KYC Verified · Level ${status.kycLevel}';
-      subtitle = status.currentLevelLimit > 0
-          ? 'Daily withdrawal limit: ${status.currentLevelLimit} Beans'
-          : 'Unlimited withdrawals';
+      subtitle =
+          status.currentLevelLimit > 0
+              ? 'Daily withdrawal limit: ${status.currentLevelLimit} Beans'
+              : 'Unlimited withdrawals';
       showCta = false;
     } else if (status.isPending) {
       color = AppTheme.yellow;
@@ -358,38 +484,49 @@ class _WalletScreenState extends State<WalletScreen> {
           decoration: BoxDecoration(
             color: color.withValues(alpha: 0.08),
             borderRadius: BorderRadius.circular(16),
-            border: Border.all(color: color.withValues(alpha: 0.25), width: 1.2),
-          ),
-          child: Row(children: [
-            Container(
-              width: 44,
-              height: 44,
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.15),
-                shape: BoxShape.circle,
-              ),
-              child: Icon(icon, color: color, size: 24),
+            border: Border.all(
+              color: color.withValues(alpha: 0.25),
+              width: 1.2,
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(title,
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, color: color, size: 24),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w800,
                         color: color,
-                      )),
-                  const SizedBox(height: 2),
-                  Text(subtitle,
-                      style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-                ],
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      style: const TextStyle(
+                        fontSize: 12,
+                        color: AppTheme.textSecondary,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-            if (showCta)
-              Icon(Icons.chevron_right, color: color, size: 24),
-          ]),
+              if (showCta) Icon(Icons.chevron_right, color: color, size: 24),
+            ],
+          ),
         ),
       ),
     );
@@ -399,62 +536,86 @@ class _WalletScreenState extends State<WalletScreen> {
     showModalBottomSheet<String>(
       context: context,
       backgroundColor: AppTheme.surface,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(color: AppTheme.surfaceVariant, borderRadius: BorderRadius.circular(2)),
-                ),
-              ),
-              Text('Buy ${formatCountFull(plan.coin)} Diamonds', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              const SizedBox(height: 4),
-              Text('Price: ${_planPrice(plan, _selectedCurrency)}', style: const TextStyle(fontSize: 16, color: AppTheme.textSecondary)),
-              const SizedBox(height: 20),
-              _paymentOption(
-                Icons.account_balance_wallet,
-                'Google Play',
-                'Pay via Google Play Store',
-                () => Navigator.pop(ctx, 'googlePlay'),
-              ),
-              _paymentOption(
-                Icons.credit_card,
-                'Card (Stripe)',
-                'Pay via credit/debit card',
-                () => Navigator.pop(ctx, 'stripe'),
-              ),
-              const SizedBox(height: 16),
-            ],
-          ),
-        ),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
+      builder:
+          (ctx) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.surfaceVariant,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                  ),
+                  Text(
+                    'Buy ${formatCountFull(plan.coin)} Diamonds',
+                    style: const TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Price: ${_planPrice(plan, _selectedCurrency)}',
+                    style: const TextStyle(
+                      fontSize: 16,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _paymentOption(
+                    Icons.account_balance_wallet,
+                    'Google Play',
+                    'Pay via Google Play Store',
+                    () => Navigator.pop(ctx, 'googlePlay'),
+                  ),
+                  // Card (Stripe) hidden — no card-collection UI exists in the
+                  // app, and the backend now requires a verified succeeded
+                  // PaymentIntent before crediting.
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
+          ),
     ).then((method) {
       if (!mounted || method == null) return;
       if (method == 'googlePlay') {
         _purchaseWithGooglePlay(plan);
-      } else if (method == 'stripe') {
-        _purchaseWithStripe(plan);
       }
     });
   }
 
-  Widget _paymentOption(IconData icon, String title, String subtitle, VoidCallback onTap) {
+  Widget _paymentOption(
+    IconData icon,
+    String title,
+    String subtitle,
+    VoidCallback onTap,
+  ) {
     return ListTile(
       leading: Container(
         padding: const EdgeInsets.all(8),
-        decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+        decoration: BoxDecoration(
+          color: AppTheme.primary.withValues(alpha: 0.1),
+          borderRadius: BorderRadius.circular(10),
+        ),
         child: Icon(icon, color: AppTheme.primary, size: 22),
       ),
       title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
-      subtitle: Text(subtitle, style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
+      subtitle: Text(
+        subtitle,
+        style: const TextStyle(fontSize: 12, color: AppTheme.textSecondary),
+      ),
       trailing: const Icon(Icons.chevron_right, color: AppTheme.textTertiary),
       onTap: onTap,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -466,13 +627,16 @@ class _WalletScreenState extends State<WalletScreen> {
     setState(() => _purchasing = true);
     final session = context.read<SessionManager>();
     final userId = session.userId;
-    final productId = (plan.productKey?.isNotEmpty == true)
-        ? plan.productKey!
-        : (plan.id ?? plan.coin.toString());
+    final productId =
+        (plan.productKey?.isNotEmpty == true)
+            ? plan.productKey!
+            : (plan.id ?? plan.coin.toString());
     IapService.instance.setUserId(userId);
     IapService.instance.onPurchaseResult = (success, message) {
       if (!mounted) return;
-      Fluttertoast.showToast(msg: message ?? (success ? 'Purchase successful' : 'Purchase failed'));
+      Fluttertoast.showToast(
+        msg: message ?? (success ? 'Purchase successful' : 'Purchase failed'),
+      );
       if (success) {
         context.read<AuthProvider>().refreshUser();
         _load();
@@ -480,48 +644,15 @@ class _WalletScreenState extends State<WalletScreen> {
       setState(() => _purchasing = false);
     };
     try {
-      final ok = await IapService.instance.purchase(productId, userId: userId, planId: plan.id);
+      final ok = await IapService.instance.purchase(
+        productId,
+        userId: userId,
+        planId: plan.id,
+      );
       if (!ok && mounted) setState(() => _purchasing = false);
     } catch (e, s) {
       Log.e(_tag, 'Google Play purchase failed', e, s);
       Fluttertoast.showToast(msg: 'Purchase failed');
-      if (mounted) setState(() => _purchasing = false);
-    }
-  }
-
-  Future<void> _purchaseWithStripe(CoinPlan plan) async {
-    if (_purchasing) return;
-    setState(() => _purchasing = true);
-    final session = context.read<SessionManager>();
-    final userId = session.userId;
-    try {
-      final email = session.getUser()?.email ?? '';
-      if (email.isEmpty) {
-        Fluttertoast.showToast(msg: 'Email required for card payment');
-        return;
-      }
-      final stripeRes = await ApiService.getStripeCustomer(userId: userId, email: email);
-      if (!stripeRes.status || stripeRes.clientSecret == null) {
-        Fluttertoast.showToast(msg: 'Card payment unavailable');
-        return;
-      }
-      final res = await ApiService.purchaseWithStripe(
-        userId: userId,
-        planId: plan.id ?? '',
-        stripeToken: stripeRes.clientSecret!,
-      );
-      if (!mounted) return;
-      if (res.status) {
-        Fluttertoast.showToast(msg: res.message ?? 'Purchase successful');
-        context.read<AuthProvider>().refreshUser();
-        _load();
-      } else {
-        Fluttertoast.showToast(msg: res.message ?? 'Payment failed');
-      }
-    } catch (e, s) {
-      Log.e(_tag, 'stripe purchase failed', e, s);
-      Fluttertoast.showToast(msg: 'Card payment failed');
-    } finally {
       if (mounted) setState(() => _purchasing = false);
     }
   }
@@ -544,27 +675,50 @@ class _DiamondBalanceCard extends StatelessWidget {
         gradient: AppTheme.purpleGradient,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: AppTheme.primary.withValues(alpha: 0.25), blurRadius: 24, offset: const Offset(0, 8)),
+          BoxShadow(
+            color: AppTheme.primary.withValues(alpha: 0.25),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
         ],
       ),
-      child: Row(children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(16)),
-          child: const CurrencyIcon(CurrencyType.diamond, size: 36),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Diamonds', style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500)),
-              const SizedBox(height: 4),
-              Text(formatCountFull(coins), style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
-            ],
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const CurrencyIcon(CurrencyType.diamond, size: 36),
           ),
-        ),
-      ]),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Diamonds',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  formatCountFull(coins),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -582,29 +736,55 @@ class _BeansBalanceCard extends StatelessWidget {
         gradient: AppTheme.goldGradient,
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
-          BoxShadow(color: AppTheme.yellow.withValues(alpha: 0.25), blurRadius: 24, offset: const Offset(0, 8)),
+          BoxShadow(
+            color: AppTheme.yellow.withValues(alpha: 0.25),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
         ],
       ),
-      child: Row(children: [
-        Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.2), borderRadius: BorderRadius.circular(16)),
-          child: const CurrencyIcon(CurrencyType.bean, size: 36),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text('Beans', style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500)),
-              const SizedBox(height: 4),
-              Text(formatCount(beans), style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold)),
-              if (withdrawing > 0)
-                Text('Withdrawing: ${formatCount(withdrawing)}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
-            ],
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: const CurrencyIcon(CurrencyType.bean, size: 36),
           ),
-        ),
-      ]),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Beans',
+                  style: TextStyle(
+                    color: Colors.white70,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  formatCount(beans),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (withdrawing > 0)
+                  Text(
+                    'Withdrawing: ${formatCount(withdrawing)}',
+                    style: const TextStyle(color: Colors.white70, fontSize: 12),
+                  ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -623,27 +803,44 @@ class _OfflineRechargeTile extends StatelessWidget {
         decoration: BoxDecoration(
           color: AppTheme.yellow.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: AppTheme.yellow.withValues(alpha: 0.35), width: 1.2),
+          border: Border.all(
+            color: AppTheme.yellow.withValues(alpha: 0.35),
+            width: 1.2,
+          ),
         ),
-        child: Row(children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(color: AppTheme.yellow.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
-            child: const Icon(Icons.chat, color: AppTheme.yellow, size: 24),
-          ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Offline Recharge', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-                SizedBox(height: 2),
-                Text('Recharge via WhatsApp / UPI', style: TextStyle(fontSize: 12, color: AppTheme.textSecondary)),
-              ],
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: AppTheme.yellow.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Icon(Icons.chat, color: AppTheme.yellow, size: 24),
             ),
-          ),
-          const Icon(Icons.chevron_right, color: AppTheme.textTertiary),
-        ]),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Offline Recharge',
+                    style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                  ),
+                  SizedBox(height: 2),
+                  Text(
+                    'Recharge via WhatsApp / UPI',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: AppTheme.textSecondary,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const Icon(Icons.chevron_right, color: AppTheme.textTertiary),
+          ],
+        ),
       ),
     );
   }
@@ -654,7 +851,12 @@ class _IncomeActionCard extends StatelessWidget {
   final String label;
   final Gradient gradient;
   final VoidCallback onTap;
-  const _IncomeActionCard({required this.icon, required this.label, required this.gradient, required this.onTap});
+  const _IncomeActionCard({
+    required this.icon,
+    required this.label,
+    required this.gradient,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -674,11 +876,18 @@ class _IncomeActionCard extends StatelessWidget {
           children: [
             Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(gradient: gradient, borderRadius: BorderRadius.circular(12)),
+              decoration: BoxDecoration(
+                gradient: gradient,
+                borderRadius: BorderRadius.circular(12),
+              ),
               child: Icon(icon, color: Colors.white, size: 22),
             ),
             const SizedBox(height: 10),
-            Text(label, textAlign: TextAlign.center, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
+            Text(
+              label,
+              textAlign: TextAlign.center,
+              style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+            ),
           ],
         ),
       ),
@@ -690,12 +899,17 @@ class _PlanCard extends StatelessWidget {
   final CoinPlan plan;
   final VoidCallback onTap;
   final String currency;
-  const _PlanCard({required this.plan, required this.onTap, this.currency = 'USD'});
+  const _PlanCard({
+    required this.plan,
+    required this.onTap,
+    this.currency = 'USD',
+  });
 
   @override
   Widget build(BuildContext context) {
     final isTop = plan.isTop;
-    final tag = (plan.tag ?? '').isNotEmpty ? plan.tag : (isTop ? 'Popular' : null);
+    final tag =
+        (plan.tag ?? '').isNotEmpty ? plan.tag : (isTop ? 'Popular' : null);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(20),
@@ -705,7 +919,10 @@ class _PlanCard extends StatelessWidget {
           color: isTop ? null : Colors.white,
           gradient: isTop ? AppTheme.primaryGradient : null,
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: isTop ? AppTheme.yellow : AppTheme.surfaceVariant, width: isTop ? 1.5 : 1),
+          border: Border.all(
+            color: isTop ? AppTheme.yellow : AppTheme.surfaceVariant,
+            width: isTop ? 1.5 : 1,
+          ),
           boxShadow: isTop ? AppTheme.primaryShadow : AppTheme.cardShadow,
         ),
         child: Column(
@@ -721,19 +938,31 @@ class _PlanCard extends StatelessWidget {
                 ),
                 child: Text(
                   tag,
-                  style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
             const CurrencyIcon(CurrencyType.diamond, size: 32),
             const SizedBox(height: 8),
             Text(
               formatCountFull(plan.coin),
-              style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: isTop ? Colors.white : AppTheme.textPrimary),
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: isTop ? Colors.white : AppTheme.textPrimary,
+              ),
             ),
             const SizedBox(height: 4),
             Text(
               _planPrice(plan, currency),
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700, color: isTop ? Colors.white70 : AppTheme.primary),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w700,
+                color: isTop ? Colors.white70 : AppTheme.primary,
+              ),
             ),
           ],
         ),

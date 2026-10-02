@@ -727,7 +727,10 @@ class ApiService {
 
   /// `GET /checkin/status?userId=` — streak position + reward table + canClaim.
   static Future<CheckInStatus> getCheckInStatus(String userId) async {
-    final r = await _dio.get('/checkin/status', queryParameters: {'userId': userId});
+    final r = await _dio.get(
+      '/checkin/status',
+      queryParameters: {'userId': userId},
+    );
     return CheckInStatus.fromJson(_asMap(r.data));
   }
 
@@ -1735,6 +1738,7 @@ class ApiService {
   /// Legacy alias kept for coin-seller/agency flows.
   static Future<RedeemRequestRoot> getRedeemsByCoinSeller({
     required String coinSellerId,
+    String type = 'pending',
     int start = 0,
     int limit = 20,
   }) async {
@@ -1742,6 +1746,7 @@ class ApiService {
       '/redeem/getRedeemsByCoinSeller',
       queryParameters: {
         'coinSellerId': coinSellerId,
+        'type': type,
         'start': start,
         'limit': limit,
       },
@@ -1827,32 +1832,18 @@ class ApiService {
     return LiveStreamRoot.fromJson(_asMap(r.data));
   }
 
-  static Future<RestResponse> endLiveStream(String liveId) async {
-    try {
-      final r = await _dio.post(
-        '/liveStream/end',
-        queryParameters: {'liveId': liveId},
-      );
-      return RestResponse.fromJson(_asMap(r.data));
-    } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        // Endpoint not implemented. Try the host-facing end-stream endpoint.
-        try {
-          final r = await _dio.post(
-            '/api/v1/live/end-stream',
-            data: {'liveId': liveId},
-          );
-          return RestResponse.fromJson(_asMap(r.data));
-        } on DioException catch (e2) {
-          if (e2.response?.statusCode == 404) {
-            // Neither endpoint exists — don't crash, just report offline.
-            return RestResponse(status: false);
-          }
-          rethrow;
-        }
-      }
-      rethrow;
-    }
+  /// End the current host's live stream via the backend's real endpoint.
+  /// (`/liveStream/end` and `/api/v1/live/end-stream` never existed — the
+  /// backend route is `POST /liveUser/liveStreamingEnd`.)
+  static Future<RestResponse> endLiveStream(
+    String liveId, {
+    String? userId,
+  }) async {
+    final r = await _dio.post(
+      '/liveUser/liveStreamingEnd',
+      data: {'liveStreamingId': liveId, 'liveId': liveId, 'userId': userId},
+    );
+    return RestResponse.fromJson(_asMap(r.data));
   }
 
   /// Record a host compliance violation from the Flutter guard.
@@ -2617,7 +2608,7 @@ class ApiService {
     String liveStreamingId,
   ) async {
     final r = await _dio.post(
-      '/liveUser/liveStreamingCutByAdmin',
+      '/liveUser/liveStreamingEnd',
       queryParameters: {'userId': userId, 'liveStreamingId': liveStreamingId},
     );
     return RestResponse.fromJson(_asMap(r.data));
@@ -3247,7 +3238,9 @@ class ApiService {
     if (standard.status && standard.data.isNotEmpty) return standard;
 
     // Some backends return the family object directly (not wrapped in data).
-    if (map.containsKey('name') || map.containsKey('_id') || map.containsKey('id')) {
+    if (map.containsKey('name') ||
+        map.containsKey('_id') ||
+        map.containsKey('id')) {
       try {
         final item = FamilyItem.fromJson(map);
         return FamilyRoot(
@@ -3277,7 +3270,11 @@ class ApiService {
       final res = FamilyRoot.fromJson(_asMap(r.data));
       if (res.status && res.data.isNotEmpty) return res;
     } catch (e) {
-      Log.e('ApiService', 'getUserFamily /family/userFamily failed, falling back', e);
+      Log.e(
+        'ApiService',
+        'getUserFamily /family/userFamily failed, falling back',
+        e,
+      );
     }
 
     // Fallback: filter from /family/list.

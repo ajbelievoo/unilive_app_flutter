@@ -2,16 +2,14 @@ import 'package:flutter/foundation.dart';
 
 /// Centralised logging utility — thin wrapper around [debugPrint].
 ///
-/// Debug/info logs are silently dropped in release builds to avoid logcat
-/// spam and keep release APKs clean. Errors and warnings are always logged
-/// so that crashes and failures can still be diagnosed.
+/// Debug/info/warn logs are silently dropped in release builds to avoid
+/// logcat spam and keep release APKs clean. Errors keep a short tag+message
+/// line in release (for crash triage) but the error object and stack trace —
+/// which can contain request URLs, tokens and user data — are debug-only.
 class Log {
   Log._();
 
   static void _print(String line) {
-    // Always print errors/warnings; debugPrint will be a no-op in release
-    // mode when the app is built without the observatory, but it is still
-    // useful for debug/profile builds.
     debugPrint(line);
   }
 
@@ -26,11 +24,18 @@ class Log {
   }
 
   static void w(String tag, Object? message) {
+    if (kReleaseMode) return;
     _print('[$tag][WARN] $message');
   }
 
-  static void e(String tag, Object? message, [Object? error, StackTrace? stack]) {
+  static void e(
+    String tag,
+    Object? message, [
+    Object? error,
+    StackTrace? stack,
+  ]) {
     _print('[$tag][ERROR] $message');
+    if (kReleaseMode) return;
     if (error != null) _print('  cause: $error');
     if (stack != null) _print('  stack: $stack');
   }

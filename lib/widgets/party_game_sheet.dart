@@ -1,7 +1,7 @@
 /// Party Game bottom sheet.
 ///
-/// Shows the native "Party Game" grid from the live room: Lucky Bag, PK,
-/// Video/Music, Ludo.
+/// Shows the "Party Game" grid from the live room: Lucky Bag, PK,
+/// Video/Music.
 library party_game_sheet;
 
 import 'package:flutter/material.dart';
@@ -11,26 +11,25 @@ import '../theme/app_theme.dart';
 void showPartyGameSheet(
   BuildContext context, {
   required bool isHost,
-    required String liveStreamingId,
-    required String userId,
-    required VoidCallback onLuckyBag,
-    required VoidCallback onPK,
-    required VoidCallback onVideoMusic,
-    required VoidCallback onLudo,
-  }) {
+  required String liveStreamingId,
+  required String userId,
+  required VoidCallback onLuckyBag,
+  required VoidCallback onPK,
+  required VoidCallback onVideoMusic,
+}) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => _PartyGameSheet(
-      isHost: isHost,
-      liveStreamingId: liveStreamingId,
-      userId: userId,
-      onLuckyBag: onLuckyBag,
-      onPK: onPK,
-      onVideoMusic: onVideoMusic,
-      onLudo: onLudo,
-    ),
+    builder:
+        (_) => _PartyGameSheet(
+          isHost: isHost,
+          liveStreamingId: liveStreamingId,
+          userId: userId,
+          onLuckyBag: onLuckyBag,
+          onPK: onPK,
+          onVideoMusic: onVideoMusic,
+        ),
   );
 }
 
@@ -42,7 +41,6 @@ class _PartyGameSheet extends StatelessWidget {
     required this.onLuckyBag,
     required this.onPK,
     required this.onVideoMusic,
-    required this.onLudo,
   });
 
   final bool isHost;
@@ -51,7 +49,6 @@ class _PartyGameSheet extends StatelessWidget {
   final VoidCallback onLuckyBag;
   final VoidCallback onPK;
   final VoidCallback onVideoMusic;
-  final VoidCallback onLudo;
 
   @override
   Widget build(BuildContext context) {
@@ -65,11 +62,22 @@ class _PartyGameSheet extends StatelessWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             const SizedBox(height: 12),
-            Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.hairline(context), borderRadius: BorderRadius.circular(2))),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppTheme.hairline(context),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
             const SizedBox(height: 16),
             Text(
               'Party Game',
-              style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(
+                color: AppTheme.fg(context),
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
             ),
             const SizedBox(height: 16),
             Padding(
@@ -77,10 +85,27 @@ class _PartyGameSheet extends StatelessWidget {
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
-                  _gameTile(context, 'Lucky Bag', 'assets/game/lucky_bag.webp', onLuckyBag, icon: Icons.redeem),
-                  _gameTile(context, 'PK', 'assets/game/pk.webp', onPK, icon: Icons.sports_kabaddi),
-                  _gameTile(context, 'Video/Music', 'assets/game/video_music.webp', onVideoMusic, icon: Icons.music_video),
-                  _gameTile(context, 'Ludo', 'assets/game/ludo.webp', onLudo, icon: Icons.casino),
+                  _gameTile(
+                    context,
+                    'Lucky Bag',
+                    'assets/game/lucky_bag.webp',
+                    onLuckyBag,
+                    icon: Icons.redeem,
+                  ),
+                  _gameTile(
+                    context,
+                    'PK',
+                    'assets/game/pk.webp',
+                    onPK,
+                    icon: Icons.sports_kabaddi,
+                  ),
+                  _gameTile(
+                    context,
+                    'Video/Music',
+                    'assets/game/video_music.webp',
+                    onVideoMusic,
+                    icon: Icons.music_video,
+                  ),
                 ],
               ),
             ),
@@ -91,9 +116,18 @@ class _PartyGameSheet extends StatelessWidget {
     );
   }
 
-  Widget _gameTile(BuildContext context, String title, String asset, VoidCallback onTap, {required IconData icon}) {
+  Widget _gameTile(
+    BuildContext context,
+    String title,
+    String asset,
+    VoidCallback onTap, {
+    required IconData icon,
+  }) {
     return GestureDetector(
-      onTap: () { Navigator.pop(context); onTap(); },
+      onTap: () {
+        Navigator.pop(context);
+        onTap();
+      },
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -106,11 +140,19 @@ class _PartyGameSheet extends StatelessWidget {
             ),
             child: Image.asset(
               asset,
-              errorBuilder: (_, __, ___) => Icon(icon, color: Colors.orange, size: 32),
+              errorBuilder:
+                  (_, __, ___) => Icon(icon, color: Colors.orange, size: 32),
             ),
           ),
           const SizedBox(height: 8),
-          Text(title, style: TextStyle(color: AppTheme.fg(context, 0.87), fontSize: 12, fontWeight: FontWeight.w500)),
+          Text(
+            title,
+            style: TextStyle(
+              color: AppTheme.fg(context, 0.87),
+              fontSize: 12,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );

@@ -543,6 +543,9 @@ class IncomingCallData {
     this.freeTrialSeconds = 0,
     this.isRandomCall = false,
     this.isFreeCall = false,
+    this.initialMuted = false,
+    this.initialSpeakerOn = true,
+    this.initialCameraOff = false,
   });
 
   final String? callRoomId;
@@ -569,6 +572,13 @@ class IncomingCallData {
 
   /// True if this call uses a free random-call card (no charge).
   final bool isFreeCall;
+
+  /// Media toggles chosen on the outgoing ringing screen — applied to the
+  /// Agora engine once the call connects (previously they were purely
+  /// cosmetic and got discarded).
+  final bool initialMuted;
+  final bool initialSpeakerOn;
+  final bool initialCameraOff;
 
   factory IncomingCallData.fromJson(Map<String, dynamic> json) =>
       IncomingCallData(

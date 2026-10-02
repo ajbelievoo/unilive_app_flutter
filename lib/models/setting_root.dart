@@ -14,12 +14,10 @@ class SettingRoot {
     return SettingRoot(
       status: parseBool(json['status']),
       message: parseString(json['message']),
-      setting:
-          json['setting'] != null || json['data'] != null
-              ? Setting.fromJson(
-                (json['setting'] ?? json['data']) as Map<String, dynamic>,
-              )
-              : null,
+      setting: () {
+        final m = parseMap(json['setting']) ?? parseMap(json['data']);
+        return m != null ? Setting.fromJson(m) : null;
+      }(),
     );
   }
 }
@@ -177,12 +175,10 @@ class Setting {
       helpSupport: parseString(json['helpSupport']),
       faq: parseString(json['faq']),
       refundPolicy: parseString(json['refundPolicy']),
-      advertisement:
-          json['advertisement'] != null
-              ? Advertisement.fromJson(
-                json['advertisement'] as Map<String, dynamic>,
-              )
-              : null,
+      advertisement: () {
+        final m = parseMap(json['advertisement']);
+        return m != null ? Advertisement.fromJson(m) : null;
+      }(),
       minWithdrawalCoin: parseInt(json['minWithdrawalCoin']),
       maxWithdrawalCoin: parseInt(json['maxWithdrawalCoin']),
       coinSellerCommission: parseInt(json['coinSellerCommission']),
@@ -279,7 +275,7 @@ class Setting {
     final raw = json['game'] ?? json['games'];
     if (raw == null) return const [];
     if (raw is! List) return const [];
-    return raw.whereType<Map<String, dynamic>>().toList();
+    return raw.map(parseMap).whereType<Map<String, dynamic>>().toList();
   }
 
   Map<String, dynamic> toJson() => {

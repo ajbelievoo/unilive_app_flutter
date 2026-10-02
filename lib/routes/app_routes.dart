@@ -13,7 +13,6 @@ import '../screens/auth/account_banned_screen.dart';
 import '../screens/auth/device_banned_screen.dart';
 import '../screens/auth/bind_phone_screen.dart';
 import '../screens/auth/login_screen.dart';
-import '../screens/call/audio_call_screen.dart';
 import '../screens/call/call_history_screen.dart';
 import '../screens/call/call_screen.dart' show ActiveCallScreen;
 import '../screens/call/incoming_call_screen.dart' show IncomingCallScreen;
@@ -41,7 +40,6 @@ import '../screens/host_request/host_request_status_screen.dart';
 import '../screens/effect_settings_screen.dart';
 import '../screens/lucky_bag_rules_screen.dart';
 import '../screens/lucky_bag_record_screen.dart';
-import '../screens/ludo_game_screen.dart';
 import '../screens/live/audio_room_discovery_screen.dart';
 import '../screens/host/host_dashboard_screen.dart';
 import '../screens/live/add_music_screen.dart';
@@ -109,8 +107,6 @@ import '../screens/family/family_reward_screen.dart';
 import '../screens/family/family_create_honor_screen.dart';
 import '../screens/family/family_screen.dart';
 import '../screens/family/family_settings_screen.dart';
-import '../screens/events/live_events_screen.dart';
-import '../screens/fanclub/fan_club_screen.dart';
 import '../screens/cp/cp_screen.dart';
 import '../screens/cp/cp_detail_screen.dart';
 import '../screens/cp/cp_requests_screen.dart';
@@ -206,7 +202,6 @@ class AppRoutes {
   static const String effectSettings = 'effectSettings';
   static const String luckyBagRules = 'luckyBagRules';
   static const String luckyBagRecord = 'luckyBagRecord';
-  static const String ludoGame = 'ludoGame';
   static const String goLive = 'goLive';
   static const String goAudioLive = 'goAudioLive';
 
@@ -217,7 +212,6 @@ class AppRoutes {
   static const String call = 'call';
   static const String activeCall = 'activeCall';
   static const String incomingCall = 'incomingCall';
-  static const String audioCall = 'audioCall';
   static const String randomCall = 'randomCall';
   static const String callHistory = 'callHistory';
 
@@ -287,8 +281,6 @@ class AppRoutes {
   static const String bdCenter = 'bdCenter';
 
   // ---- Bigo-parity: Live Events & Fan Club --------------------------------
-  static const String liveEvents = 'liveEvents';
-  static const String fanClub = 'fanClub';
 
   // ---- CP (Couple) --------------------------------------------------------
   static const String cp = 'cp';
@@ -568,13 +560,9 @@ class AppRoutes {
         if (extra.isEmpty) return const MainScreen();
         return IncomingCallScreen(callData: IncomingCallData.fromJson(extra));
       }),
-      _named(audioCall, (state) {
-        final extra = state.extra as Map<String, dynamic>? ?? {};
-        return AudioCallScreen(
-          userId: extra['userId'] as String?,
-          callId: extra['callId'] as String?,
-        );
-      }),
+      // NOTE: the legacy `audioCall` route pointed at a stub screen with no
+      // Agora engine — audio calls go through `call` (CallScreen with
+      // isAudioCall: true). Route removed so nothing can reach the fake UI.
       _named(randomCall, (_) => const RandomCallScreen()),
       _named(callHistory, (_) => const CallHistoryScreen()),
 
@@ -594,7 +582,6 @@ class AppRoutes {
         luckyBagRecord,
         (s) => LuckyBagRecordScreen(liveStreamingId: s.extra?.toString()),
       ),
-      _named(ludoGame, (_) => const LudoGameScreen()),
       _named(svgaStore, (_) => const SvgaStoreScreen()),
       _named(wallet, (_) => const WalletScreen()),
       _named(recharge, (_) => const RechargeScreen()),
@@ -937,8 +924,6 @@ class AppRoutes {
       _named(songPicker, (_) => const SongPickerScreen()),
       _named(hashtagSearch, (_) => const HashtagSearchScreen()),
       // Bigo-parity routes.
-      _named(liveEvents, (_) => const LiveEventsScreen()),
-      _named(fanClub, (_) => const FanClubScreen()),
     ],
   );
 

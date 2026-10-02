@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'dart:convert';
-import 'dart:math';
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -190,11 +189,6 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
   int _streakCount = 0;
   bool _isStreaking = false;
   static const Duration _streakInterval = Duration(milliseconds: 500);
-
-  /// Lucky draws only run in room contexts (video live, audio room, PK) —
-  /// 1:1 chat/call gifts have no room to broadcast the win to.
-  bool get _supportsLuckyDraw =>
-      widget.type == 'live' || widget.type == 'audio' || widget.type == 'pk';
 
   @override
   void initState() {
@@ -914,109 +908,15 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
       );
       if (!mounted) return;
       Navigator.pop(context);
-      // Lucky-category gifts enter the win-back draw — runs after the sheet
-      // closes so the result dialog appears on top of the room.
-      if (isLuckyGift && _supportsLuckyDraw) {
-        _runLuckyDraw(baseCoins: totalCost.toInt());
-      }
+      // Lucky-category gifts: the BACKEND runs the win-back draw during
+      // sendGift and broadcasts `winLuckyGift` — the room screens credit and
+      // banner it. A client-side draw would mint fake local wins.
     } catch (e) {
       Log.e(_tag, 'sendGift failed', e);
       Fluttertoast.showToast(msg: 'Gift could not be sent.');
     } finally {
       if (mounted) setState(() => _sending = false);
     }
-  }
-
-  /// Lucky gifting win-back draw. Weighted random: 28% win chance. On win
-  /// the multiplied reward is credited locally and broadcast to the room via
-  /// the `winLuckyGift` socket event so everyone sees the win banner/comment.
-  /// `clientDraw`/`drawId` mark client-generated wins so the room handlers
-  /// do not double-credit the sender when the event echoes back.
-  ///
-  /// Bigo/Chamet-style balanced economy: ~9% house edge (EV ≈ 0.91x).
-  void _runLuckyDraw({required int baseCoins, bool silent = false}) {
-    final rnd = Random();
-    if (baseCoins <= 0) return;
-    final win = rnd.nextDouble() < 0.28;
-    if (!win) {
-      if (!silent) Fluttertoast.showToast(msg: 'Better luck next time!');
-      return;
-    }
-    // Weighted multiplier: 2x (50%), 3x (30%), 5x (15%), 10x (4%), 20x (1%).
-    final roll = rnd.nextDouble();
-    final multiplier =
-        roll < 0.50
-            ? 2
-            : roll < 0.80
-            ? 3
-            : roll < 0.95
-            ? 5
-            : roll < 0.99
-            ? 10
-            : 20;
-    final winCoins = (baseCoins * multiplier).clamp(0, 1000000);
-
-    final session = context.read<SessionManager>();
-    final user = session.getUser();
-    if (user != null) {
-      final balance = user.coin.toInt() + winCoins;
-      // Backend treats diamond == coin — keep both fields in sync.
-      session.saveUser(user.copyWith(coin: balance, diamond: balance));
-    }
-
-    // Broadcast the win to the room (banner + gold comment in both video
-    // live and audio rooms).
-    SocketService.instance.emit(Const.luckyGift, {
-      'liveStreamingId': widget.liveStreamingId ?? '',
-      'userId': session.userId,
-      'name': session.userName,
-      'image': VideoUtil.getFullImageUrl(session.userImage),
-      'coin': winCoins,
-      'multiplier': multiplier,
-      'clientDraw': true,
-      'drawId': 'cd_${session.userId}_${DateTime.now().millisecondsSinceEpoch}',
-      'isVIP': user?.isVIP ?? false,
-      'vipTier': user?.vipDetails?.tier ?? '',
-    });
-
-    if (silent) {
-      // Streak sends can't pop a dialog per roll — toast the win instead.
-      Fluttertoast.showToast(
-        msg: 'Lucky win! +$winCoins diamonds (${multiplier}x)',
-      );
-      return;
-    }
-    if (!mounted) return;
-    showDialog(
-      context: context,
-      builder:
-          (ctx) => AlertDialog(
-            backgroundColor: AppTheme.themed(ctx, 0xFF1A1033, 0xFFFFFFFF),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: const Row(
-              children: [
-                Icon(Icons.emoji_events, color: Color(0xFFFFD700)),
-                SizedBox(width: 8),
-                Text('Lucky Win!', style: TextStyle(color: Color(0xFFFFD700))),
-              ],
-            ),
-            content: Text(
-              'You won $winCoins diamonds (${multiplier}x)!',
-              style: TextStyle(color: AppTheme.fg(ctx), fontSize: 16),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text(
-                  'Collect',
-                  style: TextStyle(color: Color(0xFFFFD700)),
-                ),
-              ),
-            ],
-          ),
-    );
   }
 
   void _rapidSendGift() {
@@ -1237,12 +1137,8 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
       isLucky: isLuckyGift,
     );
 
-    // Lucky-category gifts roll the win-back draw on every send. Silent
-    // mode — a dialog per send would break the streak gesture; wins
-    // surface as a toast and still credit + broadcast.
-    if (isLuckyGift && _supportsLuckyDraw) {
-      _runLuckyDraw(baseCoins: totalCost.toInt(), silent: true);
-    }
+    // Lucky-category gifts: the backend rolls the win-back draw on every
+    // send and broadcasts `winLuckyGift`; no client-side roll here.
 
     setState(() {});
   }
@@ -1507,8 +1403,7 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
                     child: Text(
                       '$value',
                       style: TextStyle(
-                        color:
-                            selected ? Colors.black : AppTheme.fg(context),
+                        color: selected ? Colors.black : AppTheme.fg(context),
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                       ),

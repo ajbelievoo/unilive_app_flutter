@@ -3,6 +3,7 @@
 /// Ports native `RedeemRequestListActivity.java` with Pending / Accepted / Declined tabs.
 /// Coin sellers can accept (with proof image) or decline pending requests.
 library redeem_requests;
+
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -25,7 +26,8 @@ class RedeemRequestsScreen extends StatefulWidget {
   State<RedeemRequestsScreen> createState() => _RedeemRequestsScreenState();
 }
 
-class _RedeemRequestsScreenState extends State<RedeemRequestsScreen> with TickerProviderStateMixin {
+class _RedeemRequestsScreenState extends State<RedeemRequestsScreen>
+    with TickerProviderStateMixin {
   late TabController _tabCtrl;
   final _types = ['pending', 'solved', 'decline'];
   final _labels = ['Pending', 'Accepted', 'Declined'];
@@ -54,7 +56,10 @@ class _RedeemRequestsScreenState extends State<RedeemRequestsScreen> with Ticker
     setState(() => _loading[type] = true);
     final session = context.read<SessionManager>();
     try {
-      final res = await ApiService.getRedeemsByCoinSeller(coinSellerId: session.userId);
+      final res = await ApiService.getRedeemsByCoinSeller(
+        coinSellerId: session.userId,
+        type: type,
+      );
       if (mounted) setState(() => _data[type] = res.redeem);
     } catch (e, s) {
       Log.e(_tag, 'load $type failed', e, s);
@@ -73,7 +78,8 @@ class _RedeemRequestsScreenState extends State<RedeemRequestsScreen> with Ticker
         bottom: TabBar(
           controller: _tabCtrl,
           labelColor: AppTheme.primary,
-          unselectedLabelColor: isDark ? AppTheme.textTertiary : AppTheme.lightTextSecondary,
+          unselectedLabelColor:
+              isDark ? AppTheme.textTertiary : AppTheme.lightTextSecondary,
           indicatorColor: AppTheme.primary,
           indicatorSize: TabBarIndicatorSize.label,
           tabs: _labels.map((l) => Tab(text: l)).toList(),
@@ -96,9 +102,21 @@ class _RedeemRequestsScreenState extends State<RedeemRequestsScreen> with Ticker
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.receipt_long_outlined, size: 48, color: isDark ? AppTheme.textTertiary : Colors.grey.shade400),
+            Icon(
+              Icons.receipt_long_outlined,
+              size: 48,
+              color: isDark ? AppTheme.textTertiary : Colors.grey.shade400,
+            ),
             const SizedBox(height: 12),
-            Text('No ${_labels[_types.indexOf(type)].toLowerCase()} requests', style: TextStyle(color: isDark ? AppTheme.textSecondary : AppTheme.lightTextSecondary)),
+            Text(
+              'No ${_labels[_types.indexOf(type)].toLowerCase()} requests',
+              style: TextStyle(
+                color:
+                    isDark
+                        ? AppTheme.textSecondary
+                        : AppTheme.lightTextSecondary,
+              ),
+            ),
           ],
         ),
       );
@@ -111,12 +129,13 @@ class _RedeemRequestsScreenState extends State<RedeemRequestsScreen> with Ticker
       child: ListView.builder(
         padding: const EdgeInsets.all(16),
         itemCount: list.length,
-        itemBuilder: (_, i) => _RedeemCard(
-          item: list[i],
-          isDark: isDark,
-          isPending: type == 'pending',
-          onAction: () => _load(type),
-        ),
+        itemBuilder:
+            (_, i) => _RedeemCard(
+              item: list[i],
+              isDark: isDark,
+              isPending: type == 'pending',
+              onAction: () => _load(type),
+            ),
       ),
     );
   }
@@ -139,9 +158,16 @@ class _RedeemCard extends StatelessWidget {
     if (context.mounted) {
       try {
         final session = context.read<SessionManager>();
-        await ApiService.acceptRedeemRequest(requestId: item.id ?? '', coinSellerId: session.userId);
-        Fluttertoast.showToast(msg: 'Request accepted');
-        onAction();
+        final res = await ApiService.acceptRedeemRequest(
+          requestId: item.id ?? '',
+          coinSellerId: session.userId,
+        );
+        if (res.status) {
+          Fluttertoast.showToast(msg: 'Request accepted');
+          onAction();
+        } else {
+          Fluttertoast.showToast(msg: res.message ?? 'Failed to accept');
+        }
       } catch (e, s) {
         Log.e(_tag, 'accept failed', e, s);
         Fluttertoast.showToast(msg: 'Failed to accept');
@@ -152,57 +178,19 @@ class _RedeemCard extends StatelessWidget {
   Future<void> _decline(BuildContext context) async {
     try {
       final session = context.read<SessionManager>();
-      await ApiService.declineRedeemRequest(requestId: item.id ?? '', coinSellerId: session.userId);
-      Fluttertoast.showToast(msg: 'Request declined');
-      onAction();
+      final res = await ApiService.declineRedeemRequest(
+        requestId: item.id ?? '',
+        coinSellerId: session.userId,
+      );
+      if (res.status) {
+        Fluttertoast.showToast(msg: 'Request declined');
+        onAction();
+      } else {
+        Fluttertoast.showToast(msg: res.message ?? 'Failed to decline');
+      }
     } catch (e, s) {
       Log.e(_tag, 'decline failed', e, s);
       Fluttertoast.showToast(msg: 'Failed to decline');
-    }
-  }
-
-  Future<void> _delete(BuildContext context) async {
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Request'),
-        content: const Text('Are you sure you want to delete this redeem request?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
-        ],
-      ),
-    );
-    if (confirmed != true) return;
-    if (!context.mounted) return;
-    final session = context.read<SessionManager>();
-    try {
-      await ApiService.deleteRedeemRequest(
-        redeemId: item.id ?? '',
-        person: session.userId,
-        type: 'user',
-      );
-      Fluttertoast.showToast(msg: 'Request deleted');
-      onAction();
-    } catch (e, s) {
-      Log.e(_tag, 'delete failed', e, s);
-      Fluttertoast.showToast(msg: 'Failed to delete');
-    }
-  }
-
-  Future<void> _updateStatus(BuildContext context, int newStatus) async {
-    try {
-      final session = context.read<SessionManager>();
-      await ApiService.updateRedeemStatus(
-        redeemId: item.id ?? '',
-        person: session.userId,
-        type: 'user',
-      );
-      Fluttertoast.showToast(msg: 'Status updated');
-      onAction();
-    } catch (e, s) {
-      Log.e(_tag, 'updateStatus failed', e, s);
-      Fluttertoast.showToast(msg: 'Failed to update status');
     }
   }
 
@@ -217,7 +205,11 @@ class _RedeemCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.hairline(context)),
         boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
         ],
       ),
       child: Column(
@@ -238,12 +230,19 @@ class _RedeemCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: isDark ? Colors.white : AppTheme.lightTextPrimary,
+                        color:
+                            isDark ? Colors.white : AppTheme.lightTextPrimary,
                       ),
                     ),
                     Text(
                       '@${u?.uniqueId ?? ''}',
-                      style: TextStyle(fontSize: 12, color: isDark ? AppTheme.textTertiary : AppTheme.lightTextSecondary),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color:
+                            isDark
+                                ? AppTheme.textTertiary
+                                : AppTheme.lightTextSecondary,
+                      ),
                     ),
                   ],
                 ),
@@ -284,7 +283,9 @@ class _RedeemCard extends StatelessWidget {
                     style: OutlinedButton.styleFrom(
                       foregroundColor: Colors.red,
                       side: const BorderSide(color: Colors.red),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     child: const Text('Decline'),
                   ),
@@ -295,39 +296,11 @@ class _RedeemCard extends StatelessWidget {
                     onPressed: () => _accept(context),
                     style: FilledButton.styleFrom(
                       backgroundColor: AppTheme.green,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
                     child: const Text('Accept'),
-                  ),
-                ),
-              ],
-            ),
-          ],
-          if (!isPending) ...[
-            const SizedBox(height: 14),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _delete(context),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.red,
-                      side: const BorderSide(color: Colors.red),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Delete'),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => _updateStatus(context, 0),
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: AppTheme.primary,
-                      side: const BorderSide(color: AppTheme.primary),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    ),
-                    child: const Text('Mark Pending'),
                   ),
                 ),
               ],
@@ -344,13 +317,26 @@ class _RedeemCard extends StatelessWidget {
       0 => ('Pending', AppTheme.goldGradient),
       1 => ('In Progress', AppTheme.blueGradient),
       2 || 4 => ('Accepted', AppTheme.greenGradient),
-      3 => ('Declined', const LinearGradient(colors: [Color(0xFFFF416C), Color(0xFFFF4B2B)])),
+      3 => (
+        'Declined',
+        const LinearGradient(colors: [Color(0xFFFF416C), Color(0xFFFF4B2B)]),
+      ),
       _ => ('Pending', AppTheme.goldGradient),
     };
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(gradient: gradient, borderRadius: BorderRadius.circular(10)),
-      child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
+      decoration: BoxDecoration(
+        gradient: gradient,
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Text(
+        label,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+        ),
+      ),
     );
   }
 
@@ -362,7 +348,11 @@ class _RedeemCard extends StatelessWidget {
           width: 80,
           child: Text(
             label,
-            style: TextStyle(fontSize: 12, color: isDark ? AppTheme.textTertiary : AppTheme.lightTextSecondary),
+            style: TextStyle(
+              fontSize: 12,
+              color:
+                  isDark ? AppTheme.textTertiary : AppTheme.lightTextSecondary,
+            ),
           ),
         ),
         Expanded(
@@ -379,4 +369,3 @@ class _RedeemCard extends StatelessWidget {
     );
   }
 }
-
