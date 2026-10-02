@@ -126,13 +126,18 @@ void showGameListSheet(BuildContext context, {List<dynamic>? games}) {
                           final link = g.link ?? '';
                           if (link.isNotEmpty) {
                             // Use the game's type field if provided by backend;
-                            // fall back to index-based detection (native behavior:
-                            // 0 = casino, 1 = dialog, else = teen patti).
+                            // then name-based detection (race opens the tall
+                            // sheet); fall back to index-based detection
+                            // (native behavior: 0 = casino, 1 = dialog, else =
+                            // teen patti).
                             final String gameType = (g.type != null && g.type!.isNotEmpty)
                                 ? g.type!.toLowerCase()
-                                : (i == 0
-                                    ? 'casino'
-                                    : (i == 1 ? 'dialog' : 'teenpatti'));
+                                : (g.name != null &&
+                                        g.name!.toLowerCase().contains('race'))
+                                    ? 'dialog'
+                                    : (i == 0
+                                        ? 'casino'
+                                        : (i == 1 ? 'dialog' : 'teenpatti'));
                             Log.d('GameSheet', 'Opening game: ${g.name} | type=$gameType | link=$link');
                             openGameWebView(
                               context,
