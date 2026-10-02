@@ -3225,6 +3225,10 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         final dedupKey = _giftDedupKey(map);
         if (_processedGiftKeys.contains(dedupKey)) return;
         _processedGiftKeys.add(dedupKey);
+        // PK partner-room relay — gift was sent in the OTHER host's room.
+        // Score sync comes via pkScoreUpdate; never render comment/animation
+        // for a gift that wasn't sent in this room.
+        if (map['pkPartnerRoom'] == true) return;
         final coins = _parseGiftCoin(map);
         final giftCount = _parseGiftCount(map);
         final receiverId =
