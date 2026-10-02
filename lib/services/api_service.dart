@@ -1879,6 +1879,25 @@ class ApiService {
     return RestResponse.fromJson(_asMap(r.data));
   }
 
+  /// Room-admin "End Live" — backend route is POST /liveUser/liveStreamingCutByAdmin.
+  /// [hostUserId] is the host's User _id (LiveUser.liveUserId), NOT the
+  /// liveUser doc id.
+  static Future<RestResponse> cutLiveStreamByAdmin({
+    required String hostUserId,
+    required String liveStreamingId,
+  }) async {
+    final r = await _dio.post(
+      '/liveUser/liveStreamingCutByAdmin',
+      data: {
+        'userId': hostUserId,
+        'hostUserId': hostUserId,
+        'liveStreamingId': liveStreamingId,
+        'liveId': liveStreamingId,
+      },
+    );
+    return RestResponse.fromJson(_asMap(r.data));
+  }
+
   /// Record a host compliance violation from the Flutter guard.
   /// Calls the backend `/hostCompliance/record-violation` endpoint.
   /// [reasonCodes] must be one or more of: no_face, mask, black_screen,

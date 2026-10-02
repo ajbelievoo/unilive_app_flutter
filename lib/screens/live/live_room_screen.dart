@@ -8355,14 +8355,28 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             end: Alignment.bottomRight,
           ),
           glowColor: Colors.red,
-          onTap: () {
+          onTap: () async {
             Navigator.pop(context);
+            // Real backend cut (socket emit alone had no server listener).
+            final hostUserId =
+                widget.liveUser.userId ?? widget.liveUser.id ?? '';
+            final liveId = widget.liveUser.liveRoomId ?? '';
+            try {
+              final res = await ApiService.cutLiveStreamByAdmin(
+                hostUserId: hostUserId,
+                liveStreamingId: liveId,
+              );
+              Fluttertoast.showToast(
+                msg: res.status ? 'Live ended' : (res.message ?? 'Failed'),
+              );
+            } catch (e) {
+              Fluttertoast.showToast(msg: 'Failed to end live');
+            }
             SocketService.instance.emit(Const.eventLiveEndByAdmin, {
-              'liveStreamingId': widget.liveUser.liveRoomId ?? '',
+              'liveStreamingId': liveId,
               'liveUserMongoId': widget.liveUser.id ?? '',
               'userId': context.read<SessionManager>().userId,
             });
-            Fluttertoast.showToast(msg: 'Live ended');
           },
         ),
       ],

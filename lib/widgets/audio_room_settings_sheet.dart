@@ -8,6 +8,7 @@ library audio_room_settings;
 
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 
 import '../utils/media_utils.dart';
 import 'package:fluttertoast/fluttertoast.dart';
@@ -15,6 +16,7 @@ import 'package:provider/provider.dart';
 
 import '../constants/const.dart';
 import '../models/audio_room_root.dart';
+import '../routes/app_routes.dart';
 import '../screens/live/choose_room_type_screen.dart';
 import '../services/api_service.dart';
 import '../services/session_manager.dart';
@@ -505,7 +507,12 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
             leading: _buildAvatar(user?.image ?? ''),
             title: 'Profile',
             trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
-            onTap: () {},
+            onTap: () {
+              final userId = context.read<SessionManager>().userId;
+              if (userId.isNotEmpty) {
+                context.pushNamed(AppRoutes.guestProfile, extra: {'userId': userId});
+              }
+            },
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
 
