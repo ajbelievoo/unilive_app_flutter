@@ -16,7 +16,7 @@ import 'fcm_service.dart';
 /// Phase 6 implementation: uses `app_links` package to handle
 /// universal links. Deep link types: LIVE, USER, POST, REEL, REFERRAL.
 ///
-/// URL pattern: `https://belive.app.link/?type=LIVE&data=<json>`
+/// URL pattern: `https://admin.unilive.me/d/?type=LIVE&data=<json>`
 class DeepLinkService {
   DeepLinkService._();
   static final DeepLinkService instance = DeepLinkService._();
@@ -47,14 +47,34 @@ class DeepLinkService {
     );
   }
 
-  void _handleUri(Uri uri) {
+  void _handleUri(Uri uri, [int attempt = 0]) {
     Log.d(_tag, 'received: $uri');
     final type = uri.queryParameters['type'] ?? '';
     final data = uri.queryParameters['data'] ?? '';
 
+    // Referral landing links: https://admin.unilive.me/r/<CODE> — when the
+    // app is opened directly via a verified App Link the URI has no
+    // type/data params, so read the code from the path. Saving the pending
+    // code does not need the navigator, so this runs before the ctx check.
+    if (uri.pathSegments.isNotEmpty &&
+        uri.pathSegments.first.toLowerCase() == 'r' &&
+        uri.pathSegments.length > 1 &&
+        uri.pathSegments[1].isNotEmpty) {
+      final code = uri.pathSegments[1].toUpperCase();
+      SessionManager.instance?.savePendingReferralCode(code);
+      Log.d(_tag, 'referral code from /r/ link: $code');
+      return;
+    }
+
     final ctx = navigatorKey.currentContext;
     if (ctx == null) {
-      Log.d(_tag, 'navigator not ready, deferring');
+      // Navigator not attached yet (cold start) — retry briefly instead of
+      // dropping the link entirely.
+      if (attempt < 10) {
+        Log.d(_tag, 'navigator not ready, retry $attempt');
+        Future.delayed(const Duration(milliseconds: 500),
+            () => _handleUri(uri, attempt + 1));
+      }
       return;
     }
 
@@ -146,7 +166,7 @@ class DeepLinkService {
       if (hostName != null) 'title': 'Watch $hostName Live',
       if (hostImage != null) 'image': hostImage,
     };
-    final uri = Uri.parse('https://belive.app.link').replace(queryParameters: params);
+    final uri = Uri.parse('https://admin.unilive.me/d').replace(queryParameters: params);
     return uri.toString();
   }
 
@@ -163,17 +183,25 @@ class DeepLinkService {
     };
     if (refCode != null && refCode.isNotEmpty) {
       params['ref'] = refCode;
-    } else if (userId.isNotEmpty) {
-      // Fallback: use the userId as a referral identifier.
-      params['ref'] = userId;
     }
-    final uri = Uri.parse('https://belive.app.link').replace(queryParameters: params);
+    final uri = Uri.parse('https://admin.unilive.me/d').replace(queryParameters: params);
     return uri.toString();
+  }
+
+  /// Generate a referral install link for the current user.
+  /// Points at the /r/<CODE> landing page which opens the app directly when
+  /// installed, or the Play Store with a `referral_code` install referrer
+  /// (read back by InstallReferrerService on first launch) when it is not.
+  String generateReferralLink() {
+    final user = SessionManager.instance?.getUser();
+    final refCode = user?.referralCode ?? '';
+    if (refCode.isEmpty) return '';
+    return 'https://admin.unilive.me/r/$refCode';
   }
 
   /// Generate a shareable deep link for a post.
   String generatePostShareLink({required String postId}) {
-    final uri = Uri.parse('https://belive.app.link').replace(queryParameters: {
+    final uri = Uri.parse('https://admin.unilive.me/d').replace(queryParameters: {
       'type': 'POST',
       'data': postId,
     });
@@ -194,7 +222,7 @@ class DeepLinkService {
       'mode': isAudioCall ? 'audio' : 'video',
       'title': 'Call $name on Belive',
     };
-    final uri = Uri.parse('https://belive.app.link').replace(queryParameters: params);
+    final uri = Uri.parse('https://admin.unilive.me/d').replace(queryParameters: params);
     return uri.toString();
   }
 

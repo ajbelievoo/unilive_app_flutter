@@ -1,100 +1,279 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 
+import '../../constants/const.dart';
+import '../../models/json_annotation_helper.dart';
 import '../../providers/auth_provider.dart';
+import '../../services/api_service.dart';
 import '../../services/deep_link_service.dart';
-import '../../services/session_manager.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/currency_icon.dart';
 
-/// Invite & referral screen — "pro level" refer-and-earn hub.
-class ReferralScreen extends StatelessWidget {
+/// Invite & referral screen — shows the user's referral code, real referral
+/// stats and the list of friends who joined via the code.
+class ReferralScreen extends StatefulWidget {
   const ReferralScreen({super.key});
+
+  @override
+  State<ReferralScreen> createState() => _ReferralScreenState();
+}
+
+class _ReferralScreenState extends State<ReferralScreen> {
+  bool _loading = true;
+  bool _failed = false;
+
+  int _total = 0;
+  int _earnedBeans = 0;
+  int _friendBonus = 0;
+  int _referrerBonus = 0;
+  List<Map<String, dynamic>> _referrals = const [];
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    final userId = context.read<AuthProvider>().user?.id ?? '';
+    if (userId.isEmpty) {
+      setState(() {
+        _loading = false;
+        _failed = true;
+      });
+      return;
+    }
+    try {
+      final results = await Future.wait([
+        ApiService.getReferralStats(userId),
+        ApiService.getReferralList(userId),
+      ]);
+      final stats = results[0];
+      final list = results[1];
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _failed = !stats.status;
+        final s = stats.data ?? const {};
+        _total = parseInt(s['total']);
+        _earnedBeans = parseInt(s['earned']);
+        _friendBonus = parseInt(s['referralBonus']);
+        _referrerBonus = parseInt(s['referralCoinBonus']);
+        if (list.status && list.data?['data'] is List) {
+          _referrals = (list.data!['data'] as List)
+              .whereType<Map>()
+              .map((e) => Map<String, dynamic>.from(e))
+              .toList();
+        }
+      });
+    } catch (_) {
+      if (mounted) {
+        setState(() {
+          _loading = false;
+          _failed = true;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final user = context.watch<AuthProvider>().user;
-    final referralCode = user?.referralCode ?? user?.id ?? '';
-    final referralCount = user?.referralCount ?? 0;
-    final link = DeepLinkService.instance.generateProfileShareLink(
-      userId: user?.id ?? '',
-      name: user?.name,
-    );
+    final referralCode = user?.referralCode ?? '';
+    final link = DeepLinkService.instance.generateReferralLink();
 
     return Scaffold(
       backgroundColor: isDark ? AppTheme.background : const Color(0xFFF6F5FB),
-      body: CustomScrollView(
-        slivers: [
-          SliverAppBar(
-            expandedHeight: 220,
-            pinned: true,
-            flexibleSpace: FlexibleSpaceBar(
-              background: Container(
-                decoration: const BoxDecoration(
-                  gradient: AppTheme.primaryGradient,
-                  borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
-                ),
-                child: SafeArea(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        const Text(
-                          'Invite Friends',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 24,
-                            fontWeight: FontWeight.bold,
+      body: RefreshIndicator(
+        onRefresh: _load,
+        child: CustomScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverAppBar(
+              expandedHeight: 220,
+              pinned: true,
+              flexibleSpace: FlexibleSpaceBar(
+                background: Container(
+                  decoration: const BoxDecoration(
+                    gradient: AppTheme.primaryGradient,
+                    borderRadius: BorderRadius.vertical(bottom: Radius.circular(32)),
+                  ),
+                  child: SafeArea(
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          const Text(
+                            'Invite Friends',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Share your code & earn rewards when friends join',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.85),
-                            fontSize: 14,
+                          const SizedBox(height: 8),
+                          Text(
+                            'Share your code & earn rewards when friends join',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.85),
+                              fontSize: 14,
+                            ),
                           ),
-                        ),
-                        const SizedBox(height: 16),
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.2),
-                            borderRadius: BorderRadius.circular(30),
+                          const SizedBox(height: 16),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(30),
+                            ),
+                            child: Text(
+                              '$_total friend${_total == 1 ? '' : 's'} joined · $_earnedBeans ${Const.rCoinName} earned',
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                            ),
                           ),
-                          child: Text(
-                            '$referralCount friend${referralCount == 1 ? '' : 's'} joined',
-                            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
-                          ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
             ),
-          ),
-          SliverPadding(
-            padding: const EdgeInsets.all(20),
-            sliver: SliverList(
-              delegate: SliverChildListDelegate([
-                _ReferralCodeCard(code: referralCode),
-                const SizedBox(height: 20),
-                _ShareButton(link: link, code: referralCode),
-                const SizedBox(height: 20),
-                _HowItWorksCard(),
-                const SizedBox(height: 20),
-                _ReferralListHeader(),
-              ]),
+            SliverPadding(
+              padding: const EdgeInsets.all(20),
+              sliver: SliverList(
+                delegate: SliverChildListDelegate([
+                  _ReferralCodeCard(code: referralCode),
+                  const SizedBox(height: 20),
+                  _ShareButton(link: link, code: referralCode),
+                  const SizedBox(height: 20),
+                  _HowItWorksCard(friendBonus: _friendBonus, referrerBonus: _referrerBonus),
+                  const SizedBox(height: 20),
+                  const Text(
+                    'Your referrals',
+                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  ),
+                ]),
+              ),
+            ),
+            _buildList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildList() {
+    if (_loading) {
+      return const SliverToBoxAdapter(
+        child: Padding(
+          padding: EdgeInsets.symmetric(vertical: 40),
+          child: Center(child: CircularProgressIndicator()),
+        ),
+      );
+    }
+    if (_failed) {
+      return SliverToBoxAdapter(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 40),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.cloud_off, size: 56, color: Colors.grey.shade400),
+                const SizedBox(height: 12),
+                Text('Could not load referrals', style: TextStyle(color: Colors.grey.shade600)),
+                const SizedBox(height: 12),
+                TextButton(onPressed: _load, child: const Text('Retry')),
+              ],
             ),
           ),
-          const _ReferralList(),
-        ],
+        ),
+      );
+    }
+    if (_referrals.isEmpty) {
+      return SliverToBoxAdapter(
+        child: Center(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(vertical: 40),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.people_alt_outlined, size: 64, color: Colors.grey.shade400),
+                const SizedBox(height: 12),
+                Text(
+                  'No referrals yet\nInvite friends to get started',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    return SliverList(
+      delegate: SliverChildBuilderDelegate(
+        (ctx, i) => _ReferralTile(item: _referrals[i]),
+        childCount: _referrals.length,
+      ),
+    );
+  }
+}
+
+class _ReferralTile extends StatelessWidget {
+  final Map<String, dynamic> item;
+
+  const _ReferralTile({required this.item});
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final name = parseString(item['name']) ?? 'User';
+    final image = parseString(item['image']) ?? '';
+    final reward = parseInt(item['reward']);
+    final date = item['date']?.toString() ?? '';
+    final dateLabel = date.length >= 10 ? date.substring(0, 10) : '';
+
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 4),
+      decoration: BoxDecoration(
+        color: isDark ? AppTheme.surface : Colors.white,
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
+          backgroundImage: image.isNotEmpty ? CachedNetworkImageProvider(image) : null,
+          child: image.isEmpty ? const Icon(Icons.person, color: AppTheme.primary) : null,
+        ),
+        title: Text(name, style: const TextStyle(fontWeight: FontWeight.w600)),
+        subtitle: Text(
+          dateLabel.isNotEmpty ? 'Joined $dateLabel' : 'Joined',
+          style: const TextStyle(fontSize: 12, color: AppTheme.textTertiary),
+        ),
+        trailing: reward > 0
+            ? Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const CurrencyIcon(CurrencyType.bean, size: 16),
+                  const SizedBox(width: 4),
+                  Text(
+                    '+$reward',
+                    style: const TextStyle(
+                      color: AppTheme.green,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              )
+            : null,
       ),
     );
   }
@@ -174,12 +353,14 @@ class _ShareButton extends StatelessWidget {
         SizedBox(
           width: double.infinity,
           child: ElevatedButton.icon(
-            onPressed: () {
-              Share.share(
-                'Join me on Belive! Use my referral code: $code\n$link',
-                subject: 'Invite to Belive',
-              );
-            },
+            onPressed: link.isEmpty
+                ? null
+                : () {
+                    Share.share(
+                      'Join me on Belive! Use my referral code: $code\n$link',
+                      subject: 'Invite to Belive',
+                    );
+                  },
             icon: const Icon(Icons.share, color: Colors.white),
             label: const Text('Invite Friends', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600)),
             style: ElevatedButton.styleFrom(
@@ -257,9 +438,17 @@ class _ShareChip extends StatelessWidget {
 }
 
 class _HowItWorksCard extends StatelessWidget {
+  final int friendBonus;
+  final int referrerBonus;
+
+  const _HowItWorksCard({this.friendBonus = 0, this.referrerBonus = 0});
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final rewardText = (friendBonus > 0 || referrerBonus > 0)
+        ? 'Your friend gets $friendBonus ${Const.coinName} and you get $referrerBonus ${Const.rCoinName}!'
+        : 'Both of you earn bonus rewards!';
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -277,9 +466,9 @@ class _HowItWorksCard extends StatelessWidget {
           const SizedBox(height: 16),
           _step('1', 'Share your referral code or link with friends.'),
           const SizedBox(height: 12),
-          _step('2', 'Your friend signs up and enters your code.'),
+          _step('2', 'Your friend installs the app and signs up.'),
           const SizedBox(height: 12),
-          _step('3', 'Both of you earn bonus diamonds & rewards!'),
+          _step('3', rewardText),
         ],
       ),
     );
@@ -302,64 +491,6 @@ class _HowItWorksCard extends StatelessWidget {
           child: Text(text, style: const TextStyle(fontSize: 13, color: AppTheme.textSecondary)),
         ),
       ],
-    );
-  }
-}
-
-class _ReferralListHeader extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return const Text(
-      'Your referrals',
-      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-    );
-  }
-}
-
-class _ReferralList extends StatelessWidget {
-  const _ReferralList();
-
-  @override
-  Widget build(BuildContext context) {
-    final session = context.read<SessionManager>();
-    final user = session.getUser();
-    final count = user?.referralCount ?? 0;
-
-    if (count == 0) {
-      return SliverToBoxAdapter(
-        child: Center(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 40),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(Icons.people_alt_outlined, size: 64, color: Colors.grey.shade400),
-                const SizedBox(height: 12),
-                Text(
-                  'No referrals yet\nInvite friends to get started',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.grey.shade600),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-    }
-
-    // Placeholder: real list to be wired once backend provides /referral/list.
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (ctx, i) => ListTile(
-          leading: CircleAvatar(
-            backgroundColor: AppTheme.primary.withValues(alpha: 0.1),
-            child: const Icon(Icons.person, color: AppTheme.primary),
-          ),
-          title: Text('Referred friend ${i + 1}', style: const TextStyle(fontWeight: FontWeight.w600)),
-          subtitle: const Text('Reward pending', style: TextStyle(fontSize: 12, color: AppTheme.textTertiary)),
-        ),
-        childCount: count,
-      ),
     );
   }
 }

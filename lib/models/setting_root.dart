@@ -57,6 +57,7 @@ class Setting {
     this.games = const [],
     this.maxAdPerDay = 5,
     this.referralBonus = 200,
+    this.referralCoinBonus = 100,
     // ---- Economy fields (FLUTTER_ECONOMY_ADS_CALL_REFERENCE.md �8) ----
     this.diamondToRcoin = 1,
     this.rCoinForDiamond = 40,
@@ -110,6 +111,7 @@ class Setting {
   final List<dynamic> games;
   final int maxAdPerDay;
   final int referralBonus;
+  final int referralCoinBonus;
   // ---- Economy fields (FLUTTER_ECONOMY_ADS_CALL_REFERENCE.md �8) ----
   /// Beans per diamond gift (default 1). Backend converts diamonds ? beans.
   final int diamondToRcoin;
@@ -196,6 +198,7 @@ class Setting {
       games: _parseGames(json),
       maxAdPerDay: parseInt(json['maxAdPerDay'], 5),
       referralBonus: parseInt(json['referralBonus'], 200),
+      referralCoinBonus: parseInt(json['referralCoinBonus'], 100),
       // ---- Economy fields ----
       diamondToRcoin: parseInt(
         json['diamondToRcoin'] ?? json['diamond_to_rcoin'],
@@ -311,6 +314,7 @@ class Setting {
     'games': games,
     'maxAdPerDay': maxAdPerDay,
     'referralBonus': referralBonus,
+    'referralCoinBonus': referralCoinBonus,
     'diamondToRcoin': diamondToRcoin,
     'rCoinForDiamond': rCoinForDiamond,
     'rCoinForCashOut': rCoinForCashOut,

@@ -50,6 +50,16 @@
                 <category android:name="android.intent.category.BROWSABLE"/>
                 <data android:host="belive.app.link" android:scheme="https"/>
             </intent-filter>
+            <!-- Own-domain deep links: share pages + referral install links.
+                 Verified via /.well-known/assetlinks.json on the backend;
+                 also reachable unverified through the intent:// fallback. -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <category android:name="android.intent.category.BROWSABLE"/>
+                <data android:host="admin.unilive.me" android:scheme="https" android:pathPrefix="/d"/>
+                <data android:host="admin.unilive.me" android:scheme="https" android:pathPrefix="/r"/>
+            </intent-filter>
         </activity>
         <!-- FCM duplicate-push suppressor: runs at max priority on the c2dm
              RECEIVE broadcast and aborts identical notifications (e.g. the

@@ -45,6 +45,7 @@ import 'utils/block_helper.dart';
 import 'services/push_notification_service.dart';
 import 'services/fcm_service.dart';
 import 'services/deep_link_service.dart';
+import 'services/install_referrer_service.dart';
 import 'services/gift_sound_service.dart';
 import 'services/iap_service.dart';
 import 'services/rewarded_ad_service.dart';
@@ -223,6 +224,7 @@ class _BeliveAppState extends State<_BeliveApp>
     }
     // Other services can still be fire-and-forget.
     DeepLinkService.instance.init().catchError((e) => debugPrint(e.toString()));
+    InstallReferrerService.instance.init().catchError((e) => debugPrint(e.toString()));
     IapService.instance.init().catchError((e) => debugPrint(e.toString()));
     ThemeProvider.instance.init().catchError((e) => debugPrint(e.toString()));
     // Preload the default gift sound for low-latency playback on send/receive.

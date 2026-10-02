@@ -28,6 +28,7 @@ import 'package:share_plus/share_plus.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../constants/const.dart';
+import '../../services/deep_link_service.dart';
 import '../../models/ad_reward_models.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/api_service.dart';
@@ -75,6 +76,7 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
   int _adWatched = 0;
   int _maxAd = 5;
   int _referralBonus = 200;
+  int _referralCoinBonus = 100;
   int _googleAdReward = 50;
   int _interstitialAdReward = 50;
   String? _rewardAdUnitId;
@@ -110,6 +112,7 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
         _adWatched = user?.ad?.count ?? 0;
         _maxAd = (setting?.maxAdPerDay ?? 0) > 0 ? setting!.maxAdPerDay : 5;
         _referralBonus = (setting?.referralBonus ?? 0) > 0 ? setting!.referralBonus : 200;
+        _referralCoinBonus = (setting?.referralCoinBonus ?? 0) > 0 ? setting!.referralCoinBonus : 100;
         _rewardAdUnitId = (adUnitId != null && adUnitId.isNotEmpty) ? adUnitId : null;
       });
 
@@ -610,8 +613,7 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
   }
 
   void _shareReferral(String code) {
-    final link = 'https://play.google.com/store/apps/details?id=com.believoo.app'
-        '&referrer=referralCode%3D$code';
+    final link = DeepLinkService.instance.generateReferralLink();
     final msg = 'Hey! Join me on Belive using my referral link:\n\n'
         '$link\n\n'
         'Referral Code: ${code.toUpperCase()}';
@@ -1184,9 +1186,9 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
             children: [
               _methodBadge('Method 2'),
               const Spacer(),
-              const CurrencyIcon(CurrencyType.diamond, size: 18),
+              const CurrencyIcon(CurrencyType.bean, size: 18),
               const SizedBox(width: 4),
-              Text('+$_referralBonus', style: const TextStyle(color: _gold, fontSize: 13, fontWeight: FontWeight.bold)),
+              Text('+$_referralCoinBonus', style: const TextStyle(color: _gold, fontSize: 13, fontWeight: FontWeight.bold)),
             ],
           ),
           const SizedBox(height: 12),
@@ -1218,7 +1220,7 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
               child: Text(
                 referralCode.isEmpty
                     ? 'Not available'
-                    : 'https://play.google.com/store/apps/details?id=com.believoo.app&referrer=referralCode%3D$referralCode',
+                    : DeepLinkService.instance.generateReferralLink(),
                 style: const TextStyle(color: _gold, fontSize: 11),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -1236,7 +1238,7 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
                   onPressed: referralCode.isEmpty
                       ? null
                       : () => _copyToClipboard(
-                            'https://play.google.com/store/apps/details?id=com.believoo.app&referrer=referralCode%3D$referralCode',
+                            DeepLinkService.instance.generateReferralLink(),
                             'Referral Link Copied!',
                           ),
                 ),
@@ -1247,7 +1249,7 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
 
           // Info text
           Text(
-            'Invite your Friends! For each payout of invited friends, you and your friend both will receive $_referralBonus Diamonds.',
+            'Invite your friends! Your friend gets $_referralBonus ${Const.coinName} on joining and you get $_referralCoinBonus ${Const.rCoinName}.',
             style: TextStyle(color: AppTheme.themed(context, 0xFFA0A0C0, 0xFF6B6B80), fontSize: 11, height: 1.5),
             textAlign: TextAlign.center,
           ),
@@ -1353,7 +1355,7 @@ class _FreeCoinsScreenState extends State<FreeCoinsScreen> {
               gradient: const LinearGradient(colors: [_gold, _goldDark]),
               borderRadius: BorderRadius.circular(8),
             ),
-            child: Text('+$_referralBonus / Friend', style: const TextStyle(color: _onGold, fontSize: 11, fontWeight: FontWeight.bold)),
+            child: Text('+$_referralCoinBonus / Friend', style: const TextStyle(color: _onGold, fontSize: 11, fontWeight: FontWeight.bold)),
           ),
         ],
       ),
