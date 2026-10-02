@@ -82,7 +82,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
 
   // --- PK state (ported from native) ---
   int _pkRoundCount = 0;
-  bool _isPkStart = false;
+
   bool _isPunishmentRound = false;
   bool _isPkStarting = false;
   bool _pkAutoStartBlocked = false;
@@ -337,7 +337,6 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
         }
       }
 
-      _isPkStart = true;
       if (mounted) setState(() => _engineReady = true);
     } catch (e, s) {
       Log.e(_tag, 'initAgora failed', e, s);
@@ -681,7 +680,6 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       _pkRoundCount = config.pkRoundCount;
       _battleDuration = config.durationSeconds;
       _isPunishmentRound = false;
-      _isPkStart = true;
       setState(() => _secondsRemaining = config.durationSeconds);
       _resolveViewerVideoUids();
       _startCountdown();
@@ -708,14 +706,13 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
           (map['winner'] as num?)?.toInt() ??
           0;
       final canRematch = map['canRematch'] == true;
-      final h1Score = (map['host1Score'] as num?)?.toInt() ?? _host1Score;
-      final h2Score = (map['host2Score'] as num?)?.toInt() ?? _host2Score;
+      final h1Score = _resolvePkScores(map).host1;
+      final h2Score = _resolvePkScores(map).host2;
 
       // Record round result
       _recordRoundResult(_pkRoundCount, h1Score, h2Score, winner);
 
       // Reset PK state
-      _isPkStart = false;
       _isPunishmentRound = false;
       _pkAutoStartBlocked = true;
       _isPkStarting = false;
@@ -728,17 +725,19 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       _showResultSheet(winner, canRematch);
     });
 
-    // PK Score Update — from backend, always Host1 perspective
+    // PK Score Update — from backend. Server `host1Score`/`host2Score` are
+    // SESSION-global (host1 = requester) while `_host1Score` is local
+    // (host1 = the room this screen belongs to) — resolve perspective first
+    // or a gift to the opponent renders on our host's side.
     _cancelPkScore = SocketService.instance.on(Const.eventPkScoreUpdate, (
       data,
     ) {
       final map = data is Map ? Map<String, dynamic>.from(data) : null;
       if (map == null) return;
-      final h1Score = (map['host1Score'] as num?)?.toInt();
-      final h2Score = (map['host2Score'] as num?)?.toInt();
+      final scores = _resolvePkScores(map);
       setState(() {
-        if (h1Score != null) _host1Score = h1Score;
-        if (h2Score != null) _host2Score = h2Score;
+        _host1Score = scores.host1;
+        _host2Score = scores.host2;
       });
     });
 
@@ -771,8 +770,8 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
         final punishmentDuration =
             (map['pkPunishmentDuration'] as num?)?.toInt() ?? 0;
         final winner = (map['winner'] as num?)?.toInt() ?? 0;
-        final h1Score = (map['host1Score'] as num?)?.toInt() ?? _host1Score;
-        final h2Score = (map['host2Score'] as num?)?.toInt() ?? _host2Score;
+        final h1Score = _resolvePkScores(map).host1;
+        final h2Score = _resolvePkScores(map).host2;
 
         // Record round result
         _recordRoundResult(_pkRoundCount, h1Score, h2Score, winner);
@@ -889,25 +888,43 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       },
     );
 
-    // PK Vote — update vote counts
+    // PK Vote — server counts are session-global; swap to local perspective
+    // (local host1 = the room this screen is watching).
     _cancelPkVote = SocketService.instance.on(Const.eventPkVote, (data) {
       final map = data is Map ? Map<String, dynamic>.from(data) : null;
       if (map == null) return;
-      final host1Id = map['host1Id']?.toString();
-      final host2Id = map['host2Id']?.toString();
+      final sameSide = _payloadMatchesLocalHost1(map);
       final count = (map['count'] as num?)?.toInt();
       final voteHost1 = (map['pkVoteHost1'] as num?)?.toInt();
       final voteHost2 = (map['pkVoteHost2'] as num?)?.toInt();
       setState(() {
         if (voteHost1 != null) {
-          _pkVoteHost1 = voteHost1;
-        } else if (host1Id != null && count != null) {
-          _pkVoteHost1 = count;
+          if (sameSide) {
+            _pkVoteHost1 = voteHost1;
+          } else {
+            _pkVoteHost2 = voteHost1;
+          }
+        } else if (count != null &&
+            (map['host1Id']?.toString().isNotEmpty ?? false)) {
+          if (sameSide) {
+            _pkVoteHost1 = count;
+          } else {
+            _pkVoteHost2 = count;
+          }
         }
         if (voteHost2 != null) {
-          _pkVoteHost2 = voteHost2;
-        } else if (host2Id != null && count != null) {
-          _pkVoteHost2 = count;
+          if (sameSide) {
+            _pkVoteHost2 = voteHost2;
+          } else {
+            _pkVoteHost1 = voteHost2;
+          }
+        } else if (count != null &&
+            (map['host2Id']?.toString().isNotEmpty ?? false)) {
+          if (sameSide) {
+            _pkVoteHost2 = count;
+          } else {
+            _pkVoteHost1 = count;
+          }
         }
       });
     });
@@ -949,25 +966,107 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
     });
   }
 
+  /// True when an incoming payload's `host1`/`host1Score` refers to the same
+  /// host as this screen's local host1 (the room we are watching). Server
+  /// payloads are session-global (host1 = PK requester); a viewer in host2's
+  /// room must swap scores/votes or the opponent's points render on our side.
+  bool _payloadMatchesLocalHost1(Map<String, dynamic> map) {
+    final incomingHost1Id = map['host1Id']?.toString() ?? '';
+    final incomingHost1LiveId = map['host1LiveId']?.toString() ?? '';
+    if (incomingHost1Id.isEmpty && incomingHost1LiveId.isEmpty) return true;
+    return incomingHost1Id == (_config.host1Id ?? '') ||
+        incomingHost1LiveId == (_config.host1LiveId ?? '');
+  }
+
+  /// Resolves server host1/host2 scores into local host1/host2 (local = the
+  /// room host this screen belongs to).
+  ({int host1, int host2}) _resolvePkScores(Map<String, dynamic> map) {
+    int? read(List<String> keys) {
+      for (final key in keys) {
+        final value = map[key];
+        final parsed =
+            value is num ? value.toInt() : int.tryParse('${value ?? ''}');
+        if (parsed != null && parsed >= 0) return parsed;
+      }
+      return null;
+    }
+
+    var h1 = read(const ['host1Score', 'score1', 'host1Rank']);
+    var h2 = read(const ['host2Score', 'score2', 'host2Rank']);
+    if (h1 == null && h2 == null) {
+      return (host1: _host1Score, host2: _host2Score);
+    }
+    if (!_payloadMatchesLocalHost1(map)) {
+      final tmp = h1;
+      h1 = h2;
+      h2 = tmp;
+    }
+    return (host1: h1 ?? _host1Score, host2: h2 ?? _host2Score);
+  }
+
+  /// Dedupe — one send arrives on `gift` AND `normalUserGift` (plus the PK
+  /// partner-room relay), each of which would otherwise re-add score and
+  /// re-play the animation.
+  final Set<String> _seenGiftKeys = {};
+
+  bool _giftAlreadyProcessed(Map<String, dynamic> map) {
+    final senderId =
+        map['senderId']?.toString() ??
+        map['senderUserId']?.toString() ??
+        map['userId']?.toString() ??
+        '';
+    final giftId =
+        map['giftId']?.toString() ?? map['gift']?['_id']?.toString() ?? '';
+    final ts = map['timeStamp']?.toString() ?? '';
+    final receiverId =
+        map['receiverUserId']?.toString() ??
+        map['receiverId']?.toString() ??
+        '';
+    if (senderId.isEmpty && giftId.isEmpty) return false;
+    final key = '${senderId}_${giftId}_${ts}_$receiverId';
+    if (_seenGiftKeys.contains(key)) return true;
+    _seenGiftKeys.add(key);
+    if (_seenGiftKeys.length > 500) _seenGiftKeys.clear();
+    return false;
+  }
+
   // ===========================================================================
   // Gift processing — track gifters per host + display gift animation
   // ===========================================================================
   void _processGift(dynamic data) {
-    final event = GiftQueueController.fromSocketData(data);
-    if (event != null) {
-      // Full-screen big overlay for SVGA / video / high-coin gifts, small
-      // overlay for cheap image gifts — matches video/audio room behavior.
-      if (_bigGiftController.isBigGift(event)) {
-        _bigGiftController.showBigGift(event);
-      } else {
-        _giftController.addGift(event);
+    final map = data is Map ? Map<String, dynamic>.from(data) : null;
+    if (map == null) return;
+    if (_giftAlreadyProcessed(map)) return;
+
+    // A gift relayed from the PK partner's room updates the score bar/gifter
+    // list but must NOT play the animation here — the animation belongs only
+    // in the room it was actually sent.
+    final myLiveId =
+        widget.room?.liveRoomId ??
+        (widget.isHost1 ? _config.host1LiveId : _config.host2LiveId) ??
+        '';
+    final giftRoomId = map['liveStreamingId']?.toString() ?? '';
+    final isPartnerRoomGift =
+        map['pkPartnerRoom'] == true ||
+        (giftRoomId.isNotEmpty &&
+            myLiveId.isNotEmpty &&
+            giftRoomId != myLiveId);
+
+    if (!isPartnerRoomGift) {
+      final event = GiftQueueController.fromSocketData(data);
+      if (event != null) {
+        // Full-screen big overlay for SVGA / video / high-coin gifts, small
+        // overlay for cheap image gifts — matches video/audio room behavior.
+        if (_bigGiftController.isBigGift(event)) {
+          _bigGiftController.showBigGift(event);
+        } else {
+          _giftController.addGift(event);
+        }
       }
     }
 
     // Extract sender/receiver IDs and coin amount for gifter tracking
     try {
-      final map = data is Map ? Map<String, dynamic>.from(data) : null;
-      if (map == null) return;
       final senderId =
           map['senderId']?.toString() ?? map['userId']?.toString() ?? '';
       final senderName =
@@ -1170,7 +1269,6 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
   // ===========================================================================
   void _resetPkState() {
     _pkRoundCount = 0;
-    _isPkStart = false;
     _isPunishmentRound = false;
     _isPkStarting = false;
     _pkAutoStartBlocked = false;
@@ -1210,7 +1308,6 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       _host1Score = 0;
       _host2Score = 0;
       _pkRoundCount = 0;
-      _isPkStart = false;
       _punishmentTask = null;
     });
     Fluttertoast.showToast(msg: 'Opponent disconnected');
@@ -1545,7 +1642,6 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
                                 child: _buildSplitVideo(),
                               ),
                               _buildScoreBars(),
-                              _buildVoteBars(),
                               _buildTopGifters(),
                               const Spacer(),
                               _buildBottomControls(),
@@ -2092,88 +2188,89 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
               ),
             ),
           ),
+          if (_pkVoteHost1 > 0 || _pkVoteHost2 > 0) ...[
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  '${widget.isHost1 ? _pkVoteHost1 : _pkVoteHost2} votes',
+                  style: const TextStyle(color: Colors.white54, fontSize: 11),
+                ),
+                Text(
+                  '${widget.isHost1 ? _pkVoteHost2 : _pkVoteHost1} votes',
+                  style: const TextStyle(color: Colors.white54, fontSize: 11),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
   }
 
-  // --- Vote bars (viewer voting) ---
-  Widget _buildVoteBars() {
-    if (!_isPkStart) return const SizedBox.shrink();
-    final totalVotes = (_pkVoteHost1 + _pkVoteHost2).clamp(1, 999999);
-    final host1VotePercent = (_pkVoteHost1 / totalVotes * 100).clamp(
-      0.0,
-      100.0,
-    );
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
-      child: Column(
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              GestureDetector(
-                onTap: () => _sendVote(1),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      _hasVoted
-                          ? Icons.check_box
-                          : Icons.check_box_outline_blank,
-                      color: Colors.blue,
-                      size: 16,
+  // --- Vote side picker — lets the viewer choose which host to vote for ---
+  void _showVoteSidePicker() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1B1B2F),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder:
+          (ctx) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Text(
+                    'Vote for',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      '$_pkVoteHost1',
-                      style: const TextStyle(color: Colors.blue, fontSize: 12),
-                    ),
-                  ],
-                ),
-              ),
-              const Text(
-                'Vote',
-                style: TextStyle(color: Colors.white54, fontSize: 11),
-              ),
-              GestureDetector(
-                onTap: () => _sendVote(2),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      '$_pkVoteHost2',
-                      style: const TextStyle(
-                        color: Colors.orange,
-                        fontSize: 12,
+                  ),
+                  const SizedBox(height: 16),
+                  for (final side in [1, 2])
+                    ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage:
+                            (side == 1 ? _leftHostImage : _rightHostImage) !=
+                                    null
+                                ? NetworkImage(
+                                  (side == 1
+                                      ? _leftHostImage
+                                      : _rightHostImage)!,
+                                )
+                                : null,
+                        child:
+                            (side == 1 ? _leftHostImage : _rightHostImage) ==
+                                    null
+                                ? const Icon(Icons.person)
+                                : null,
                       ),
+                      title: Text(
+                        side == 1 ? _leftHostName : _rightHostName,
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      trailing: Text(
+                        '${side == 1 ? _pkVoteHost1 : _pkVoteHost2} votes',
+                        style: const TextStyle(
+                          color: Colors.white54,
+                          fontSize: 12,
+                        ),
+                      ),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _sendVote(side);
+                      },
                     ),
-                    const SizedBox(width: 4),
-                    Icon(
-                      _hasVoted
-                          ? Icons.check_box
-                          : Icons.check_box_outline_blank,
-                      color: Colors.orange,
-                      size: 16,
-                    ),
-                  ],
-                ),
+                ],
               ),
-            ],
-          ),
-          const SizedBox(height: 2),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: host1VotePercent / 100,
-              minHeight: 4,
-              backgroundColor: Colors.orange,
-              valueColor: const AlwaysStoppedAnimation<Color>(Colors.blue),
             ),
           ),
-        ],
-      ),
     );
   }
 
@@ -2312,6 +2409,8 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
               ),
             ),
           ),
+          const SizedBox(width: 7),
+          _pkActionButton(Icons.how_to_vote, _showVoteSidePicker),
           const SizedBox(width: 7),
           _pkActionButton(Icons.celebration, _sendCheer),
           const SizedBox(width: 7),

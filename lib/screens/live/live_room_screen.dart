@@ -3616,6 +3616,20 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         final giftMyUserId = context.read<SessionManager>().userId;
         if (giftSenderId.isNotEmpty && giftSenderId == giftMyUserId) return;
         if (_giftKeySeen(_giftDedupKey(map))) return;
+        // PK partner-room relay — the gift was sent in the OPPONENT's room.
+        // Update the PK score only; never render the comment/animation/banner
+        // or pollute this room's gift wall/stats with another room's gift.
+        if (map['pkPartnerRoom'] == true) {
+          if (widget.isHost) {
+            final receiverId = _resolvePkGiftReceiver(map);
+            final pCoin = (map['coin'] as num?)?.toInt() ?? 0;
+            final pCount = (map['count'] as num?)?.toInt() ?? 1;
+            if (receiverId != null && receiverId.isNotEmpty && pCoin > 0) {
+              _applyOptimisticPkGiftScore(receiverId, pCoin * pCount);
+            }
+          }
+          return;
+        }
         final giftImage =
             parsedGift?.giftImage ??
             _safeGiftCommentImage(
@@ -10758,29 +10772,12 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         _pkScoreHost2 += coins;
       }
     });
-    // Broadcast the updated scores to the PK partner and viewers.
+    // Nudge the backend to rebroadcast the authoritative score — the socket
+    // handler recomputes from LiveUser docs, so client-sent values are
+    // ignored. (The previous REST /pkCall/updateScore call wrote the client's
+    // optimistic score into the session, racing the gift handler's atomic
+    // increment and double-counting or losing scores.)
     _emitPkScoreUpdate();
-    // Also persist to backend so it can broadcast authoritative pkScoreUpdate
-    // to both host rooms (fixes score/lead not syncing on the other side).
-    final pkId = config.pkId;
-    if (pkId != null && pkId.isNotEmpty) {
-      unawaited(
-        ApiService.updatePkScore(
-              pkId: pkId,
-              userId: receiverId,
-              score: isHost1 ? _pkScoreHost1 : _pkScoreHost2,
-            )
-            .then((r) {
-              Log.d(
-                _tag,
-                'PK score api response: status=${r.status} message=${r.message}',
-              );
-            })
-            .catchError((e, s) {
-              Log.e(_tag, 'PK score api failed', e, s);
-            }),
-      );
-    }
   }
 
   /// Parses a PK timestamp that may be epoch (ms or seconds) or an ISO string.
@@ -14502,6 +14499,13 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
 
   Widget _buildPkVoteBadges() {
     final topPad = MediaQuery.of(context).viewPadding.top;
+    // Mirror scores — left always shows OUR room's host (native behavior).
+    final myScore = _pkIsHost1 ? _pkScoreHost1 : _pkScoreHost2;
+    final oppScore = _pkIsHost1 ? _pkScoreHost2 : _pkScoreHost1;
+    final myVotes = _pkIsHost1 ? _pkVoteCountHost1 : _pkVoteCountHost2;
+    final oppVotes = _pkIsHost1 ? _pkVoteCountHost2 : _pkVoteCountHost1;
+    final total = myScore + oppScore;
+    final myPct = total > 0 ? myScore / total : 0.5;
     return Positioned(
       top: (topPad == 0 ? 12 : topPad + 6) + 130,
       left: 16,
@@ -14509,7 +14513,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       child: Column(
         children: [
           // PK score bar.
-          if (_pkScoreHost1 > 0 || _pkScoreHost2 > 0) ...[
+          if (myScore > 0 || oppScore > 0) ...[
             Container(
               height: 8,
               decoration: BoxDecoration(
@@ -14521,11 +14525,11 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                 child: Row(
                   children: [
                     Expanded(
-                      flex: (_score1Pct * 100).round().clamp(1, 99),
+                      flex: (myPct * 100).round().clamp(1, 99),
                       child: Container(color: const Color(0xFF7E3FF2)),
                     ),
                     Expanded(
-                      flex: (100 - (_score1Pct * 100).round().clamp(1, 99)),
+                      flex: (100 - (myPct * 100).round().clamp(1, 99)),
                       child: Container(color: Colors.red),
                     ),
                   ],
@@ -14537,7 +14541,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '$_pkScoreHost1',
+                  '$myScore',
                   style: const TextStyle(
                     color: Color(0xFF7E3FF2),
                     fontSize: 12,
@@ -14545,7 +14549,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                   ),
                 ),
                 Text(
-                  '$_pkScoreHost2',
+                  '$oppScore',
                   style: const TextStyle(
                     color: Colors.red,
                     fontSize: 12,
@@ -14580,7 +14584,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                     ),
                     const SizedBox(width: 4),
                     Text(
-                      '$_pkVoteCountHost1 votes',
+                      '$myVotes votes',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 11,
@@ -14606,7 +14610,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                     const Icon(Icons.how_to_vote, color: Colors.red, size: 14),
                     const SizedBox(width: 4),
                     Text(
-                      '$_pkVoteCountHost2 votes',
+                      '$oppVotes votes',
                       style: const TextStyle(
                         color: Colors.white,
                         fontSize: 11,
@@ -14659,11 +14663,6 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       ),
     );
   }
-
-  double get _score1Pct =>
-      _pkScoreHost1 + _pkScoreHost2 > 0
-          ? _pkScoreHost1 / (_pkScoreHost1 + _pkScoreHost2)
-          : 0.5;
 
   Widget _topActionIcon(IconData icon, VoidCallback onTap) {
     return GestureDetector(
