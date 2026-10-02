@@ -5,7 +5,7 @@
 library audio_room;
 
 import 'dart:async';
-import 'dart:convert' show jsonDecode;
+import 'dart:convert' show jsonDecode, utf8;
 import 'dart:io';
 import 'dart:math';
 
@@ -4716,6 +4716,8 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         }
       } catch (_) {}
     });
+
+    _checkLudoActive();
 
     // In-room Ludo table state — the game server relays ludoTable events
     // (action: open|update|closed) so every member sees the shared table.
@@ -12727,6 +12729,27 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     );
   }
 
+  /// Late joiners: if this room already has a live Ludo table, show the Ludo
+  /// scene right away instead of waiting for the next relay event.
+  Future<void> _checkLudoActive() async {
+    if (_liveId.isEmpty) return;
+    final client = HttpClient()..connectionTimeout = const Duration(seconds: 5);
+    try {
+      final uri = Uri.parse(
+        'https://admin.unilive.me/ludo/api/status',
+      ).replace(queryParameters: {'roomId': _liveId});
+      final res = await (await client.getUrl(uri)).close();
+      final body = await res.transform(utf8.decoder).join();
+      final active = jsonDecode(body)['active'] == true;
+      if (active && mounted && !_ludoPanelVisible && !_ludoDismissed) {
+        setState(() => _ludoPanelVisible = true);
+      }
+    } catch (_) {
+    } finally {
+      client.close();
+    }
+  }
+
   /// Opens the embedded Ludo table for this room and tells room members.
   /// Only the room host or an admin may open/start the game — everyone else
   /// joins once the table is live (the panel still auto-opens via ludoTable).
@@ -12815,6 +12838,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
           visible: !_ludoMinimized,
           maintainState: true,
           child: LudoRoomPanel(
+            key: ValueKey('ludo_${_amHost || _iAmAdmin}'),
             roomId: _liveId,
             canHost: _amHost || _iAmAdmin,
             onMinimize: () {
