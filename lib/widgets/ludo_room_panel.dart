@@ -103,7 +103,7 @@ class _LudoRoomPanelState extends State<LudoRoomPanel> {
                 // Domain not resolving yet? Retry once on the fallback path.
                 if (!_useFallback &&
                     (e.errorCode == -2 ||
-                        (e.description ?? '').contains('ERR_NAME'))) {
+                        e.description.contains('ERR_NAME'))) {
                   _useFallback = true;
                   _controller.loadRequest(Uri.parse(_buildUrl(kLudoFallbackUrl)));
                   return;
