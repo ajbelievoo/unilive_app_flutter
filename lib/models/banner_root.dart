@@ -25,6 +25,10 @@ class BannerItem {
     this.isVIP = false,
     this.bannerType = 0,
     this.v = 0,
+    this.placement = 'top',
+    this.feedEvery = 4,
+    this.order = 0,
+    this.isActive = true,
   });
 
   final String? id;
@@ -34,6 +38,16 @@ class BannerItem {
   final int bannerType;
   final int v;
 
+  /// 'top' = header carousel, 'feed' = injected in live grid every
+  /// [feedEvery] cards, 'both' = shown in both places.
+  final String placement;
+  final int feedEvery;
+  final int order;
+  final bool isActive;
+
+  bool get showsInTop => placement != 'feed';
+  bool get showsInFeed => placement != 'top';
+
   factory BannerItem.fromJson(Map<String, dynamic> json) => BannerItem(
         id: parseString(json['_id'] ?? json['id']),
         image: parseString(json['image']),
@@ -41,5 +55,9 @@ class BannerItem {
         isVIP: parseBool(json['isVIP'] ?? json['isVip'] ?? json['vip']),
         bannerType: parseInt(json['bannerType'], 0),
         v: parseInt(json['__v'], 0),
+        placement: parseString(json['placement'], 'top') ?? 'top',
+        feedEvery: parseInt(json['feedEvery'], 4),
+        order: parseInt(json['order'], 0),
+        isActive: parseBool(json['isActive'], true),
       );
 }

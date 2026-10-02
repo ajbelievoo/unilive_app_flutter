@@ -10,6 +10,7 @@ import '../models/banner_root.dart';
 import '../models/chat_root.dart';
 import '../models/call_history_root.dart';
 import '../models/chat_user_list_root.dart';
+import '../models/checkin_root.dart';
 import '../models/comment_models.dart';
 import '../models/common_models.dart';
 import '../models/cp_models.dart';
@@ -720,6 +721,20 @@ class ApiService {
   static Future<BannerRoot> getLuckyBanners() async {
     final r = await _dio.get('/luckyBanner');
     return BannerRoot.fromJson(_asMap(r.data));
+  }
+
+  // ---- Daily check-in -----------------------------------------------------
+
+  /// `GET /checkin/status?userId=` — streak position + reward table + canClaim.
+  static Future<CheckInStatus> getCheckInStatus(String userId) async {
+    final r = await _dio.get('/checkin/status', queryParameters: {'userId': userId});
+    return CheckInStatus.fromJson(_asMap(r.data));
+  }
+
+  /// `POST /checkin/claim` — credits the day's reward server-side.
+  static Future<CheckInClaimRoot> claimCheckIn(String userId) async {
+    final r = await _dio.post('/checkin/claim', data: {'userId': userId});
+    return CheckInClaimRoot.fromJson(_asMap(r.data));
   }
 
   // ---- Live users ---------------------------------------------------------

@@ -49,14 +49,10 @@ class FcmService {
 
     final messaging = FirebaseMessaging.instance;
 
-    // Request notification permission (iOS — on Android this is a no-op
-    // for notifications below API 33, and shows the dialog on 33+).
-    final settings = await messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      provisional: false,
-    );
+    // NOTE: we do NOT call requestPermission() here — the home screen first
+    // shows the "Enable Notifications?" pre-prompt (NotificationPrompt), and
+    // the real OS prompt fires only when the user taps "Yes". Just log status.
+    final settings = await messaging.getNotificationSettings();
     Log.d(_tag, 'permission status: ${settings.authorizationStatus}');
 
     // Get and register the FCM token.

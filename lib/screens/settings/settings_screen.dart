@@ -15,6 +15,7 @@ import '../../routes/app_routes.dart';
 import '../../services/api_client.dart';
 import '../../services/api_service.dart';
 import '../../services/session_manager.dart';
+import '../../widgets/daily_checkin_dialog.dart';
 import '../../widgets/report_issue_dialog.dart';
 import '../../widgets/settings_extras.dart';
 
@@ -249,6 +250,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _tile(Icons.add_circle, 'Create Complaint', '', onTap: () => context.pushNamed(AppRoutes.createComplaint)),
           _tile(Icons.feedback, 'Feedback', '', onTap: () => context.pushNamed(AppRoutes.feedback)),
           _section('Extras'),
+          _tile(Icons.calendar_month, 'Daily Check-in', 'Claim daily rewards', onTap: () => DailyCheckIn.show(context)),
           _tile(Icons.history, 'Call History', '', onTap: () => context.pushNamed(AppRoutes.callHistory)),
           _tile(Icons.diamond, 'Call Rate & Host Guide', '', onTap: () => context.pushNamed(AppRoutes.callRateSettings)),
           _tile(Icons.notifications_active, 'Activity Center', '', onTap: () => context.pushNamed(AppRoutes.activityCenter)),

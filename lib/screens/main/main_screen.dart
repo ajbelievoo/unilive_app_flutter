@@ -15,6 +15,8 @@ import '../../services/session_manager.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/audio_room_navigation.dart';
 import '../../utils/log.dart';
+import '../../widgets/daily_checkin_dialog.dart';
+import '../../widgets/notification_prompt_dialog.dart';
 import '../../widgets/user_avatar.dart';
 import '../chat/message_hub_screen.dart';
 import '../feed/posts_feed_screen.dart';
@@ -51,6 +53,19 @@ class _MainScreenState extends State<MainScreen> {
     _loadNotificationCount();
     _loadAds();
     _loadRelationships();
+    // Show the launch popups after the first frame: notification permission
+    // pre-prompt first (once / snoozed 7 days), then the daily check-in card
+    // (once per day when a reward is claimable).
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _showLaunchPopups();
+    });
+  }
+
+  Future<void> _showLaunchPopups() async {
+    if (!mounted) return;
+    await NotificationPrompt.maybeShow(context);
+    if (!mounted) return;
+    await DailyCheckIn.maybeShow(context);
   }
 
   /// Pre-load the user's CP and Friend list so room visibility (badges,

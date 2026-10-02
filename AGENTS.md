@@ -172,3 +172,30 @@ Admin-defined daily/weekly host tasks for the Host Dashboard Tasks tab (Earnings
 - **Host Center merge** (`host_center_screen.dart` `_normalizeHostData`): typed history rows only absorb the matching cache bucket and show their own type's minutes — combined totals are never stamped onto a typed row. The today summary exposes `audioEarning`/`videoEarning` (Beans) = max(cache per-type, backend per-type fields, same-type history-row earnings).
 - **Tasks tab** (`_taskTile`/`_claimTask`): `type:'audio'|'video'` tasks read only their own type's `*Duration`/`*Earning` fields (strict — no fallback to combined `totalMinutes`/`todayEarning`). Claim sends `liveType`/`taskType`/`type`, per-type `rCoin`/`coin`, `totalEarning` (combined), and the `liveStreamingId` of a matching-type session.
 - **Backend dependency**: `/liveUser/updateLiveTime`, `roomTime`/`liveTimeSync` sockets and `PATCH /task/claimTaskReward` must honour `liveType`; `hostLiveHistory` rows carry `type` + `audioDuration`/`videoDuration` + per-type earning. If the backend ignores `liveType` it cannot attribute sessions correctly — client fix only stops the client-side double-counting. Full backend spec: `docs/BACKEND_MESSAGE_HOST_LIVE_TYPE_TRACKING.md`.
+
+## Daily Check-in (added 2026-10)
+- Backend module `server/checkin/` — `GET /checkin/status?userId=`, `POST /checkin/claim`.
+- Reward table default: days 1-6 beans (rCoin 10/20/30/40/50/75), day 7 = 1 diamond (coin).
+- Admin override: `global.settingJSON.checkinRewards` array of `{day,type:'coin'|'rcoin',amount}`.
+- Missed a day → streak resets to Day 1; day 7 wraps back to 1.
+- Flutter: `lib/widgets/daily_checkin_dialog.dart` — auto-shows once/day on home (`DailyCheckIn.maybeShow`, prefs key `checkin_prompted_date`), manual entry in Settings → "Daily Check-in".
+- Model: `lib/models/checkin_root.dart`; API: `ApiService.getCheckInStatus` / `claimCheckIn`.
+
+## Notification pre-prompt (added 2026-10)
+- `lib/widgets/notification_prompt_dialog.dart` — "Enable Notifications?" dialog shows BEFORE the OS prompt; "Yes" → `FirebaseMessaging.requestPermission()`; "No" snoozes 7 days (`notif_prompt_snooze_until` pref).
+- IMPORTANT: `PushNotificationService.initialize()` and `FcmService.init()` deliberately do NOT call requestPermission anymore — the pre-prompt owns the timing. Do not re-add direct requests at startup.
+- Wired from `main_screen` `_showLaunchPopups` (notif prompt → check-in dialog chain).
+
+## Banner placements (added 2026-10)
+- Banner model fields: `placement` ('top'|'feed'|'both', default 'top'), `feedEvery` (insert after every N live cards, default 4), `order` (sort asc), `isActive`.
+- Admin CRUD: `POST /banner` + `PATCH /banner/:id` accept `placement`, `feedEvery`, `order`, `isActive` (multipart with `image`).
+- `GET /banner` returns only active banners sorted by order→createdAt.
+- Flutter `BannerItem` exposes `showsInTop`/`showsInFeed`; live list splits into `_topBanners` (header carousel, 'all' tab) and `_feedBanners` (full-width rows injected every `feedEvery` cards in ALL discovery tabs).
+- Shared fetch `_fetchBannersOnce()` — one API round-trip for all 4 tabs; pull-to-refresh forces refetch.
+- broadcastBanner/luckyBanner items merge into the top carousel only (no placement fields on those models).
+
+## Host video-call pool (added 2026-10)
+- `POST /call-rate/opt-in {userId, optIn}` — host self opt-in/out of video+random call pool (was admin-only `videoCallOptIn` before).
+- `/call-rate/set` auto opts the host in. `/call-rate/host` returns `videoCallOptIn`.
+- `/user/videoCallHosts` — `userId` now optional; `status` param: active|online|live; response `callRate` = effective per-level rate.
+- Flutter: Call Rate settings has "Accept video & random calls" toggle (CallRateProvider.setOptIn).

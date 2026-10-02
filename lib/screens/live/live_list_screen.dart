@@ -279,7 +279,8 @@ class _DiscoveryTabState extends State<_DiscoveryTab>
     with AutomaticKeepAliveClientMixin {
   static const String _tag = 'DiscoveryTab';
   List<live_user.LiveUser> _users = [];
-  List<BannerItem> _banners = [];
+  List<BannerItem> _topBanners = [];
+  List<BannerItem> _feedBanners = [];
   bool _isLoading = true;
   bool _isLoadingBanners = true;
   bool _isParty = false;
@@ -295,7 +296,7 @@ class _DiscoveryTabState extends State<_DiscoveryTab>
     super.initState();
     _isParty = widget.variant == _DiscoveryVariant.party;
     _loadUsers();
-    if (widget.variant == _DiscoveryVariant.all) _loadBanners();
+    _loadBanners(); // shared fetch — top carousel for 'all', feed banners for every variant
   }
 
   /// Public entry point for auto-refresh on home visit.
@@ -305,7 +306,7 @@ class _DiscoveryTabState extends State<_DiscoveryTab>
   /// change), the loader is shown.
   Future<void> refresh({bool silent = true}) {
     if (widget.variant == _DiscoveryVariant.all && !silent) {
-      return _loadBanners().then((_) => _loadUsers(silent: silent));
+      return _loadBanners(force: true).then((_) => _loadUsers(silent: silent));
     }
     return _loadUsers(silent: silent);
   }
@@ -386,8 +387,11 @@ class _DiscoveryTabState extends State<_DiscoveryTab>
     }
   }
 
-  Future<void> _loadBanners() async {
-    try {
+  /// One shared fetch for all discovery tabs (top carousel + in-feed banners).
+  static Future<List<BannerItem>>? _sharedBannerFetch;
+
+  static Future<List<BannerItem>> _fetchBannersOnce() {
+    _sharedBannerFetch ??= () async {
       final results = await Future.wait([
         ApiService.getBanners().catchError((e) {
           Log.e(_tag, 'banners failed', e);
@@ -402,17 +406,28 @@ class _DiscoveryTabState extends State<_DiscoveryTab>
           return BannerRoot();
         }),
       ]);
+      return <BannerItem>[
+        ...results[0].banner,
+        ...results[1].banner,
+        ...results[2].banner,
+      ];
+    }();
+    return _sharedBannerFetch!;
+  }
+
+  Future<void> _loadBanners({bool force = false}) async {
+    if (force) _sharedBannerFetch = null;
+    try {
+      final allBanners = await _fetchBannersOnce();
       if (mounted) {
-        final allBanners = <BannerItem>[
-          ...results[0].banner,
-          ...results[1].banner,
-          ...results[2].banner,
-        ];
         setState(() {
-          _banners =
-              allBanners
-                  .where((b) => b.image != null && b.image!.isNotEmpty)
-                  .toList();
+          final usable = allBanners
+              .where((b) => b.image != null && b.image!.isNotEmpty && b.isActive)
+              .toList();
+          _topBanners = usable.where((b) => b.showsInTop).toList()
+            ..sort((a, b) => a.order.compareTo(b.order));
+          _feedBanners = usable.where((b) => b.showsInFeed).toList()
+            ..sort((a, b) => a.order.compareTo(b.order));
           _isLoadingBanners = false;
         });
       }
@@ -466,7 +481,7 @@ class _DiscoveryTabState extends State<_DiscoveryTab>
     }
     return RefreshIndicator(
       onRefresh: () async {
-        if (widget.variant == _DiscoveryVariant.all) await _loadBanners();
+        if (widget.variant == _DiscoveryVariant.all) await _loadBanners(force: true);
         await _loadUsers(silent: true);
       },
       child: CustomScrollView(
@@ -493,20 +508,20 @@ class _DiscoveryTabState extends State<_DiscoveryTab>
     if (_isLoadingBanners) {
       return const SizedBox(height: 90, child: Center(child: Preloader()));
     }
-    if (_banners.isEmpty) {
+    if (_topBanners.isEmpty) {
       return const SizedBox(height: 8);
     }
     return SizedBox(
       height: 90,
       child: PageView.builder(
-        itemCount: _banners.length,
+        itemCount: _topBanners.length,
         padEnds: false,
         itemBuilder: (context, index) {
-          final banner = _banners[index];
+          final banner = _topBanners[index];
           return Padding(
             padding: EdgeInsets.only(
               left: index == 0 ? 14 : 6,
-              right: index == _banners.length - 1 ? 14 : 6,
+              right: index == _topBanners.length - 1 ? 14 : 6,
             ),
             child: InkWell(
               onTap: () {
@@ -1050,7 +1065,7 @@ class _DiscoveryTabState extends State<_DiscoveryTab>
     );
   }
 
-  SliverGrid _buildGrid() {
+  Widget _buildGrid() {
     if (_users.isEmpty) {
       return const SliverGrid(
         gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -1063,21 +1078,93 @@ class _DiscoveryTabState extends State<_DiscoveryTab>
       );
     }
 
-    return SliverGrid(
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
-        childAspectRatio: 0.78,
-      ),
-      delegate: SliverChildBuilderDelegate((context, i) {
-        final u = _users[i];
-        return _LiveGridTile(
-          user: u,
-          showTag: !_isParty,
-          onTap: () => _joinLive(context, u),
+    // No feed banners → plain 2-column grid (unchanged behaviour).
+    if (_feedBanners.isEmpty) {
+      return SliverGrid(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 2,
+          mainAxisSpacing: 12,
+          crossAxisSpacing: 12,
+          childAspectRatio: 0.78,
+        ),
+        delegate: SliverChildBuilderDelegate((context, i) {
+          final u = _users[i];
+          return _LiveGridTile(
+            user: u,
+            showTag: !_isParty,
+            onTap: () => _joinLive(context, u),
+          );
+        }, childCount: _users.length),
+      );
+    }
+
+    // With feed banners: each banner defines how many cards precede it
+    // (banner.feedEvery). Banners cycle round-robin through the list.
+    final plan = <_FeedChunk>[];
+    var i = 0;
+    var bi = 0;
+    while (i < _users.length) {
+      final banner = _feedBanners[bi % _feedBanners.length];
+      final every = banner.feedEvery < 1 ? 4 : banner.feedEvery;
+      final count = (i + every <= _users.length) ? every : _users.length - i;
+      plan.add(_FeedChunk(start: i, count: count, banner: banner));
+      i += count;
+      bi++;
+    }
+
+    return SliverList(
+      delegate: SliverChildBuilderDelegate((context, ci) {
+        final chunk = plan[ci];
+        return LayoutBuilder(
+          builder: (_, constraints) {
+            final tileW = (constraints.maxWidth - 12) / 2;
+            final tileH = tileW / 0.78;
+            final rows = <Widget>[];
+            for (var r = 0; r < chunk.count; r += 2) {
+              final a = _users[chunk.start + r];
+              final b = (r + 1 < chunk.count) ? _users[chunk.start + r + 1] : null;
+              rows.add(
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: SizedBox(
+                    height: tileH,
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _LiveGridTile(
+                            user: a,
+                            showTag: !_isParty,
+                            onTap: () => _joinLive(context, a),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: b != null
+                              ? _LiveGridTile(
+                                  user: b,
+                                  showTag: !_isParty,
+                                  onTap: () => _joinLive(context, b),
+                                )
+                              : const SizedBox(),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }
+            return Column(
+              children: [
+                ...rows,
+                Padding(
+                  padding: const EdgeInsets.only(left: 14, right: 14, bottom: 12),
+                  child: _FeedBannerCard(banner: chunk.banner),
+                ),
+              ],
+            );
+          },
         );
-      }, childCount: _users.length),
+      }, childCount: plan.length),
     );
   }
 
@@ -1784,6 +1871,50 @@ class _VideoCallTabState extends State<_VideoCallTab> {
             ),
           const SliverToBoxAdapter(child: SizedBox(height: 80)),
         ],
+      ),
+    );
+  }
+}
+
+/// One grid chunk: `count` live cards starting at `start`, followed by
+/// a full-width [banner] row.
+class _FeedChunk {
+  const _FeedChunk({required this.start, required this.count, required this.banner});
+  final int start;
+  final int count;
+  final BannerItem banner;
+}
+
+/// Full-width banner injected inside the live list grid.
+class _FeedBannerCard extends StatelessWidget {
+  final BannerItem banner;
+  const _FeedBannerCard({required this.banner});
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {
+        final url = banner.url;
+        if (url != null && url.isNotEmpty) {
+          context.pushNamed(AppRoutes.webView, extra: {'url': url, 'title': ''});
+        }
+      },
+      borderRadius: BorderRadius.circular(14),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: AspectRatio(
+          aspectRatio: 4.2,
+          child: CachedNetworkImage(
+            imageUrl: banner.image!,
+            fit: BoxFit.cover,
+            placeholder: (_, __) => Container(
+              color: AppTheme.themed(context, 0xFF2A2A3E, 0xFFE0E0E0),
+            ),
+            errorWidget: (_, __, ___) => Container(
+              color: AppTheme.themed(context, 0xFF2A2A3E, 0xFFE0E0E0),
+            ),
+          ),
+        ),
       ),
     );
   }

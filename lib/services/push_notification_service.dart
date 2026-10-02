@@ -494,12 +494,14 @@ class PushNotificationService {
               AndroidFlutterLocalNotificationsPlugin>()
           ?.createNotificationChannel(_callChannel);
 
-      // 3. Request FCM permission (iOS + Android 13+)
-      await FirebaseMessaging.instance.requestPermission(
-        alert: true,
-        badge: true,
-        sound: true,
-      );
+      // 3. FCM permission is NOT requested here — the app first shows the
+      // pretty "Enable Notifications?" pre-prompt dialog on the home screen
+      // (NotificationPrompt.maybeShow), which calls requestPermission() only
+      // when the user taps "Yes". If the permission was already granted,
+      // nothing further is needed.
+      final settings = await FirebaseMessaging.instance.getNotificationSettings();
+      Log.d('PushNotification',
+          'notification auth=${settings.authorizationStatus}');
 
       // 4. Set foreground notification presentation options
       await FirebaseMessaging.instance
