@@ -145,9 +145,9 @@ class _LudoRoomPanelState extends State<LudoRoomPanel> {
   Widget build(BuildContext context) {
     final w = MediaQuery.sizeOf(context).width;
     final h = MediaQuery.sizeOf(context).height;
-    // Square board + slim top bar inside the page; while open the seat grid
-    // collapses to a strip, so the board can take most of the screen.
-    final panelH = (w * 1.07).clamp(280.0, h * 0.68);
+    // Full-width square board + slim top bar (~42px) inside the page; while
+    // open the seat grid collapses to a strip so the board takes the width.
+    final panelH = ((w - 6) + 46).clamp(280.0, h * 0.74);
 
     return Padding(
       padding: const EdgeInsets.only(top: 6),
@@ -155,7 +155,7 @@ class _LudoRoomPanelState extends State<LudoRoomPanel> {
         borderRadius: BorderRadius.circular(14),
         child: Container(
           height: panelH,
-          margin: const EdgeInsets.symmetric(horizontal: 6),
+          margin: const EdgeInsets.symmetric(horizontal: 3),
           decoration: BoxDecoration(
             color: const Color(0xFF2A1B52).withValues(alpha: 0.92),
             borderRadius: BorderRadius.circular(14),
