@@ -5031,6 +5031,23 @@ class ApiService {
     return RestResponse.fromJson(_asMap(r.data));
   }
 
+  /// Whether the account has a password set. Social-login accounts start
+  /// without one — the app forces a one-time set-password step on launch.
+  /// GET /user/passwordStatus
+  static Future<bool> hasPassword(String userId) async {
+    try {
+      final r = await _dio.get(
+        '/user/passwordStatus',
+        queryParameters: {'userId': userId},
+      );
+      final m = _asMap(r.data);
+      return m['data']?['hasPassword'] == true;
+    } catch (_) {
+      // Fail-open: never lock the user out on a network error.
+      return true;
+    }
+  }
+
   /// Get advertisement config (banner, interstitial, reward, native ads).
   /// Native: GET /advertisement → AdsRoot
   static Future<AdsRoot> getAds() async {

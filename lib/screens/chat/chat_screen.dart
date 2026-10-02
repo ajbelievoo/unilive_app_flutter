@@ -2088,21 +2088,9 @@ class _ChatScreenState extends State<ChatScreen> {
       messageId: msg.id,
     );
 
-    SocketService.instance.emit(Const.eventChat, {
-      'senderId': _myUserId,
-      'receiverId': widget.otherUserId,
-      'topic': _topic,
-      'messageType': 'gift',
-      'message': giftName,
-      'giftImage': giftImage,
-      'giftName': giftName,
-      'giftCoin': giftCoin,
-      'giftType': giftType,
-      'count': count,
-      'svgaImage': svgaImage,
-      'time': now,
-      'status': 'sent',
-    });
+    // NOTE: no socket emit here — GiftBottomSheet already emitted the chat
+    // event per-recipient before invoking this callback. Emitting again
+    // persisted a second Chat doc server-side (duplicate gift bubbles).
     Log.d(_tag, 'onChatGiftSent: gift=$giftName, coin=$giftCoin');
   }
 
@@ -2145,12 +2133,16 @@ class _ChatScreenState extends State<ChatScreen> {
   }
 
   /// Check for unanimated gift messages and play their animation.
-  /// Called after history load — gifts that were sent while the user was
-  /// not in the chat will animate when the chat is opened.
+  /// Called after history load — only gifts that arrived while the chat was
+  /// closed animate (unread + not mine). Previously the animation replayed
+  /// on EVERY open because the played-set is per-session.
   void _checkPendingGiftAnimations() {
     for (final msg in _messages) {
       if (msg.messageType == 'gift' &&
           msg.id != null &&
+          msg.senderId != _myUserId &&
+          msg.isRead != true &&
+          msg.status != 'read' &&
           !_animatedGiftIds.contains(msg.id)) {
         // Play the first unanimated gift, then stop (one at a time).
         _playGiftAnimation(

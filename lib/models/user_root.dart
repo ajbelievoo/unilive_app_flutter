@@ -94,6 +94,7 @@ class User {
     this.isReferral = false,
     this.enableToLive = false,
     this.videoCallOptIn = true,
+    this.isDnd = false,
     this.isPhoneBound = false,
     this.isGoogleBound = false,
     this.isFacebookBound = false,
@@ -203,6 +204,7 @@ class User {
   final bool isReferral;
   final bool enableToLive;
   final bool videoCallOptIn;
+  final bool isDnd;
   bool isPhoneBound;
   bool isGoogleBound;
   bool isFacebookBound;
@@ -359,6 +361,7 @@ class User {
       isReferral: parseBool(json['isReferral']),
       enableToLive: parseBool(json['enableToLive']),
       videoCallOptIn: parseBool(json['videoCallOptIn'], true),
+      isDnd: parseBool(json['isDnd']),
       isPhoneBound: parseBool(json['isPhoneBound']),
       isGoogleBound: parseBool(json['isGoogleBound']),
       isFacebookBound: parseBool(json['isFacebookBound']),
@@ -583,6 +586,7 @@ class User {
     'isReferral': isReferral,
     'enableToLive': enableToLive,
     'videoCallOptIn': videoCallOptIn,
+    'isDnd': isDnd,
     'isPhoneBound': isPhoneBound,
     'isGoogleBound': isGoogleBound,
     'isFacebookBound': isFacebookBound,

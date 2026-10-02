@@ -346,7 +346,7 @@ class AppRoutes {
   // ---- Router ------------------------------------------------------------
   static final GoRouter router = GoRouter(
     navigatorKey: rootNavigatorKey,
-    initialLocation: '/$splashPoster',
+    initialLocation: '/$splash',
     debugLogDiagnostics: true,
     observers: [routeObserver],
     errorBuilder:

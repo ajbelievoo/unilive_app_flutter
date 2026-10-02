@@ -83,6 +83,94 @@ void showChangePasswordDialog(BuildContext context) {
   );
 }
 
+/// One-time forced password setup for accounts that have none (social-login
+/// signups). Called on app launch — the dialog cannot be dismissed until a
+/// valid password is saved, so every account ends up with a real password
+/// (needed for the Change Password flow later).
+Future<void> ensurePasswordSet(BuildContext context) async {
+  final session = context.read<SessionManager>();
+  final userId = session.userId;
+  if (userId.isEmpty) return;
+  if (await ApiService.hasPassword(userId)) return;
+  if (!context.mounted) return;
+
+  final newCtrl = TextEditingController();
+  final confirmCtrl = TextEditingController();
+
+  await showDialog<void>(
+    context: context,
+    barrierDismissible: false,
+    builder: (ctx) => PopScope(
+      canPop: false,
+      child: AlertDialog(
+        title: const Text('Set Your Password'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              'Secure your account — set a password to continue.',
+              style: TextStyle(fontSize: 13, color: Colors.grey),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: newCtrl,
+              obscureText: true,
+              decoration: const InputDecoration(
+                hintText: 'New password (min 6 characters)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            const SizedBox(height: 10),
+            TextField(
+              controller: confirmCtrl,
+              obscureText: true,
+              decoration: const InputDecoration(
+                hintText: 'Confirm password',
+                border: OutlineInputBorder(),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton(
+              onPressed: () async {
+                if (newCtrl.text.length < 6) {
+                  Fluttertoast.showToast(msg: 'Password must be at least 6 characters');
+                  return;
+                }
+                if (newCtrl.text != confirmCtrl.text) {
+                  Fluttertoast.showToast(msg: 'Passwords do not match');
+                  return;
+                }
+                try {
+                  // No old password exists yet — backend skips the check
+                  // when user.password is empty (JWT already proves identity).
+                  final res = await ApiService.changePassword(
+                    userId: userId,
+                    oldPassword: '',
+                    newPassword: newCtrl.text,
+                  );
+                  if (res.status == true) {
+                    if (ctx.mounted) Navigator.pop(ctx);
+                    Fluttertoast.showToast(msg: 'Password set successfully');
+                  } else {
+                    Fluttertoast.showToast(msg: res.message ?? 'Failed to set password');
+                  }
+                } catch (_) {
+                  Fluttertoast.showToast(msg: 'Failed to set password');
+                }
+              },
+              child: const Text('Set Password'),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
+
 const String kAppLanguageKey = 'app_language';
 
 /// Returns the user's saved app language (defaults to English).

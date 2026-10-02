@@ -49,7 +49,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
     setState(() {
       _darkMode = context.read<ThemeProvider>().isDark;
       _videoCallOptIn = session.getUser()?.videoCallOptIn ?? true;
-      _doNotDisturb = session.getBool(Const.doNotDisturb);
+      // Server is the source of truth for DND (it gates incoming calls);
+      // the local pref is only the fast-path cache used by the auto-decline.
+      _doNotDisturb =
+          session.getUser()?.isDnd ?? session.getBool(Const.doNotDisturb);
       _autoAnswerVip = session.getBool('autoAnswerVip');
       _appRated = session.getBool('appRated');
     });
@@ -83,11 +86,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Future<void> _toggleDnd(bool v) async {
     final session = context.read<SessionManager>();
-    session.saveBool(Const.doNotDisturb, v);
+    final user = session.getUser();
+    session.saveBool(Const.doNotDisturb, v); // local fast-path for auto-decline
     setState(() => _doNotDisturb = v);
     Fluttertoast.showToast(
       msg: v ? 'Do Not Disturb enabled — incoming calls will be declined' : 'Do Not Disturb disabled',
     );
+    // Sync to the server so the call-gate (`isDnd`) honours it for callers.
+    if (user?.id != null) {
+      try {
+        await ApiService.updateUser(fields: {
+          'userId': user!.id!,
+          'isDnd': v.toString(),
+        });
+      } catch (_) {}
+    }
   }
 
   Future<void> _toggleAutoAnswerVip(bool v) async {

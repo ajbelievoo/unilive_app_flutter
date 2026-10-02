@@ -1,11 +1,14 @@
 import 'dart:async';
 import 'dart:io';
+import 'dart:ui';
 
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
+import '../../models/splash_poster_model.dart';
 import '../../models/user_root.dart';
 import '../../services/api_service.dart';
 import '../../services/session_manager.dart';
@@ -15,6 +18,9 @@ import '../../theme/app_theme.dart';
 import '../../utils/block_helper.dart';
 import '../../utils/log.dart';
 
+/// Single entry screen — brand splash + optional admin poster, then routes
+/// to /main (logged in) or /login. Previously a separate SplashPosterScreen
+/// sat in front of this one adding a full extra hop.
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -25,9 +31,13 @@ class SplashScreen extends StatefulWidget {
 class _SplashScreenState extends State<SplashScreen>
     with SingleTickerProviderStateMixin {
   bool _hasNavigated = false;
-  Timer? _timer;
-  Timer? _fallbackTimer;
+  Timer? _minTimer;
+  Timer? _posterTimer;
   AnimationController? _pulseController;
+
+  SplashPoster? _poster;
+  bool _posterChecked = false;
+  bool _sessionReady = false;
 
   @override
   void initState() {
@@ -35,17 +45,82 @@ class _SplashScreenState extends State<SplashScreen>
 
     _pulseController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 1600),
     )..repeat(reverse: true);
 
-    // Primary timer: navigate after 2 seconds.
-    _timer = Timer(const Duration(seconds: 2), () => _navigate());
+    // Brand flash minimum, then navigate as soon as the session resolves.
+    _minTimer = Timer(const Duration(milliseconds: 900), () {
+      _sessionReady = true;
+      _maybeNavigate();
+    });
 
-    // Fallback timer: if primary fails, try again at 5 seconds.
-    _fallbackTimer = Timer(const Duration(seconds: 5), () => _navigate());
-
-    // Fire-and-forget background tasks (non-blocking).
     _startBackgroundTasks();
+    _bootstrap();
+  }
+
+  Future<void> _bootstrap() async {
+    // Poster check runs in parallel with the session refresh. A poster only
+    // ever *extends* the splash — when disabled/absent we never wait on it.
+    ApiService.getSplashPoster()
+        .timeout(const Duration(seconds: 3))
+        .then((res) {
+          if (res.status && res.data != null && res.data!.enabled &&
+              (res.data!.image ?? '').isNotEmpty) {
+            _poster = res.data;
+            _posterChecked = true;
+            if (mounted && !_hasNavigated) {
+              setState(() {});
+              final secs = _poster?.duration ?? 3;
+              _posterTimer = Timer(
+                Duration(seconds: secs.clamp(1, 5)),
+                _navigate,
+              );
+            }
+          } else {
+            _posterChecked = true;
+            _maybeNavigate();
+          }
+        })
+        .catchError((_) {
+          _posterChecked = true;
+          _maybeNavigate();
+        });
+
+    await _resolveSession();
+  }
+
+  void _maybeNavigate() {
+    // Wait until BOTH the brand-flash minimum and the session resolve — but
+    // never wait on the poster fetch (speed over promos).
+    if (_sessionReady && !_hasNavigated) _navigate();
+  }
+
+  Future<void> _resolveSession() async {
+    try {
+      final session = context.read<SessionManager>();
+      final auth = context.read<AuthProvider>();
+      final user = session.getUser();
+      final isLoggedIn = session.isLoggedIn &&
+          user != null &&
+          user.id != null &&
+          user.id!.isNotEmpty;
+      if (isLoggedIn) {
+        final refresh = await auth
+            .refreshUserRoot()
+            .timeout(
+              const Duration(seconds: 3),
+              onTimeout: () => UserRoot(status: true),
+            );
+        if (!mounted) return;
+        if (!refresh.status && BlockHelper.handleResult(context, refresh)) {
+          _hasNavigated = true; // blocked — BlockHelper owns the UI now
+          return;
+        }
+      }
+    } catch (e) {
+      debugPrint('[Splash] session refresh failed: $e');
+    }
+    _maybeNavigate();
   }
 
   void _startBackgroundTasks() {
@@ -57,16 +132,11 @@ class _SplashScreenState extends State<SplashScreen>
             session.saveSetting(res.setting!);
           }
         }).catchError((_) {});
-        // Fetch active AI features from the Master AI Control Engine on
-        // app launch. Non-blocking — the AIFeatureManager retains whatever
-        // it last cached.
         try {
           context.read<AIFeatureManager>().fetchActiveFeatures().catchError((e) {
             Log.w('Splash', 'AI feature fetch failed: $e');
           });
         } catch (_) {}
-        // Fetch admin-configured call system settings (free trial, billing,
-        // feature flags) from the Control Center. Non-blocking.
         try {
           final callConfig = context.read<CallConfigProvider>();
           callConfig.load().catchError((e) {
@@ -78,7 +148,6 @@ class _SplashScreenState extends State<SplashScreen>
           if (ip.country != null) session.saveCountry(ip.country!);
           if (ip.query != null) session.saveIpAddress(ip.query!);
         }).catchError((_) {});
-        // Record app testing/device analytics (native: POST /appTesting)
         ApiService.createTesting(
           platformType: Platform.isAndroid ? 'android' : 'ios',
           deviceName: '${Platform.operatingSystem} ${Platform.operatingSystemVersion}',
@@ -95,55 +164,30 @@ class _SplashScreenState extends State<SplashScreen>
   Future<void> _navigate() async {
     if (_hasNavigated || !mounted) return;
     _hasNavigated = true;
-    _timer?.cancel();
-    _fallbackTimer?.cancel();
-
-    debugPrint('[Splash] Attempting navigation...');
+    _minTimer?.cancel();
+    _posterTimer?.cancel();
 
     String target = '/login';
     try {
       final session = context.read<SessionManager>();
-      final auth = context.read<AuthProvider>();
       final user = session.getUser();
-      debugPrint('[Splash] isLoggedIn: ${session.isLoggedIn}');
-      debugPrint('[Splash] user: ${user?.id}');
-
       final isLoggedIn = session.isLoggedIn &&
           user != null &&
           user.id != null &&
           user.id!.isNotEmpty;
-      final hasUser = user != null && user.id != null && user.id!.isNotEmpty;
-
-      if (isLoggedIn || hasUser) {
-        final refresh = await auth
-            .refreshUserRoot()
-            .timeout(const Duration(seconds: 3), onTimeout: () => UserRoot(status: true));
-        if (!mounted) return;
-        if (!refresh.status && BlockHelper.handleResult(context, refresh)) {
-          return;
-        }
-        if (isLoggedIn) {
-          target = '/main';
-        } else {
-          debugPrint('[Splash] isLogin flag false but user exists, restoring session');
-          session.setLoggedIn(true);
-          target = '/main';
-        }
+      if (isLoggedIn) {
+        target = '/main';
+      } else if (user != null && user.id != null && user.id!.isNotEmpty) {
+        session.setLoggedIn(true);
+        target = '/main';
       }
-    } catch (e) {
-      debugPrint('[Splash] session read failed: $e');
-    }
+    } catch (_) {}
 
-    debugPrint('[Splash] Target route: $target');
-
-    // Using a microtask to ensure we are not in the middle of a build
     Future.microtask(() {
       if (!mounted) return;
       try {
         context.go(target);
-        debugPrint('[Splash] context.go called successfully');
       } catch (e) {
-        debugPrint('[Splash] context.go failed, trying pushReplacement: $e');
         Navigator.of(context).pushReplacementNamed(target);
       }
     });
@@ -151,104 +195,183 @@ class _SplashScreenState extends State<SplashScreen>
 
   @override
   void dispose() {
-    _timer?.cancel();
-    _fallbackTimer?.cancel();
+    _minTimer?.cancel();
+    _posterTimer?.cancel();
     _pulseController?.dispose();
     super.dispose();
+  }
+
+  // ── UI ──────────────────────────────────────────────────────────────
+
+  Widget _glowOrb(double size, Color color, double opacity) {
+    return ImageFiltered(
+      imageFilter: ImageFilter.blur(sigmaX: 60, sigmaY: 60),
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: color.withValues(alpha: opacity),
+        ),
+      ),
+    );
+  }
+
+  Widget _brandSplash() {
+    return Container(
+      decoration: const BoxDecoration(gradient: AppTheme.brandGradient),
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Soft glowing orbs for depth.
+          Positioned(
+            top: -60,
+            left: -50,
+            child: _glowOrb(220, const Color(0xFFFF5C8A), 0.35),
+          ),
+          Positioned(
+            bottom: -40,
+            right: -60,
+            child: _glowOrb(260, const Color(0xFF7E3FF2), 0.4),
+          ),
+          Positioned(
+            top: 140,
+            right: -80,
+            child: _glowOrb(160, const Color(0xFF00C2FF), 0.25),
+          ),
+          SafeArea(
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // Logo wrapped in an animated halo.
+                  AnimatedBuilder(
+                    animation: _pulseController!,
+                    builder: (_, child) {
+                      final pulse = 1 + (_pulseController!.value * 0.06);
+                      return Transform.scale(scale: pulse, child: child);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.all(6),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.white.withValues(alpha: 0.45),
+                            blurRadius: 46,
+                            spreadRadius: 10,
+                          ),
+                          BoxShadow(
+                            color: const Color(0xFFFF5C8A)
+                                .withValues(alpha: 0.35),
+                            blurRadius: 90,
+                            spreadRadius: 26,
+                          ),
+                        ],
+                      ),
+                      child: ClipOval(
+                        child: BackdropFilter(
+                          filter: ImageFilter.blur(sigmaX: 8, sigmaY: 8),
+                          child: Image.asset(
+                            'assets/images/unilive_logo.png',
+                            width: 118,
+                            height: 118,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 30),
+                  const Text(
+                    'Unilive',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 42,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 3,
+                      shadows: [
+                        Shadow(
+                          color: Color(0x55000000),
+                          offset: Offset(0, 5),
+                          blurRadius: 16,
+                        ),
+                        Shadow(color: Color(0x66FFFFFF), blurRadius: 30),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  const Text(
+                    'Live • Stream • Connect',
+                    style: TextStyle(
+                      color: Colors.white70,
+                      fontSize: 15,
+                      fontWeight: FontWeight.w500,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 60),
+                  FadeTransition(
+                    opacity: _pulseController!,
+                    child: const SizedBox(
+                      width: 22,
+                      height: 22,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.4,
+                        valueColor:
+                            AlwaysStoppedAnimation<Color>(Colors.white),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _posterSplash() {
+    return GestureDetector(
+      onTap: _navigate,
+      child: Stack(
+        fit: StackFit.expand,
+        children: [
+          CachedNetworkImage(
+            imageUrl: _poster!.image!,
+            fit: BoxFit.cover,
+            width: double.infinity,
+            height: double.infinity,
+            placeholder: (_, __) => _brandSplash(),
+            errorWidget: (_, __, ___) {
+              WidgetsBinding.instance.addPostFrameCallback((_) => _navigate());
+              return _brandSplash();
+            },
+          ),
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 16,
+            right: 16,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.black54,
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: const Text(
+                'Skip',
+                style: TextStyle(color: Colors.white, fontSize: 14),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(gradient: AppTheme.brandGradient),
-        child: SafeArea(
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Logo with soft brand glow.
-                Container(
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.white.withValues(alpha: 0.25),
-                        blurRadius: 32,
-                        spreadRadius: 4,
-                      ),
-                    ],
-                  ),
-                  child: Image.asset(
-                    'assets/images/unilive_logo.png',
-                    width: 120,
-                    height: 120,
-                  ),
-                ),
-                const SizedBox(height: 28),
-                // Brand name.
-                const Text(
-                  'Unilive',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 40,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 3,
-                    shadows: [
-                      Shadow(
-                        color: Color(0x40000000),
-                        offset: Offset(0, 4),
-                        blurRadius: 12,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 10),
-                // Tagline.
-                const Text(
-                  'Live • Stream • Connect',
-                  style: TextStyle(
-                    color: Colors.white70,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                const SizedBox(height: 56),
-                // Pulsing dot.
-                FadeTransition(
-                  opacity: _pulseController!,
-                  child: Container(
-                    width: 8,
-                    height: 8,
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 32),
-                // Tap to continue.
-                GestureDetector(
-                  onTap: () => _navigate(),
-                  child: FadeTransition(
-                    opacity: _pulseController!,
-                    child: const Text(
-                      'Tap to continue',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 15,
-                        fontWeight: FontWeight.w600,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
+      body: _posterChecked && _poster != null ? _posterSplash() : _brandSplash(),
     );
   }
 }
