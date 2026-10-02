@@ -103,6 +103,41 @@ class CallRateProvider extends ChangeNotifier {
     }
   }
 
+  /// Toggle the host's availability in the video/random call pool.
+  Future<bool> setOptIn(String userId, bool optIn) async {
+    _updating = true;
+    _error = null;
+    notifyListeners();
+    try {
+      final res = await ApiService.setVideoCallOptIn(userId: userId, optIn: optIn);
+      if (res.status) {
+        final cur = _hostRate;
+        if (cur != null) {
+          _hostRate = HostCallRate(
+            userId: cur.userId,
+            hostLevel: cur.hostLevel,
+            customRate: cur.customRate,
+            effectiveRate: cur.effectiveRate,
+            maxAllowedRate: cur.maxAllowedRate,
+            availableRates: cur.availableRates,
+            videoCallOptIn: optIn,
+          );
+        }
+        notifyListeners();
+        return true;
+      }
+      _error = res.message ?? 'Failed to update availability';
+      return false;
+    } catch (e, s) {
+      Log.e(_tag, 'setOptIn failed', e, s);
+      _error = 'Failed to update availability';
+      return false;
+    } finally {
+      _updating = false;
+      notifyListeners();
+    }
+  }
+
   /// Convenience: get the effective rate for the current host.
   int get effectiveRate => _hostRate?.effectiveRate ?? 0;
 

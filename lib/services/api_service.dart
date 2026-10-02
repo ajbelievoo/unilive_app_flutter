@@ -5555,6 +5555,18 @@ class ApiService {
     return CallRateUpdateRoot.fromJson(_asMap(r.data));
   }
 
+  /// Host self-service: join or leave the video/random call pool.
+  static Future<CallRateUpdateRoot> setVideoCallOptIn({
+    required String userId,
+    required bool optIn,
+  }) async {
+    final r = await _dio.post(
+      '/call-rate/opt-in',
+      data: {'userId': userId, 'optIn': optIn},
+    );
+    return CallRateUpdateRoot.fromJson(_asMap(r.data));
+  }
+
   /// Get hosts available for video calls (opted-in via videoCallOptIn, online, with call rate).
   ///
   /// [sort] can be 'rank' (default smart ranking), 'rating', 'level', 'responseTime'.

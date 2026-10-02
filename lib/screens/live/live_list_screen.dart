@@ -1631,7 +1631,11 @@ class _VideoCallTabState extends State<_VideoCallTab> {
       _error = false;
     });
     try {
-      final hosts = await ApiService.getVideoCallHosts();
+      final userId = SessionManager.instance?.getUser()?.id ?? '';
+      final hosts = await ApiService.getVideoCallHosts(
+        userId: userId.isEmpty ? null : userId,
+        limit: 100,
+      );
       if (mounted) {
         setState(() {
           _hosts.clear();

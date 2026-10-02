@@ -52,6 +52,7 @@ class HostCallRate {
     this.effectiveRate = 0,
     this.maxAllowedRate = 0,
     this.availableRates = const [],
+    this.videoCallOptIn = false,
   });
 
   final String? userId;
@@ -60,6 +61,7 @@ class HostCallRate {
   final int effectiveRate;
   final int maxAllowedRate;
   final List<int> availableRates;
+  final bool videoCallOptIn;
 
   factory HostCallRate.fromJson(Map<String, dynamic> json) {
     final data = json['data'] is Map<String, dynamic>
@@ -78,6 +80,7 @@ class HostCallRate {
       effectiveRate: parseInt(data['effectiveRate']),
       maxAllowedRate: parseInt(data['maxAllowedRate']),
       availableRates: rates,
+      videoCallOptIn: parseBool(data['videoCallOptIn']),
     );
   }
 }

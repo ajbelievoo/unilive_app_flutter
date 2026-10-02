@@ -63,6 +63,12 @@ class _CallRateSettingsScreenState extends State<CallRateSettingsScreen> {
               children: [
                 _CurrentRateCard(hostRate: hostRate),
                 const SizedBox(height: 16),
+                _OptInCard(
+                  enabled: hostRate.videoCallOptIn,
+                  busy: provider.updating,
+                  onChanged: _setOptIn,
+                ),
+                const SizedBox(height: 16),
                 _LevelRatesList(
                   levels: provider.levels,
                   hostLevel: hostRate.hostLevel,
@@ -97,6 +103,24 @@ class _CallRateSettingsScreenState extends State<CallRateSettingsScreen> {
     final success = await provider.setRate(userId, rate);
     if (!mounted) return;
     _showResult(success, provider.error, success ? 'Rate updated successfully' : null);
+  }
+
+  Future<void> _setOptIn(bool optIn) async {
+    final provider = context.read<CallRateProvider>();
+    final userId = SessionManager.instance?.getUser()?.id ?? '';
+    if (userId.isEmpty) return;
+
+    final success = await provider.setOptIn(userId, optIn);
+    if (!mounted) return;
+    _showResult(
+      success,
+      provider.error,
+      success
+          ? (optIn
+              ? 'You are now visible for video & random calls'
+              : 'You are hidden from video & random calls')
+          : null,
+    );
   }
 
   Future<void> _resetRate() async {
@@ -167,6 +191,70 @@ class _CurrentRateCard extends StatelessWidget {
                 const _InfoChip(label: 'Default rate'),
             ],
           ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OptInCard extends StatelessWidget {
+  final bool enabled;
+  final bool busy;
+  final ValueChanged<bool> onChanged;
+  const _OptInCard({required this.enabled, required this.busy, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.cardBg(context),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: enabled ? AppTheme.green.withValues(alpha: 0.4) : AppTheme.hairline(context),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: (enabled ? AppTheme.green : AppTheme.primary).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              enabled ? Icons.videocam : Icons.videocam_off,
+              color: enabled ? AppTheme.green : AppTheme.fg(context, 0.5),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Accept video & random calls',
+                  style: TextStyle(
+                    color: AppTheme.fg(context),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  enabled
+                      ? 'You appear in the Video Call list and random match'
+                      : 'Turn on to get calls and appear in the Video Call list',
+                  style: TextStyle(color: AppTheme.fg(context, 0.55), fontSize: 12),
+                ),
+              ],
+            ),
+          ),
+          if (busy)
+            const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+          else
+            Switch(value: enabled, onChanged: onChanged),
         ],
       ),
     );
