@@ -1,5 +1,22 @@
 # Belive - Flutter Live Streaming App
 
+## Effect Settings & Audio Room Settings (added 2026-10-02)
+- `EffectSettingsService` (`lib/services/effect_settings_service.dart`) — 9
+  toggles persisted per-key in SharedPreferences; `getSettings()` refreshes the
+  cached `settings`. Consumers: `live_broadcast_overlay` (all broadcast types),
+  `vip_entry_overlay` (skips vehicle phase when Vehicle Effect off),
+  `in_app_notification_banner` (lucky-bag marquee), both room screens
+  (join/leave comments, gift/vehicle/game/PK/fighter/lucky-bag banners).
+- Audio room settings: `roomChatPermission` (chatMode anyone|admins) and
+  `micPermission` (micMode anyone|invite) socket events — persisted on the
+  LiveUser doc; `chatMode==admins` blocks non-admin `_sendComment`, `micMode==
+  invite` forces raise-hand even in wheat mode. Admins tile →
+  `GET /audioRoom/admin-list`, Blocked List → `GET /audioRoom/bannedUsers`
+  (room-scoped), Kick History → `GET /audioRoom/kickHistory`.
+- PK voting: `pkVote` socket = free once-per-user vote; `POST
+  /audioRoom/pkVote` = paid diamond vote ({pkId, liveStreamingId,
+  voterUserId, hostChoice, coin}) — server debits + broadcasts pkScoreUpdate.
+
 ## Project Overview
 Belive is a Flutter port of the native Android "UnilivePro" live streaming app.
 It provides live streaming, audio rooms, PK battles, reels, chat, gifting, wallet,
