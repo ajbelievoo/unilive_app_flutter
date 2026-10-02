@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../../models/family_models.dart';
 import '../../services/api_service.dart';
+import '../../theme/app_theme.dart';
 import '../../utils/log.dart';
 import 'package:belive/widgets/preloader.dart';
 
@@ -50,12 +51,12 @@ class _FamilyAchievementsScreenState extends State<FamilyAchievementsScreen> {
     final activity = _achievements.where((a) => a.category == 'activity').toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFF0F0B21),
+      backgroundColor: AppTheme.themed(context, 0xFF0F0B21, 0xFFF8F7FE),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: const BackButton(color: Colors.white),
-        title: const Text('Family Glory', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        leading: BackButton(color: AppTheme.fg(context)),
+        title: Text('Family Glory', style: TextStyle(color: AppTheme.fg(context), fontWeight: FontWeight.bold)),
         centerTitle: true,
       ),
       body: _loading
@@ -63,7 +64,7 @@ class _FamilyAchievementsScreenState extends State<FamilyAchievementsScreen> {
           : RefreshIndicator(
               onRefresh: _load,
               color: Colors.amber,
-              backgroundColor: const Color(0xFF1A1240),
+              backgroundColor: AppTheme.themed(context, 0xFF1A1240),
               child: SingleChildScrollView(
                 padding: const EdgeInsets.only(bottom: 30),
                 child: Column(
@@ -157,10 +158,10 @@ class _FamilyAchievementsScreenState extends State<FamilyAchievementsScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+        Text(title, style: TextStyle(color: AppTheme.fg(context), fontSize: 16, fontWeight: FontWeight.bold)),
         const SizedBox(height: 12),
         if (items.isEmpty)
-          const Text('No medals in this category yet.', style: TextStyle(color: Colors.white38, fontSize: 12))
+          Text('No medals in this category yet.', style: TextStyle(color: AppTheme.fg(context, 0.35), fontSize: 12))
         else
           ...items.map((a) => _medal(a)),
       ],
@@ -179,9 +180,9 @@ class _FamilyAchievementsScreenState extends State<FamilyAchievementsScreen> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha:0.05),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white12),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: Row(
         children: [
@@ -189,20 +190,20 @@ class _FamilyAchievementsScreenState extends State<FamilyAchievementsScreen> {
             width: 50,
             height: 50,
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha:0.1),
+              color: AppTheme.fg(context, 0.08),
               shape: BoxShape.circle,
             ),
             child: asset != null && asset.isNotEmpty
                 ? ClipOval(child: CachedNetworkImage(imageUrl: asset, fit: BoxFit.cover))
-                : Icon(icon, color: a.isUnlocked ? Colors.amber : Colors.white24, size: 30),
+                : Icon(icon, color: a.isUnlocked ? Colors.amber : AppTheme.fg(context, 0.25), size: 30),
           ),
           const SizedBox(width: 16),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(a.name ?? 'Medal', style: TextStyle(color: a.isUnlocked ? Colors.white : Colors.white38, fontWeight: FontWeight.bold)),
-                Text(a.description ?? '', style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                Text(a.name ?? 'Medal', style: TextStyle(color: a.isUnlocked ? AppTheme.fg(context) : AppTheme.fg(context, 0.4), fontWeight: FontWeight.bold)),
+                Text(a.description ?? '', style: TextStyle(color: AppTheme.fg(context, 0.5), fontSize: 11)),
                 if (a.target > 0)
                   Padding(
                     padding: const EdgeInsets.only(top: 6),
@@ -211,7 +212,7 @@ class _FamilyAchievementsScreenState extends State<FamilyAchievementsScreen> {
                       child: LinearProgressIndicator(
                         value: a.progressPercent,
                         minHeight: 5,
-                        backgroundColor: Colors.white12,
+                        backgroundColor: AppTheme.fg(context, 0.12),
                         valueColor: AlwaysStoppedAnimation<Color>(a.isUnlocked ? Colors.green : Colors.amber),
                       ),
                     ),
@@ -220,7 +221,7 @@ class _FamilyAchievementsScreenState extends State<FamilyAchievementsScreen> {
             ),
           ),
           if (!a.isUnlocked)
-            const Icon(Icons.lock_outline, color: Colors.white24, size: 20)
+            Icon(Icons.lock_outline, color: AppTheme.fg(context, 0.25), size: 20)
           else
             const Icon(Icons.check_circle, color: Colors.green, size: 20),
         ],

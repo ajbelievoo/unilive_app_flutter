@@ -66,9 +66,9 @@ class GlassCard extends StatelessWidget {
     return Container(
       padding: padding,
       decoration: BoxDecoration(
-        color: color ?? Colors.white.withValues(alpha: 0.08),
+        color: color ?? AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(borderRadius),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: child,
     );
@@ -369,7 +369,7 @@ class PremiumTile extends StatelessWidget {
       ),
       title: Text(title, style: TextStyle(fontWeight: FontWeight.w600, color: isDanger ? Colors.red : null)),
       subtitle: subtitle != null ? Text(subtitle!, style: const TextStyle(fontSize: 12)) : null,
-      trailing: trailing ?? const Icon(Icons.chevron_right, color: Colors.grey),
+      trailing: trailing ?? Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.45)),
     );
   }
 }

@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 import '../models/ai_feature_model.dart';
 import '../providers/ai_feature_manager.dart';
 import '../services/agora_extensions_service.dart';
+import '../theme/app_theme.dart';
 
 /// Show the voice changer preset picker.
 ///
@@ -21,7 +22,7 @@ void showVoiceChangerSheet(BuildContext context, RtcEngine engine) {
   final ai = context.read<AIFeatureManager>();
   showModalBottomSheet(
     context: context,
-    backgroundColor: const Color(0xFF1A1A2E),
+    backgroundColor: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -74,7 +75,7 @@ class _VoiceChangerSheetState extends State<_VoiceChangerSheet> {
             Text(
               msg,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
+              style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 14),
             ),
             const SizedBox(height: 24),
           ],
@@ -93,17 +94,17 @@ class _VoiceChangerSheetState extends State<_VoiceChangerSheet> {
             children: [
               const Icon(Icons.graphic_eq, color: Colors.cyan, size: 24),
               const SizedBox(width: 8),
-              const Text(
+              Text(
                 'Voice Changer',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppTheme.fg(context),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
               ),
               const Spacer(),
               IconButton(
-                icon: const Icon(Icons.close, color: Colors.white54),
+                icon: Icon(Icons.close, color: AppTheme.fg(context, 0.54)),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -135,7 +136,7 @@ class _VoiceChangerSheetState extends State<_VoiceChangerSheet> {
                   decoration: BoxDecoration(
                     color: selected
                         ? (isAi ? Colors.cyan.withValues(alpha: 0.3) : Colors.amber.withValues(alpha: 0.3))
-                        : Colors.white.withValues(alpha: 0.08),
+                        : AppTheme.themed(context, 0x14FFFFFF, 0xFFF1F1FA),
                     borderRadius: BorderRadius.circular(12),
                     border: selected
                         ? Border.all(color: isAi ? Colors.cyan : Colors.amber, width: 2)
@@ -146,7 +147,7 @@ class _VoiceChangerSheetState extends State<_VoiceChangerSheet> {
                     children: [
                       Icon(
                         isAi ? Icons.auto_awesome : Icons.graphic_eq,
-                        color: selected ? (isAi ? Colors.cyan : Colors.amber) : Colors.white54,
+                        color: selected ? (isAi ? Colors.cyan : Colors.amber) : AppTheme.fg(context, 0.54),
                         size: 20,
                       ),
                       const SizedBox(height: 4),
@@ -156,7 +157,7 @@ class _VoiceChangerSheetState extends State<_VoiceChangerSheet> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: selected ? Colors.white : Colors.white70,
+                          color: selected ? AppTheme.fg(context) : AppTheme.fg(context, 0.7),
                           fontSize: 10,
                           fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                         ),

@@ -213,9 +213,9 @@ class _RedeemCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: isDark ? AppTheme.surface : AppTheme.lightSurface,
+        color: isDark ? const Color(0xFF1B1B26) : Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+        border: Border.all(color: AppTheme.hairline(context)),
         boxShadow: [
           BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 8, offset: const Offset(0, 2)),
         ],
@@ -238,7 +238,7 @@ class _RedeemCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
-                        color: isDark ? AppTheme.textPrimary : AppTheme.lightTextPrimary,
+                        color: isDark ? Colors.white : AppTheme.lightTextPrimary,
                       ),
                     ),
                     Text(
@@ -371,7 +371,7 @@ class _RedeemCard extends StatelessWidget {
             style: TextStyle(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: isDark ? AppTheme.textPrimary : AppTheme.lightTextPrimary,
+              color: isDark ? Colors.white : AppTheme.lightTextPrimary,
             ),
           ),
         ),

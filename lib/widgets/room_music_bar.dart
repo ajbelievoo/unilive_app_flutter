@@ -80,7 +80,7 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
       height: _rightSideExpanded ? 92 : collapsedSize,
       clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: const Color(0xF01A1A2E),
+        color: AppTheme.themed(context, 0xF01A1A2E, 0xF5FFFFFF),
         borderRadius: BorderRadius.circular(collapsedSize / 2),
         border: Border.all(color: AppTheme.primary.withValues(alpha: 0.45)),
         boxShadow: const [
@@ -114,8 +114,8 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.end,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: AppTheme.fg(context),
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
@@ -160,8 +160,8 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
                   track.title,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppTheme.fg(context),
                     fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
@@ -170,11 +170,11 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
               const SizedBox(width: 4),
               GestureDetector(
                 onTap: () => setState(() => _rightSideExpanded = false),
-                child: const Padding(
-                  padding: EdgeInsets.all(2),
+                child: Padding(
+                  padding: const EdgeInsets.all(2),
                   child: Icon(
                     Icons.keyboard_arrow_right,
-                    color: Colors.white70,
+                    color: AppTheme.fg(context, 0.7),
                     size: 18,
                   ),
                 ),
@@ -196,7 +196,7 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
                 padding: const EdgeInsets.all(6),
                 child: Icon(
                   Icons.skip_previous_rounded,
-                  color: hasQueue ? Colors.white : Colors.white24,
+                  color: hasQueue ? AppTheme.fg(context) : AppTheme.fg(context, 0.24),
                   size: 22,
                 ),
               ),
@@ -226,7 +226,7 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
                 padding: const EdgeInsets.all(6),
                 child: Icon(
                   Icons.skip_next_rounded,
-                  color: hasQueue ? Colors.white : Colors.white24,
+                  color: hasQueue ? AppTheme.fg(context) : AppTheme.fg(context, 0.24),
                   size: 22,
                 ),
               ),
@@ -237,9 +237,9 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
               InkWell(
                 onTap: c.close,
                 customBorder: const CircleBorder(),
-                child: const Padding(
-                  padding: EdgeInsets.all(6),
-                  child: Icon(Icons.close_rounded, color: Colors.white70, size: 18),
+                child: Padding(
+                  padding: const EdgeInsets.all(6),
+                  child: Icon(Icons.close_rounded, color: AppTheme.fg(context, 0.7), size: 18),
                 ),
               ),
           ],
@@ -253,7 +253,7 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.55),
+        color: AppTheme.themed(context, 0x8C000000, 0xF0FFFFFF),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(color: AppTheme.primary.withValues(alpha: 0.4)),
       ),
@@ -261,10 +261,10 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
         children: [
           const Icon(Icons.music_note, color: AppTheme.primary, size: 18),
           const SizedBox(width: 8),
-          const Expanded(
+          Expanded(
             child: Text(
               'Add background music',
-              style: TextStyle(color: Colors.white70, fontSize: 12),
+              style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 12),
             ),
           ),
           GestureDetector(
@@ -295,7 +295,7 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
       constraints: const BoxConstraints(maxWidth: 210),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       decoration: BoxDecoration(
-        color: const Color(0xE61A1A2E),
+        color: AppTheme.themed(context, 0xE61A1A2E, 0xF5FFFFFF),
         borderRadius: BorderRadius.circular(22),
         border: Border.all(color: AppTheme.primary.withValues(alpha: 0.45)),
         boxShadow: const [
@@ -324,8 +324,8 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
               track.title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: AppTheme.fg(context),
                 fontSize: 11,
                 fontWeight: FontWeight.w600,
               ),
@@ -340,7 +340,7 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
                 padding: const EdgeInsets.all(5),
                 child: Icon(
                   c.isPlaying ? Icons.pause : Icons.play_arrow,
-                  color: Colors.white,
+                  color: AppTheme.fg(context),
                   size: 20,
                 ),
               ),
@@ -348,9 +348,9 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
             InkWell(
               onTap: c.close,
               customBorder: const CircleBorder(),
-              child: const Padding(
-                padding: EdgeInsets.all(5),
-                child: Icon(Icons.close, color: Colors.white70, size: 18),
+              child: Padding(
+                padding: const EdgeInsets.all(5),
+                child: Icon(Icons.close, color: AppTheme.fg(context, 0.7), size: 18),
               ),
             ),
           ],
@@ -366,8 +366,9 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.fromLTRB(8, 6, 8, 8),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF2A1A4A), Color(0xFF1A1A2E)],
+        gradient: LinearGradient(
+          colors: AppTheme.bgGradient(
+              context, const [Color(0xFF2A1A4A), Color(0xFF1A1A2E)]),
           begin: Alignment.centerLeft,
           end: Alignment.centerRight,
         ),
@@ -390,8 +391,8 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
                       track.title,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: Colors.white,
+                      style: TextStyle(
+                        color: AppTheme.fg(context),
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                       ),
@@ -402,7 +403,7 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.55),
+                          color: AppTheme.fg(context, 0.55),
                           fontSize: 11,
                         ),
                       ),
@@ -429,14 +430,14 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
       if (uri != null && uri.scheme == 'content') {
         // Android content uri from MediaStore — can't render directly in
         // Image.network; fall back to icon.
-        child = const Icon(Icons.album, color: Colors.white70, size: 22);
+        child = Icon(Icons.album, color: AppTheme.fg(context, 0.7), size: 22);
       } else if (art.startsWith('http')) {
         child = Image.network(
           art,
           fit: BoxFit.cover,
           errorBuilder:
               (_, __, ___) =>
-                  const Icon(Icons.music_note, color: Colors.white70, size: 22),
+                  Icon(Icons.music_note, color: AppTheme.fg(context, 0.7), size: 22),
         );
       } else if (track.isLocal && File(art).existsSync()) {
         child = Image.file(
@@ -444,13 +445,13 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
           fit: BoxFit.cover,
           errorBuilder:
               (_, __, ___) =>
-                  const Icon(Icons.music_note, color: Colors.white70, size: 22),
+                  Icon(Icons.music_note, color: AppTheme.fg(context, 0.7), size: 22),
         );
       } else {
-        child = const Icon(Icons.music_note, color: Colors.white70, size: 22);
+        child = Icon(Icons.music_note, color: AppTheme.fg(context, 0.7), size: 22);
       }
     } else {
-      child = const Icon(Icons.music_note, color: Colors.white70, size: 22);
+      child = Icon(Icons.music_note, color: AppTheme.fg(context, 0.7), size: 22);
     }
     return Container(
       width: 42,
@@ -472,7 +473,7 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
         Text(
           _fmt(pos),
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.6),
+            color: AppTheme.fg(context, 0.6),
             fontSize: 10,
           ),
         ),
@@ -481,8 +482,8 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
             data: SliderThemeData(
               trackHeight: 3,
               activeTrackColor: AppTheme.primary,
-              inactiveTrackColor: Colors.white24,
-              thumbColor: Colors.white,
+              inactiveTrackColor: AppTheme.fg(context, 0.24),
+              thumbColor: AppTheme.fg(context),
               overlayColor: AppTheme.primary.withValues(alpha: 0.2),
             ),
             child: Slider(
@@ -511,7 +512,7 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
         Text(
           _fmt(dur),
           style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.6),
+            color: AppTheme.fg(context, 0.6),
             fontSize: 10,
           ),
         ),
@@ -535,7 +536,7 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
           iconSize: 22,
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-          icon: const Icon(Icons.skip_previous, color: Colors.white70),
+          icon: Icon(Icons.skip_previous, color: AppTheme.fg(context, 0.7)),
           onPressed: c.queue.length > 1 ? c.previous : null,
         ),
         GestureDetector(
@@ -559,7 +560,7 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
           iconSize: 22,
           padding: EdgeInsets.zero,
           constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-          icon: const Icon(Icons.skip_next, color: Colors.white70),
+          icon: Icon(Icons.skip_next, color: AppTheme.fg(context, 0.7)),
           onPressed: c.queue.length > 1 ? c.next : null,
         ),
         IconButton(
@@ -569,7 +570,7 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
           constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
           icon: Icon(
             _volumeOpen ? Icons.volume_up : Icons.volume_down,
-            color: Colors.white70,
+            color: AppTheme.fg(context, 0.7),
           ),
           onPressed: () => setState(() => _volumeOpen = !_volumeOpen),
         ),
@@ -583,15 +584,15 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
         Icon(
           Icons.volume_mute,
           size: 16,
-          color: Colors.white.withValues(alpha: 0.6),
+          color: AppTheme.fg(context, 0.6),
         ),
         Expanded(
           child: SliderTheme(
-            data: const SliderThemeData(
+            data: SliderThemeData(
               trackHeight: 3,
               activeTrackColor: AppTheme.primary,
-              inactiveTrackColor: Colors.white24,
-              thumbColor: Colors.white,
+              inactiveTrackColor: AppTheme.fg(context, 0.24),
+              thumbColor: AppTheme.fg(context),
             ),
             child: Slider(
               min: 0,
@@ -604,7 +605,7 @@ class _RoomMusicBarState extends State<RoomMusicBar> {
         Icon(
           Icons.volume_up,
           size: 16,
-          color: Colors.white.withValues(alpha: 0.6),
+          color: AppTheme.fg(context, 0.6),
         ),
       ],
     );

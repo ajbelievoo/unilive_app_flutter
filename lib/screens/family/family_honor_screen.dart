@@ -17,6 +17,7 @@ import '../../models/family_models.dart';
 import '../../routes/app_routes.dart';
 import '../../services/api_service.dart';
 import '../../services/session_manager.dart';
+import '../../theme/app_theme.dart';
 import '../../utils/log.dart';
 import 'family_reward_screen.dart';
 import 'package:belive/widgets/preloader.dart';
@@ -212,7 +213,7 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
     return AnnotatedRegion<SystemUiOverlayStyle>(
       value: SystemUiOverlayStyle.light,
       child: Scaffold(
-        backgroundColor: const Color(0xFF050A23),
+        backgroundColor: AppTheme.themed(context, 0xFF050A23, 0xFFF8F7FE),
         body: SafeArea(
           bottom: false,
           child: Column(
@@ -243,25 +244,25 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
   Widget _buildSearchBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      color: const Color(0xFF050A23),
+      color: AppTheme.themed(context, 0xFF050A23, 0xFFF8F7FE),
       child: TextField(
         controller: _searchCtrl,
-        style: const TextStyle(color: Colors.white, fontSize: 14),
+        style: TextStyle(color: AppTheme.fg(context), fontSize: 14),
         decoration: InputDecoration(
           hintText: 'Search family...',
-          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 14),
-          prefixIcon: const Icon(Icons.search, color: Colors.white54, size: 20),
+          hintStyle: TextStyle(color: AppTheme.fg(context, 0.4), fontSize: 14),
+          prefixIcon: Icon(Icons.search, color: AppTheme.fg(context, 0.45), size: 20),
           suffixIcon: _searchQuery.isNotEmpty
               ? GestureDetector(
                   onTap: () {
                     _searchCtrl.clear();
                     setState(() => _searchQuery = '');
                   },
-                  child: const Icon(Icons.close, color: Colors.white54, size: 18),
+                  child: Icon(Icons.close, color: AppTheme.fg(context, 0.45), size: 18),
                 )
               : null,
           filled: true,
-          fillColor: const Color(0xFF0F1A4D),
+          fillColor: AppTheme.themed(context, 0xFF0F1A4D, 0xFFF1F1FA),
           contentPadding: const EdgeInsets.symmetric(vertical: 0),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(10),
@@ -289,28 +290,28 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
         margin: const EdgeInsets.only(bottom: 10),
         height: 70,
         decoration: BoxDecoration(
-          color: const Color(0xFF11183A),
+          color: AppTheme.themed(context, 0xFF11183A),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           children: [
             const SizedBox(width: 12),
-            Container(width: 44, height: 44, decoration: const BoxDecoration(color: Color(0xFF1A2456), shape: BoxShape.circle)),
+            Container(width: 44, height: 44, decoration: BoxDecoration(color: AppTheme.themed(context, 0xFF1A2456, 0xFFECECF4), shape: BoxShape.circle)),
             const SizedBox(width: 10),
-            Container(width: 50, height: 50, decoration: BoxDecoration(color: const Color(0xFF1A2456), borderRadius: BorderRadius.circular(8))),
+            Container(width: 50, height: 50, decoration: BoxDecoration(color: AppTheme.themed(context, 0xFF1A2456, 0xFFECECF4), borderRadius: BorderRadius.circular(8))),
             const SizedBox(width: 12),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(width: 120, height: 14, decoration: BoxDecoration(color: const Color(0xFF1A2456), borderRadius: BorderRadius.circular(4))),
+                  Container(width: 120, height: 14, decoration: BoxDecoration(color: AppTheme.themed(context, 0xFF1A2456, 0xFFECECF4), borderRadius: BorderRadius.circular(4))),
                   const SizedBox(height: 8),
-                  Container(width: 80, height: 12, decoration: BoxDecoration(color: const Color(0xFF1A2456), borderRadius: BorderRadius.circular(4))),
+                  Container(width: 80, height: 12, decoration: BoxDecoration(color: AppTheme.themed(context, 0xFF1A2456, 0xFFECECF4), borderRadius: BorderRadius.circular(4))),
                 ],
               ),
             ),
-            Container(width: 60, height: 16, decoration: BoxDecoration(color: const Color(0xFF1A2456), borderRadius: BorderRadius.circular(4))),
+            Container(width: 60, height: 16, decoration: BoxDecoration(color: AppTheme.themed(context, 0xFF1A2456, 0xFFECECF4), borderRadius: BorderRadius.circular(4))),
             const SizedBox(width: 12),
           ],
         ),
@@ -563,7 +564,7 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
   Widget _buildTabsAndCountdown() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      color: const Color(0xFF050A23),
+      color: AppTheme.themed(context, 0xFF050A23, 0xFFF8F7FE),
       child: Column(
         children: [
           Row(
@@ -580,7 +581,7 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: const Color(0xFF0F1A4D),
+              color: AppTheme.themed(context, 0xFF0F1A4D, 0xFFF1F1FA),
               borderRadius: BorderRadius.circular(8),
               border: Border.all(
                 color: _weekActive
@@ -589,12 +590,12 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
               ),
             ),
             child: !_configLoaded
-                ? const Row(
+                ? Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      SizedBox(width: 14, height: 14, child: Preloader(strokeWidth: 2, color: Colors.white54)),
+                      SizedBox(width: 14, height: 14, child: Preloader(strokeWidth: 2, color: AppTheme.fg(context, 0.45))),
                       SizedBox(width: 10),
-                      Text('Loading countdown...', style: TextStyle(color: Colors.white54, fontSize: 13)),
+                      Text('Loading countdown...', style: TextStyle(color: AppTheme.fg(context, 0.45), fontSize: 13)),
                     ],
                   )
                 : _weekActive
@@ -602,16 +603,16 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       if (_weekLabel != null) ...[
-                        Text(_weekLabel!, style: const TextStyle(color: Color(0xFF00E5FF), fontSize: 12, fontWeight: FontWeight.w600)),
+                        Text(_weekLabel!, style: TextStyle(color: AppTheme.isDark(context) ? const Color(0xFF00E5FF) : const Color(0xFF0091B5), fontSize: 12, fontWeight: FontWeight.w600)),
                         const SizedBox(width: 8),
                       ],
-                      const Text('CountDown  ', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                      Text('CountDown  ', style: TextStyle(color: AppTheme.fg(context, 0.6), fontSize: 13)),
                       _countBox(_countdown.inDays.toString().padLeft(2, '0')),
-                      const Text('  Days |  ', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                      Text('  Days |  ', style: TextStyle(color: AppTheme.fg(context, 0.6), fontSize: 13)),
                       _countBox(_countdown.inHours.remainder(24).toString().padLeft(2, '0')),
-                      const Text('  :  ', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                      Text('  :  ', style: TextStyle(color: AppTheme.fg(context, 0.6), fontSize: 13)),
                       _countBox(_countdown.inMinutes.remainder(60).toString().padLeft(2, '0')),
-                      const Text('  :  ', style: TextStyle(color: Colors.white70, fontSize: 13)),
+                      Text('  :  ', style: TextStyle(color: AppTheme.fg(context, 0.6), fontSize: 13)),
                       _countBox(_countdown.inSeconds.remainder(60).toString().padLeft(2, '0')),
                     ],
                   )
@@ -639,9 +640,10 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
           decoration: BoxDecoration(
             gradient: selected
                 ? const LinearGradient(colors: [Color(0xFF1E88E5), Color(0xFF0D47A1)])
-                : const LinearGradient(colors: [Color(0xFF11183A), Color(0xFF11183A)]),
+                : null,
+            color: selected ? null : AppTheme.themed(context, 0xFF11183A, 0xFFF1F1FA),
             borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: selected ? const Color(0xFF4F8DFD) : const Color(0xFF1A2456)),
+            border: Border.all(color: selected ? const Color(0xFF4F8DFD) : AppTheme.hairline(context)),
             boxShadow: selected
                 ? [BoxShadow(color: const Color(0xFF4F8DFD).withValues(alpha: 0.4), blurRadius: 8)]
                 : null,
@@ -650,7 +652,7 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: selected ? Colors.white : Colors.white70,
+              color: selected ? Colors.white : AppTheme.fg(context, 0.6),
               fontSize: 12,
               fontWeight: selected ? FontWeight.bold : FontWeight.w500,
             ),
@@ -664,10 +666,10 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
       decoration: BoxDecoration(
-        color: const Color(0xFF1A237E),
+        color: AppTheme.themed(context, 0xFF1A237E, 0xFFEDEAFF),
         borderRadius: BorderRadius.circular(4),
       ),
-      child: Text(value, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+      child: Text(value, style: TextStyle(color: AppTheme.fg(context), fontWeight: FontWeight.bold, fontSize: 14)),
     );
   }
 
@@ -678,11 +680,11 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.search_off, color: Colors.white38, size: 48),
+            Icon(Icons.search_off, color: AppTheme.fg(context, 0.35), size: 48),
             const SizedBox(height: 12),
             Text(
               _searchQuery.isNotEmpty ? 'No families found' : 'No ranking data',
-              style: const TextStyle(color: Colors.white70, fontSize: 15),
+              style: TextStyle(color: AppTheme.fg(context, 0.6), fontSize: 15),
             ),
           ],
         ),
@@ -691,8 +693,8 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
 
     return RefreshIndicator(
       onRefresh: _loadData,
-      color: Colors.white,
-      backgroundColor: const Color(0xFF1A0B6E),
+      color: AppTheme.isDark(context) ? Colors.white : const Color(0xFF1A0B6E),
+      backgroundColor: AppTheme.themed(context, 0xFF1A0B6E, 0xFFFFFFFF),
       child: ListView.builder(
         controller: _scrollCtrl,
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -711,7 +713,9 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
             ? const LinearGradient(colors: [Color(0xFFC0C0C0), Color(0xFF78909C)])
             : rank == 3
                 ? const LinearGradient(colors: [Color(0xFF00BFA5), Color(0xFF00695C)])
-                : const LinearGradient(colors: [Color(0xFF1A237E), Color(0xFF0D47A1)]);
+                : (AppTheme.isDark(context)
+                    ? const LinearGradient(colors: [Color(0xFF1A237E), Color(0xFF0D47A1)])
+                    : null);
 
     return GestureDetector(
       onTap: () {
@@ -724,10 +728,11 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
           gradient: gradient,
+          color: gradient == null ? AppTheme.cardBg(context) : null,
           borderRadius: BorderRadius.circular(14),
           border: isMyFamily ? Border.all(color: const Color(0xFF00E5FF), width: 2) : null,
           boxShadow: isTop3
-              ? [BoxShadow(color: gradient.colors.first.withValues(alpha: 0.4), blurRadius: 10, spreadRadius: 1)]
+              ? [BoxShadow(color: gradient!.colors.first.withValues(alpha: 0.4), blurRadius: 10, spreadRadius: 1)]
               : isMyFamily
                   ? [BoxShadow(color: const Color(0xFF00E5FF).withValues(alpha: 0.3), blurRadius: 8)]
                   : null,
@@ -740,7 +745,7 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
             else
               SizedBox(
                 width: 40,
-                child: Text('$rank', style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                child: Text('$rank', style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
               ),
             const SizedBox(width: 10),
             // Family frame / avatar
@@ -755,7 +760,7 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
                       Flexible(
                         child: Text(
                           item.name ?? 'Family',
-                          style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                          style: TextStyle(color: isTop3 ? Colors.white : AppTheme.fg(context), fontSize: 14, fontWeight: FontWeight.bold),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                         ),
@@ -779,13 +784,13 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
                     children: [
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1),
-                        decoration: BoxDecoration(color: Colors.black.withValues(alpha: 0.3), borderRadius: BorderRadius.circular(4)),
+                        decoration: BoxDecoration(color: isTop3 ? Colors.black.withValues(alpha: 0.3) : AppTheme.fg(context, 0.08), borderRadius: BorderRadius.circular(4)),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const Icon(Icons.shield, color: Color(0xFF00E5FF), size: 10),
                             const SizedBox(width: 3),
-                            Text('Lv.${item.level}', style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600)),
+                            Text('Lv.${item.level}', style: TextStyle(color: isTop3 ? Colors.white : AppTheme.fg(context, 0.75), fontSize: 10, fontWeight: FontWeight.w600)),
                           ],
                         ),
                       ),
@@ -793,9 +798,9 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
                       Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.group, color: Colors.white70, size: 10),
+                          Icon(Icons.group, color: isTop3 ? Colors.white70 : AppTheme.fg(context, 0.5), size: 10),
                           const SizedBox(width: 3),
-                          Text('${item.memberCount}', style: const TextStyle(color: Colors.white70, fontSize: 10)),
+                          Text('${item.memberCount}', style: TextStyle(color: isTop3 ? Colors.white70 : AppTheme.fg(context, 0.5), fontSize: 10)),
                         ],
                       ),
                     ],
@@ -812,7 +817,7 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
                 const SizedBox(width: 4),
                 Text(
                   _formatBig(item.totalCoin),
-                  style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: isTop3 ? Colors.white : AppTheme.fg(context), fontSize: 15, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -835,7 +840,7 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
       width: 44,
       child: Text(
         '$rank',
-        style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+        style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold),
         textAlign: TextAlign.center,
       ),
     );
@@ -856,19 +861,19 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
               height: 28,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 1.2),
-                color: const Color(0xFF0F1A4D),
+                border: Border.all(color: AppTheme.fg(context, 0.3), width: 1.2),
+                color: AppTheme.themed(context, 0xFF0F1A4D, 0xFFF1F1FA),
               ),
               child: hasImg
                   ? ClipOval(
                       child: CachedNetworkImage(
                         imageUrl: images[i],
                         fit: BoxFit.cover,
-                        placeholder: (_, __) => const Icon(Icons.person, color: Colors.white24, size: 14),
-                        errorWidget: (_, __, ___) => const Icon(Icons.person, color: Colors.white24, size: 14),
+                        placeholder: (_, __) => Icon(Icons.person, color: AppTheme.fg(context, 0.25), size: 14),
+                        errorWidget: (_, __, ___) => Icon(Icons.person, color: AppTheme.fg(context, 0.25), size: 14),
                       ),
                     )
-                  : const Center(child: Icon(Icons.person, color: Colors.white12, size: 14)),
+                  : Center(child: Icon(Icons.person, color: AppTheme.fg(context, 0.15), size: 14)),
             ),
           );
         }),
@@ -879,9 +884,9 @@ class _FamilyHonorScreenState extends State<FamilyHonorScreen>
   Widget _buildCreateBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: const BoxDecoration(
-        color: Color(0xFF050A23),
-        boxShadow: [BoxShadow(color: Color(0x40000000), blurRadius: 8)],
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF050A23, 0xFFF8F7FE),
+        boxShadow: const [BoxShadow(color: Color(0x40000000), blurRadius: 8)],
       ),
       child: GestureDetector(
         onTap: _openCreate,
@@ -919,8 +924,8 @@ class _FamilyImage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final fallback = Container(
-      color: const Color(0xFF2A2A3E),
-      child: const Center(child: Icon(Icons.group, color: Colors.white, size: 32)),
+      color: AppTheme.themed(context, 0xFF2A2A3E, 0xFFE8E8F0),
+      child: Center(child: Icon(Icons.group, color: AppTheme.fg(context, 0.6), size: 32)),
     );
     if (image.isEmpty) return fallback;
     return CachedNetworkImage(

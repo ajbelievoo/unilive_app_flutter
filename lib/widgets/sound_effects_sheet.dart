@@ -13,6 +13,7 @@ import 'package:provider/provider.dart';
 import '../services/audio_room_advanced_service.dart';
 import '../services/session_manager.dart';
 import '../services/socket_service.dart';
+import '../theme/app_theme.dart';
 
 /// Shows the sound effects & ambient sounds bottom sheet.
 void showSoundEffectsSheet(
@@ -56,9 +57,9 @@ class _SoundEffectsSheetState extends State<_SoundEffectsSheet> {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.6,
       ),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: SafeArea(
         child: Column(
@@ -70,16 +71,16 @@ class _SoundEffectsSheetState extends State<_SoundEffectsSheet> {
               height: 4,
               margin: const EdgeInsets.only(top: 12, bottom: 12),
               decoration: BoxDecoration(
-                color: Colors.white24,
+                color: AppTheme.fg(context, 0.24),
                 borderRadius: BorderRadius.circular(2),
               ),
             ),
-            const Text(
+            Text(
               'Sound Effects & Ambience',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
+                color: AppTheme.fg(context),
               ),
             ),
             const SizedBox(height: 16),
@@ -91,7 +92,7 @@ class _SoundEffectsSheetState extends State<_SoundEffectsSheet> {
                 child: Text(
                   'Sound Effects',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
+                    color: AppTheme.fg(context, 0.7),
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
@@ -143,8 +144,8 @@ class _SoundEffectsSheetState extends State<_SoundEffectsSheet> {
                           const SizedBox(height: 4),
                           Text(
                             effect.name,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: AppTheme.fg(context),
                               fontSize: 11,
                             ),
                           ),
@@ -172,7 +173,7 @@ class _SoundEffectsSheetState extends State<_SoundEffectsSheet> {
                 child: Text(
                   'Ambient Sounds',
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.7),
+                    color: AppTheme.fg(context, 0.7),
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),
@@ -209,12 +210,12 @@ class _SoundEffectsSheetState extends State<_SoundEffectsSheet> {
                       decoration: BoxDecoration(
                         color: isActive
                             ? const Color(0xFF00E5FF).withValues(alpha: 0.2)
-                            : Colors.white.withValues(alpha: 0.05),
+                            : AppTheme.themed(context, 0x0DFFFFFF, 0xFFF1F1FA),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: isActive
                               ? const Color(0xFF00E5FF)
-                              : Colors.white24,
+                              : AppTheme.hairline(context),
                         ),
                       ),
                       child: Column(
@@ -224,8 +225,8 @@ class _SoundEffectsSheetState extends State<_SoundEffectsSheet> {
                           const SizedBox(height: 4),
                           Text(
                             ambient.name,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: AppTheme.fg(context),
                               fontSize: 11,
                             ),
                           ),
@@ -234,7 +235,7 @@ class _SoundEffectsSheetState extends State<_SoundEffectsSheet> {
                             style: TextStyle(
                               color: isActive
                                   ? const Color(0xFF00E5FF)
-                                  : Colors.white54,
+                                  : AppTheme.fg(context, 0.54),
                               fontSize: 9,
                             ),
                           ),
@@ -254,7 +255,7 @@ class _SoundEffectsSheetState extends State<_SoundEffectsSheet> {
                     Text(
                       'Volume',
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.7),
+                        color: AppTheme.fg(context, 0.7),
                         fontSize: 12,
                       ),
                     ),

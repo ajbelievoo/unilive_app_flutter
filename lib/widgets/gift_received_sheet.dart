@@ -10,6 +10,7 @@ import 'package:flutter/material.dart';
 import '../constants/const.dart';
 import '../models/json_annotation_helper.dart';
 import '../services/api_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/log.dart';
 import '../utils/media_utils.dart';
 import 'package:belive/widgets/preloader.dart';
@@ -96,9 +97,9 @@ class _GiftReceivedSheetState extends State<_GiftReceivedSheet> {
   Widget build(BuildContext context) {
     return Container(
       height: MediaQuery.of(context).size.height * 0.55,
-      decoration: const BoxDecoration(
-        color: Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         children: [
@@ -131,20 +132,20 @@ class _GiftReceivedSheetState extends State<_GiftReceivedSheet> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text(
+                          Text(
                             'Gifts Received',
-                            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                            style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold),
                           ),
                           if (_gifts.isNotEmpty)
                             Text(
                               '${_gifts.length} types • $_totalCoins ${Const.coinName}',
-                              style: const TextStyle(color: Colors.white54, fontSize: 12),
+                              style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 12),
                             ),
                         ],
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(Icons.close, color: Colors.white70),
+                      icon: Icon(Icons.close, color: AppTheme.fg(context, 0.7)),
                       onPressed: () => Navigator.pop(context),
                     ),
                   ],
@@ -161,7 +162,7 @@ class _GiftReceivedSheetState extends State<_GiftReceivedSheet> {
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(_error!, style: const TextStyle(color: Colors.white54)),
+                            Text(_error!, style: TextStyle(color: AppTheme.fg(context, 0.54))),
                             const SizedBox(height: 12),
                             TextButton(
                               onPressed: _fetchGifts,
@@ -171,13 +172,13 @@ class _GiftReceivedSheetState extends State<_GiftReceivedSheet> {
                         ),
                       )
                     : _gifts.isEmpty
-                        ? const Center(
+                        ? Center(
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                ImageIcon(const AssetImage("assets/gift/official_gift.png"), color: Colors.white24, size: 48),
-                                SizedBox(height: 8),
-                                Text('No gifts received yet', style: TextStyle(color: Colors.white54, fontSize: 14)),
+                                ImageIcon(const AssetImage("assets/gift/official_gift.png"), color: AppTheme.fg(context, 0.24), size: 48),
+                                const SizedBox(height: 8),
+                                Text('No gifts received yet', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 14)),
                               ],
                             ),
                           )
@@ -207,9 +208,9 @@ class _GiftTile extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(10),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppTheme.themed(context, 0x0DFFFFFF, 0xFFF1F1FA),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: Row(
         children: [
@@ -233,12 +234,12 @@ class _GiftTile extends StatelessWidget {
               children: [
                 Text(
                   gift.name ?? 'Gift',
-                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: AppTheme.fg(context), fontSize: 14, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   'From ${gift.senderName ?? 'User'}',
-                  style: const TextStyle(color: Colors.white54, fontSize: 12),
+                  style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 12),
                 ),
               ],
             ),
@@ -248,7 +249,7 @@ class _GiftTile extends StatelessWidget {
             children: [
               Text(
                 'x${gift.count}',
-                style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                style: TextStyle(color: AppTheme.fg(context), fontSize: 16, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 2),
               Row(

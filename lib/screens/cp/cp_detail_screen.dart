@@ -78,7 +78,7 @@ class _CPDetailScreenState extends State<CPDetailScreen> with SingleTickerProvid
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.cpDarkBg,
+      backgroundColor: AppTheme.themed(context, 0xFF0D0815, 0xFFF8F7FE),
       body: _loading
           ? const PremiumLoading()
           : CustomScrollView(
@@ -86,6 +86,9 @@ class _CPDetailScreenState extends State<CPDetailScreen> with SingleTickerProvid
                 SliverAppBar(
                   pinned: true,
                   expandedHeight: 320,
+                  // Keep the dark brand header surface in both modes — the
+                  // cover image + scrim stay dark, so white labels stay correct.
+                  backgroundColor: AppTheme.cpDarkBg,
                   flexibleSpace: FlexibleSpaceBar(
                     background: _CoverHeader(cp: _cp),
                   ),
@@ -142,7 +145,7 @@ class _CPDetailScreenState extends State<CPDetailScreen> with SingleTickerProvid
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
-      backgroundColor: AppTheme.cpDarkCard,
+      backgroundColor: AppTheme.themed(context, 0xFF1E1832),
       shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setSt) => Padding(
@@ -169,7 +172,7 @@ class _CPDetailScreenState extends State<CPDetailScreen> with SingleTickerProvid
                             ? DecorationImage(image: CachedNetworkImageProvider(VideoUtil.getFullImageUrl(cp.coverImage)), fit: BoxFit.cover)
                             : null),
                     gradient: cover == null && VideoUtil.getFullImageUrl(cp.coverImage).isEmpty ? AppTheme.pinkGradient : null,
-                    color: cover == null && cp.coverImage == null ? null : AppTheme.cpDarkSurfaceLight,
+                    color: cover == null && cp.coverImage == null ? null : AppTheme.themed(context, 0xFF241B38, 0xFFF1F1FA),
                   ),
                   child: const Center(child: Icon(Icons.camera_alt, color: Colors.white70, size: 32)),
                 ),
@@ -562,7 +565,7 @@ class _BondTab extends StatelessWidget {
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: AppTheme.cpDarkCard,
+              color: AppTheme.themed(context, 0xFF1E1832),
               borderRadius: BorderRadius.circular(24),
               boxShadow: AppTheme.cardShadow,
               border: Border.all(
@@ -587,7 +590,7 @@ class _BondTab extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 10),
-                Text(cp!.bio!, style: const TextStyle(fontSize: 14, color: AppTheme.cpDarkTextSecondary, height: 1.6)),
+                Text(cp!.bio!, style: TextStyle(fontSize: 14, color: AppTheme.fg(context, 0.7), height: 1.6)),
               ],
             ),
           ),
@@ -609,17 +612,17 @@ class _PartnersCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: AppTheme.cpDarkCard,
+        color: AppTheme.themed(context, 0xFF1E1832),
         borderRadius: BorderRadius.circular(24),
         boxShadow: AppTheme.cardShadow,
         border: Border.all(
-          color: AppTheme.cpDarkSurfaceLight,
+          color: AppTheme.hairline(context),
           width: 1,
         ),
       ),
       child: Row(
         children: [
-          Expanded(child: _person(cp.user1, 'Partner 1', const Color(0xFF6A5AE0))),
+          Expanded(child: _person(context, cp.user1, 'Partner 1', const Color(0xFF6A5AE0))),
           // Heart in the middle
           Container(
             padding: const EdgeInsets.all(8),
@@ -636,13 +639,13 @@ class _PartnersCard extends StatelessWidget {
             ),
             child: const Icon(Icons.favorite, color: Colors.white, size: 18),
           ),
-          Expanded(child: _person(cp.user2, 'Partner 2', const Color(0xFF4F8DFD))),
+          Expanded(child: _person(context, cp.user2, 'Partner 2', const Color(0xFF4F8DFD))),
         ],
       ),
     );
   }
 
-  Widget _person(CPUser? u, String fallback, Color ring) {
+  Widget _person(BuildContext context, CPUser? u, String fallback, Color ring) {
     return Column(
       children: [
         Container(
@@ -663,16 +666,16 @@ class _PartnersCard extends StatelessWidget {
             margin: const EdgeInsets.all(2.5),
             child: CircleAvatar(
               radius: 30,
-              backgroundColor: AppTheme.cpDarkSurfaceLight,
+              backgroundColor: AppTheme.themed(context, 0xFF241B38, 0xFFE8E8F0),
               backgroundImage: (u?.image != null && u!.image!.isNotEmpty) ? CachedNetworkImageProvider(u.image!) : null,
-              child: (u?.image == null) ? const Icon(Icons.person, color: Colors.white) : null,
+              child: (u?.image == null) ? Icon(Icons.person, color: AppTheme.fg(context, 0.6)) : null,
             ),
           ),
         ),
         const SizedBox(height: 8),
         Text(u?.name ?? fallback, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600), maxLines: 1, overflow: TextOverflow.ellipsis),
         const SizedBox(height: 2),
-        Text('Lv.${u?.level ?? 1}', style: const TextStyle(fontSize: 12, color: AppTheme.cpDarkTextSecondary)),
+        Text('Lv.${u?.level ?? 1}', style: TextStyle(fontSize: 12, color: AppTheme.fg(context, 0.6))),
       ],
     );
   }
@@ -752,7 +755,7 @@ class _AnniversaryTileState extends State<_AnniversaryTile> {
                   height: 44,
                   decoration: BoxDecoration(
                     gradient: a.isUnlocked ? AppTheme.pinkGradient : null,
-                    color: a.isUnlocked ? null : AppTheme.cpDarkSurfaceLight,
+                    color: a.isUnlocked ? null : AppTheme.themed(context, 0xFF241B38, 0xFFE8E8F0),
                     shape: BoxShape.circle,
                     boxShadow: a.isUnlocked
                         ? [BoxShadow(color: AppTheme.cpAccent.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 3))]
@@ -763,7 +766,7 @@ class _AnniversaryTileState extends State<_AnniversaryTile> {
                   ),
                   child: Icon(
                     a.isClaimed ? Icons.check_circle : (a.isUnlocked ? Icons.card_giftcard : Icons.lock_outline),
-                    color: a.isUnlocked ? Colors.white : AppTheme.cpDarkTextTertiary,
+                    color: a.isUnlocked ? Colors.white : AppTheme.fg(context, 0.4),
                     size: 22,
                   ),
                 ),
@@ -777,8 +780,8 @@ class _AnniversaryTileState extends State<_AnniversaryTile> {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            a.isUnlocked ? AppTheme.cpAccent : AppTheme.cpDarkSurfaceLight,
-                            AppTheme.cpDarkSurfaceLight,
+                            a.isUnlocked ? AppTheme.cpAccent : AppTheme.themed(context, 0xFF241B38, 0xFFE0DEEE),
+                            AppTheme.themed(context, 0xFF241B38, 0xFFE0DEEE),
                           ],
                         ),
                       ),
@@ -793,11 +796,11 @@ class _AnniversaryTileState extends State<_AnniversaryTile> {
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.cpDarkCard,
+                color: AppTheme.themed(context, 0xFF1E1832),
                 borderRadius: BorderRadius.circular(18),
                 border: a.isUnlocked
                     ? Border.all(color: AppTheme.cpAccent.withValues(alpha: 0.3), width: 1.2)
-                    : Border.all(color: AppTheme.cpDarkSurfaceLight, width: 1),
+                    : Border.all(color: AppTheme.hairline(context), width: 1),
                 boxShadow: a.isUnlocked ? AppTheme.cardShadow : null,
               ),
               child: Column(
@@ -847,7 +850,7 @@ class _AnniversaryTileState extends State<_AnniversaryTile> {
                   ),
                   if (a.description != null) ...[
                     const SizedBox(height: 4),
-                    Text(a.description!, style: const TextStyle(fontSize: 12, color: AppTheme.cpDarkTextSecondary)),
+                    Text(a.description!, style: TextStyle(fontSize: 12, color: AppTheme.fg(context, 0.6))),
                   ],
                   if (rewardText.isNotEmpty) ...[
                     const SizedBox(height: 8),
@@ -962,7 +965,7 @@ class _TaskCardState extends State<_TaskCard> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.cpDarkCard,
+        color: AppTheme.themed(context, 0xFF1E1832),
         borderRadius: BorderRadius.circular(20),
         boxShadow: AppTheme.cardShadow,
         border: Border.all(
@@ -1005,7 +1008,7 @@ class _TaskCardState extends State<_TaskCard> {
           ),
           if (t.description != null && t.description!.isNotEmpty) ...[
             const SizedBox(height: 8),
-            Text(t.description!, style: const TextStyle(fontSize: 13, color: AppTheme.cpDarkTextSecondary)),
+            Text(t.description!, style: TextStyle(fontSize: 13, color: AppTheme.fg(context, 0.6))),
           ],
           const SizedBox(height: 14),
           BondProgressBar(current: t.progress, target: t.target, label: 'Combined progress'),
@@ -1014,7 +1017,7 @@ class _TaskCardState extends State<_TaskCard> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text('You: ${t.myProgress}  •  Partner: ${t.partnerProgress}',
-                  style: const TextStyle(fontSize: 11, color: AppTheme.cpDarkTextTertiary)),
+                  style: TextStyle(fontSize: 11, color: AppTheme.fg(context, 0.45))),
               if (t.isCompleted && !t.isClaimed)
                 _busy
                     ? const SizedBox(width: 20, height: 20, child: Preloader(strokeWidth: 2))
@@ -1051,7 +1054,7 @@ class _TaskCardState extends State<_TaskCard> {
                   ],
                 )
               else
-                Text('${t.progress}/${t.target}', style: const TextStyle(fontSize: 12, color: AppTheme.cpDarkTextSecondary)),
+                Text('${t.progress}/${t.target}', style: TextStyle(fontSize: 12, color: AppTheme.fg(context, 0.6))),
             ],
           ),
         ],
@@ -1120,7 +1123,7 @@ class _MilestoneTile extends StatelessWidget {
                   height: 44,
                   decoration: BoxDecoration(
                     gradient: milestone.isUnlocked ? AppTheme.pinkGradient : null,
-                    color: milestone.isUnlocked ? null : AppTheme.cpDarkSurfaceLight,
+                    color: milestone.isUnlocked ? null : AppTheme.themed(context, 0xFF241B38, 0xFFE8E8F0),
                     shape: BoxShape.circle,
                     boxShadow: milestone.isUnlocked
                         ? [BoxShadow(color: AppTheme.cpAccent.withValues(alpha: 0.4), blurRadius: 8, offset: const Offset(0, 3))]
@@ -1130,7 +1133,7 @@ class _MilestoneTile extends StatelessWidget {
                         : null,
                   ),
                   child: Icon(milestone.isUnlocked ? Icons.celebration : Icons.lock_outline,
-                      color: milestone.isUnlocked ? Colors.white : AppTheme.cpDarkTextTertiary, size: 22),
+                      color: milestone.isUnlocked ? Colors.white : AppTheme.fg(context, 0.4), size: 22),
                 ),
                 if (!isLast)
                   Expanded(
@@ -1142,8 +1145,8 @@ class _MilestoneTile extends StatelessWidget {
                           begin: Alignment.topCenter,
                           end: Alignment.bottomCenter,
                           colors: [
-                            milestone.isUnlocked ? AppTheme.cpAccent : AppTheme.cpDarkSurfaceLight,
-                            AppTheme.cpDarkSurfaceLight,
+                            milestone.isUnlocked ? AppTheme.cpAccent : AppTheme.themed(context, 0xFF241B38, 0xFFE0DEEE),
+                            AppTheme.themed(context, 0xFF241B38, 0xFFE0DEEE),
                           ],
                         ),
                       ),
@@ -1159,11 +1162,11 @@ class _MilestoneTile extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: AppTheme.cpDarkCard,
+                color: AppTheme.themed(context, 0xFF1E1832),
                 borderRadius: BorderRadius.circular(18),
                 border: milestone.isUnlocked
                     ? Border.all(color: AppTheme.cpAccent.withValues(alpha: 0.3), width: 1.2)
-                    : Border.all(color: AppTheme.cpDarkSurfaceLight, width: 1),
+                    : Border.all(color: AppTheme.hairline(context), width: 1),
                 boxShadow: milestone.isUnlocked ? AppTheme.cardShadow : null,
               ),
               child: Column(
@@ -1195,15 +1198,15 @@ class _MilestoneTile extends StatelessWidget {
                   ),
                   if (milestone.description != null) ...[
                     const SizedBox(height: 4),
-                    Text(milestone.description!, style: const TextStyle(fontSize: 12, color: AppTheme.cpDarkTextSecondary)),
+                    Text(milestone.description!, style: TextStyle(fontSize: 12, color: AppTheme.fg(context, 0.6))),
                   ],
                   if (milestone.date != null) ...[
                     const SizedBox(height: 6),
                     Row(
                       children: [
-                        const Icon(Icons.calendar_today, size: 11, color: AppTheme.cpDarkTextTertiary),
+                        Icon(Icons.calendar_today, size: 11, color: AppTheme.fg(context, 0.45)),
                         const SizedBox(width: 4),
-                        Text(milestone.date!, style: const TextStyle(fontSize: 11, color: AppTheme.cpDarkTextTertiary)),
+                        Text(milestone.date!, style: TextStyle(fontSize: 11, color: AppTheme.fg(context, 0.45))),
                       ],
                     ),
                   ],

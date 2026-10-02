@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../models/room_runtime_models.dart';
+import '../theme/app_theme.dart';
 
 class RoomPollCard extends StatelessWidget {
   const RoomPollCard({super.key, required this.poll, required this.onVote});
@@ -16,9 +17,9 @@ class RoomPollCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          color: const Color(0xE6191930),
+          color: AppTheme.themed(context, 0xE6191930),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: Colors.white24),
+          border: Border.all(color: AppTheme.hairline(context)),
           boxShadow: const [BoxShadow(color: Colors.black38, blurRadius: 12)],
         ),
         child: Column(
@@ -29,15 +30,15 @@ class RoomPollCard extends StatelessWidget {
               children: [
                 Icon(
                   poll.ended ? Icons.poll_outlined : Icons.how_to_vote,
-                  color: poll.ended ? Colors.white70 : const Color(0xFFB388FF),
+                  color: poll.ended ? AppTheme.fg(context, 0.7) : const Color(0xFFB388FF),
                   size: 18,
                 ),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
                     poll.ended ? 'Poll ended' : 'Room poll',
-                    style: const TextStyle(
-                      color: Colors.white70,
+                    style: TextStyle(
+                      color: AppTheme.fg(context, 0.7),
                       fontSize: 12,
                       fontWeight: FontWeight.w600,
                     ),
@@ -45,15 +46,15 @@ class RoomPollCard extends StatelessWidget {
                 ),
                 Text(
                   '$total votes',
-                  style: const TextStyle(color: Colors.white54, fontSize: 11),
+                  style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 11),
                 ),
               ],
             ),
             const SizedBox(height: 8),
             Text(
               poll.question,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: AppTheme.fg(context),
                 fontWeight: FontWeight.w700,
                 fontSize: 14,
               ),
@@ -79,11 +80,11 @@ class RoomPollCard extends StatelessWidget {
                       color:
                           selected
                               ? const Color(0xFF7E57C2).withValues(alpha: 0.5)
-                              : Colors.white10,
+                              : AppTheme.themed(context, 0x1AFFFFFF, 0xFFF1F1FA),
                       borderRadius: BorderRadius.circular(10),
                       border: Border.all(
                         color:
-                            selected ? const Color(0xFFB388FF) : Colors.white12,
+                            selected ? const Color(0xFFB388FF) : AppTheme.hairline(context),
                       ),
                     ),
                     child: Row(
@@ -91,8 +92,8 @@ class RoomPollCard extends StatelessWidget {
                         Expanded(
                           child: Text(
                             option.text,
-                            style: const TextStyle(
-                              color: Colors.white,
+                            style: TextStyle(
+                              color: AppTheme.fg(context),
                               fontSize: 12,
                             ),
                           ),
@@ -100,8 +101,8 @@ class RoomPollCard extends StatelessWidget {
                         if (poll.hasVoted || poll.ended)
                           Text(
                             '${(ratio * 100).round()}% (${option.voteCount})',
-                            style: const TextStyle(
-                              color: Colors.white70,
+                            style: TextStyle(
+                              color: AppTheme.fg(context, 0.7),
                               fontSize: 11,
                             ),
                           ),
@@ -129,7 +130,7 @@ Future<void> showCreateRoomPollSheet(
   await showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
-    backgroundColor: const Color(0xFF17172A),
+    backgroundColor: AppTheme.themed(context, 0xFF17172A, 0xFFF8F7FE),
     builder:
         (sheetContext) => Padding(
           padding: EdgeInsets.fromLTRB(
@@ -141,10 +142,10 @@ Future<void> showCreateRoomPollSheet(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
+              Text(
                 'Create Room Poll',
                 style: TextStyle(
-                  color: Colors.white,
+                  color: AppTheme.fg(sheetContext),
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
                 ),
@@ -152,25 +153,25 @@ Future<void> showCreateRoomPollSheet(
               const SizedBox(height: 16),
               TextField(
                 controller: question,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: AppTheme.fg(sheetContext)),
                 decoration: const InputDecoration(labelText: 'Question'),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: first,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: AppTheme.fg(sheetContext)),
                 decoration: const InputDecoration(labelText: 'Option 1'),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: second,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: AppTheme.fg(sheetContext)),
                 decoration: const InputDecoration(labelText: 'Option 2'),
               ),
               const SizedBox(height: 10),
               TextField(
                 controller: third,
-                style: const TextStyle(color: Colors.white),
+                style: TextStyle(color: AppTheme.fg(sheetContext)),
                 decoration: const InputDecoration(
                   labelText: 'Option 3 (optional)',
                 ),

@@ -74,7 +74,6 @@ class _MessageHubScreenState extends State<MessageHubScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     final notifProvider = context.watch<NotificationProvider>();
     final chatProvider = context.watch<ChatProvider>();
 
@@ -86,7 +85,7 @@ class _MessageHubScreenState extends State<MessageHubScreen> {
     final notifUnread = notifProvider.unreadCount;
 
     return Scaffold(
-      backgroundColor: isDark ? AppTheme.surface : AppTheme.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Message'),
         centerTitle: true,
@@ -321,9 +320,9 @@ class _MessageHubScreenState extends State<MessageHubScreen> {
                     subtitle,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 13,
-                      color: AppTheme.textSecondary,
+                      color: AppTheme.fg(context, 0.6),
                     ),
                   ),
                 ],
@@ -335,9 +334,9 @@ class _MessageHubScreenState extends State<MessageHubScreen> {
                 if (trailing.isNotEmpty)
                   Text(
                     trailing,
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 11,
-                      color: AppTheme.textTertiary,
+                      color: AppTheme.fg(context, 0.4),
                     ),
                   ),
                 if (badge > 0) ...[
@@ -497,8 +496,8 @@ class _MessageHubScreenState extends State<MessageHubScreen> {
                           isLive
                               ? Colors.pink
                               : (c.unreadCount > 0
-                                  ? AppTheme.textPrimary
-                                  : AppTheme.textSecondary),
+                                  ? AppTheme.fg(context)
+                                  : AppTheme.fg(context, 0.6)),
                       fontWeight: isLive ? FontWeight.bold : FontWeight.normal,
                     ),
                   ),
@@ -510,9 +509,9 @@ class _MessageHubScreenState extends State<MessageHubScreen> {
               children: [
                 Text(
                   c.time ?? '',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 11,
-                    color: AppTheme.textTertiary,
+                    color: AppTheme.fg(context, 0.4),
                   ),
                 ),
                 if (c.unreadCount > 0) ...[
@@ -872,10 +871,10 @@ class _HubSection extends StatelessWidget {
                 padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
                 child: Text(
                   title,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
-                    color: AppTheme.textTertiary,
+                    color: AppTheme.fg(context, 0.45),
                   ),
                 ),
               ),

@@ -5,25 +5,29 @@ import 'package:provider/provider.dart';
 import '../../models/level_privilege_models.dart';
 import '../../services/api_service.dart';
 import '../../services/session_manager.dart';
+import '../../theme/app_theme.dart';
 import '../../utils/log.dart';
 import 'package:belive/widgets/preloader.dart';
 
 const String _tag = 'LevelPrivileges';
 
-// ---- Colours matching the native screenshots exactly -------------------------
-const Color _bg = Color(0xFF0E0E13);
-const Color _cardBg = Color(0xFF1B1B26);
-const Color _iconBg = Color(0xFF2A2A3A);
-const Color _tabBg = Color(0xFF121218);
-const Color _divider = Color(0xFF2A2A3A);
+// ---- Theme-aware neutral colours (dark values match the native screenshots) --
+Color _bg(BuildContext c) => AppTheme.themed(c, 0xFF0E0E13, 0xFFF6F5FB);
+Color _cardBg(BuildContext c) => AppTheme.themed(c, 0xFF1B1B26);
+Color _iconBg(BuildContext c) => AppTheme.themed(c, 0xFF2A2A3A, 0xFFF1F1FA);
+Color _tabBg(BuildContext c) => AppTheme.themed(c, 0xFF121218, 0xFFEDEBF6);
+Color _divider(BuildContext c) => AppTheme.hairline(c);
+Color _white(BuildContext c) => AppTheme.fg(c);
+Color _white70(BuildContext c) => AppTheme.fg(c, 0.7);
+Color _white50(BuildContext c) => AppTheme.fg(c, 0.54);
+Color _white30(BuildContext c) => AppTheme.fg(c, 0.3);
+
+// ---- Branded accent colours (same in both themes) -----------------------------
 const Color _purple = Color(0xFF9B6BFF);
 const Color _goldLight = Color(0xFFFFD54F);
 const Color _gold = Color(0xFFFFB300);
 const Color _goldDark = Color(0xFFBF8A00);
-const Color _white = Colors.white;
-const Color _white70 = Colors.white70;
-const Color _white50 = Colors.white54;
-const Color _white30 = Colors.white30;
+const Color _badgeBg = Color(0xFF0E0E13);
 
 class LevelPrivilegesScreen extends StatefulWidget {
   const LevelPrivilegesScreen({super.key});
@@ -165,13 +169,13 @@ class _LevelPrivilegesScreenState extends State<LevelPrivilegesScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: _bg,
+      backgroundColor: _bg(context),
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        title: const Text('Level', style: TextStyle(color: _white, fontSize: 18, fontWeight: FontWeight.w700)),
-        leading: const BackButton(color: _white),
+        title: Text('Level', style: TextStyle(color: _white(context), fontSize: 18, fontWeight: FontWeight.w700)),
+        leading: BackButton(color: _white(context)),
       ),
       body: _loading
           ? const Center(child: Preloader(color: _purple))
@@ -210,14 +214,14 @@ class _LevelPrivilegesScreenState extends State<LevelPrivilegesScreen>
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
+                    Text(
                       'Current Level',
-                      style: TextStyle(color: _white70, fontSize: 13),
+                      style: TextStyle(color: _white70(context), fontSize: 13),
                     ),
                     const SizedBox(height: 4),
                     Text(
                       'Get ${_fmt(p.beansNeededForNext)} beans to level up',
-                      style: const TextStyle(color: _white, fontSize: 15, fontWeight: FontWeight.w600),
+                      style: TextStyle(color: _white(context), fontSize: 15, fontWeight: FontWeight.w600),
                     ),
                   ],
                 ),
@@ -230,14 +234,14 @@ class _LevelPrivilegesScreenState extends State<LevelPrivilegesScreen>
           Container(
             padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
             decoration: BoxDecoration(
-              color: _cardBg,
+              color: _cardBg(context),
               borderRadius: BorderRadius.circular(12),
             ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceAround,
               children: [
                 _beanStat('Last Month', p.lastMonthBeans),
-                Container(width: 1, height: 36, color: _divider),
+                Container(width: 1, height: 36, color: _divider(context)),
                 _beanStat('This Month', p.thisMonthBeans),
               ],
             ),
@@ -250,11 +254,11 @@ class _LevelPrivilegesScreenState extends State<LevelPrivilegesScreen>
   Widget _beanStat(String label, int value) {
     return Column(
       children: [
-        Text(label, style: const TextStyle(color: _white70, fontSize: 12)),
+        Text(label, style: TextStyle(color: _white70(context), fontSize: 12)),
         const SizedBox(height: 4),
         Text(
           '${_fmt(value)} beans',
-          style: const TextStyle(color: _white, fontSize: 14, fontWeight: FontWeight.w700),
+          style: TextStyle(color: _white(context), fontSize: 14, fontWeight: FontWeight.w700),
         ),
       ],
     );
@@ -264,14 +268,14 @@ class _LevelPrivilegesScreenState extends State<LevelPrivilegesScreen>
   Widget _buildTabBar() {
     final currentLevel = _progress?.currentLevel ?? 1;
     return Container(
-      color: _tabBg,
+      color: _tabBg(context),
       child: TabBar(
         controller: _tabController,
         isScrollable: true,
         indicatorColor: _purple,
         indicatorSize: TabBarIndicatorSize.label,
-        labelColor: _white,
-        unselectedLabelColor: _white50,
+        labelColor: _white(context),
+        unselectedLabelColor: _white50(context),
         labelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         unselectedLabelStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
         tabAlignment: TabAlignment.start,
@@ -292,7 +296,7 @@ class _LevelPrivilegesScreenState extends State<LevelPrivilegesScreen>
                     ),
                     child: const Text(
                       'Active',
-                      style: TextStyle(fontSize: 9, color: _white, fontWeight: FontWeight.w700),
+                      style: TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w700),
                     ),
                   ),
                 ],
@@ -369,7 +373,7 @@ class _LevelBadge extends StatelessWidget {
             child: Text(
               'Lv.$level',
               style: const TextStyle(
-                color: _white,
+                color: Colors.white,
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
               ),
@@ -421,7 +425,7 @@ class _HexagonPainter extends CustomPainter {
     innerPath.lineTo(inset, h * 0.25 + inset * 0.5);
     innerPath.close();
     final innerPaint = Paint()
-      ..color = _bg
+      ..color = _badgeBg // dark emblem keeps white 'Lv.' text readable in both themes
       ..style = PaintingStyle.fill;
     canvas.drawPath(innerPath, innerPaint);
   }
@@ -444,18 +448,18 @@ class _PrivilegeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final titleColor = isLocked ? _white30 : _white;
-    final descColor = isLocked ? _white30 : _white70;
+    final titleColor = isLocked ? _white30(context) : _white(context);
+    final descColor = isLocked ? _white30(context) : _white70(context);
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: _cardBg,
+        color: _cardBg(context),
         borderRadius: BorderRadius.circular(12),
         border: isActive ? Border.all(color: _purple.withValues(alpha: 0.4), width: 1) : null,
       ),
       child: Row(
         children: [
-          _buildIcon(privilege.iconUrl, privilege.id),
+          _buildIcon(context, privilege.iconUrl, privilege.id),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
@@ -479,13 +483,13 @@ class _PrivilegeCard extends StatelessWidget {
                         ),
                         child: const Text(
                           'Active',
-                          style: TextStyle(fontSize: 9, color: _white, fontWeight: FontWeight.w700),
+                          style: TextStyle(fontSize: 9, color: Colors.white, fontWeight: FontWeight.w700),
                         ),
                       ),
                     ],
                     if (isLocked) ...[
                       const SizedBox(width: 6),
-                      const Icon(Icons.lock, color: _white30, size: 14),
+                      Icon(Icons.lock, color: _white30(context), size: 14),
                     ],
                   ],
                 ),
@@ -501,7 +505,7 @@ class _PrivilegeCard extends StatelessWidget {
           ),
           Icon(
             isLocked ? Icons.lock_outline : Icons.chevron_right,
-            color: _white30,
+            color: _white30(context),
             size: 20,
           ),
         ],
@@ -509,8 +513,8 @@ class _PrivilegeCard extends StatelessWidget {
     );
   }
 
-  Widget _buildIcon(String? url, String? id) {
-    final iconColor = isLocked ? _white30 : _purple;
+  Widget _buildIcon(BuildContext context, String? url, String? id) {
+    final iconColor = isLocked ? _white30(context) : _purple;
     if (url != null && url.isNotEmpty) {
       return ClipRRect(
         borderRadius: BorderRadius.circular(10),
@@ -521,21 +525,21 @@ class _PrivilegeCard extends StatelessWidget {
             width: 46,
             height: 46,
             fit: BoxFit.cover,
-            errorWidget: (_, __, ___) => _placeholderIcon(id, iconColor),
+            errorWidget: (_, __, ___) => _placeholderIcon(context, id, iconColor),
           ),
         ),
       );
     }
-    return _placeholderIcon(id, iconColor);
+    return _placeholderIcon(context, id, iconColor);
   }
 
-  Widget _placeholderIcon(String? id, Color iconColor) {
+  Widget _placeholderIcon(BuildContext context, String? id, Color iconColor) {
     final icon = _iconForPrivilege(id);
     return Container(
       width: 46,
       height: 46,
       decoration: BoxDecoration(
-        color: _iconBg,
+        color: _iconBg(context),
         borderRadius: BorderRadius.circular(10),
       ),
       child: Icon(icon, color: iconColor, size: 24),

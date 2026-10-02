@@ -48,19 +48,19 @@ class _AudioQualitySheetState extends State<_AudioQualitySheet> {
   Widget build(BuildContext context) {
     return Container(
       constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.6),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         // Handle bar
         Container(
           width: 40, height: 4,
           margin: const EdgeInsets.only(top: 12, bottom: 16),
-          decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2)),
+          decoration: BoxDecoration(color: AppTheme.fg(context, 0.24), borderRadius: BorderRadius.circular(2)),
         ),
-        const Text('Audio Quality Settings',
-            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        Text('Audio Quality Settings',
+            style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold)),
         const SizedBox(height: 16),
         Flexible(
           child: SingleChildScrollView(
@@ -110,7 +110,7 @@ class _AudioQualitySheetState extends State<_AudioQualitySheet> {
               if (_settings.inEarMonitoring) ...[
                 const SizedBox(height: 8),
                 Row(children: [
-                  const Icon(Icons.volume_up, color: Colors.white54, size: 18),
+                  Icon(Icons.volume_up, color: AppTheme.fg(context, 0.54), size: 18),
                   Expanded(
                     child: Slider(
                       value: _settings.inEarMonitoringVolume.toDouble(),
@@ -121,7 +121,7 @@ class _AudioQualitySheetState extends State<_AudioQualitySheet> {
                     ),
                   ),
                   Text('${_settings.inEarMonitoringVolume}%',
-                    style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                    style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 12)),
                 ]),
               ],
               const SizedBox(height: 24),
@@ -151,7 +151,7 @@ class _AudioQualitySheetState extends State<_AudioQualitySheet> {
   Widget _buildSectionTitle(String title) {
     return Align(
       alignment: Alignment.centerLeft,
-      child: Text(title, style: const TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w600)),
+      child: Text(title, style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 14, fontWeight: FontWeight.w600)),
     );
   }
 
@@ -164,16 +164,16 @@ class _AudioQualitySheetState extends State<_AudioQualitySheet> {
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 12),
       decoration: BoxDecoration(
-        color: Colors.white10,
+        color: AppTheme.themed(context, 0x1AFFFFFF, 0xFFF1F1FA),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white24),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: DropdownButton<T>(
         value: value,
         items: items,
         onChanged: onChanged,
-        dropdownColor: const Color(0xFF1A1A2E),
-        style: const TextStyle(color: Colors.white, fontSize: 14),
+        dropdownColor: AppTheme.themed(context, 0xFF1A1A2E),
+        style: TextStyle(color: AppTheme.fg(context), fontSize: 14),
         underline: const SizedBox.shrink(),
         isExpanded: true,
       ),
@@ -182,7 +182,7 @@ class _AudioQualitySheetState extends State<_AudioQualitySheet> {
 
   Widget _buildToggle(String label, bool value, ValueChanged<bool> onChanged) {
     return SwitchListTile(
-      title: Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+      title: Text(label, style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 14)),
       value: value,
       onChanged: onChanged,
       activeColor: AppTheme.primary,

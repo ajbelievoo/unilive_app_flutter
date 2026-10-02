@@ -21,6 +21,7 @@ import '../../services/session_manager.dart';
 import '../../services/deep_link_service.dart';
 import '../../utils/log.dart';
 import '../../utils/media_utils.dart';
+import '../../theme/app_theme.dart';
 import '../../widgets/profile_badge_row.dart';
 import '../../widgets/svga_player_widget.dart';
 import '../../widgets/user_avatar.dart';
@@ -95,7 +96,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   Widget build(BuildContext context) {
     final user = context.watch<AuthProvider>().user;
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F5FB),
+      backgroundColor: AppTheme.themed(context, 0xFF121212, 0xFFF6F5FB),
       extendBodyBehindAppBar: true,
       body: RefreshIndicator(
         onRefresh: _refresh,
@@ -553,7 +554,7 @@ class _Header extends StatelessWidget {
                   color: Colors.white.withValues(alpha: 0.14),
                   shape: BoxShape.circle,
                 ),
-                child: const ImageIcon(const AssetImage("assets/gift/official_gift.png"), color: Colors.white, size: 22),
+                child: const ImageIcon(AssetImage("assets/gift/official_gift.png"), color: Colors.white, size: 22),
               ),
             ],
           ),
@@ -887,7 +888,7 @@ class _StatsRow extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.themed(context, 0xFF1E1E1E),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
@@ -900,6 +901,7 @@ class _StatsRow extends StatelessWidget {
         child: Row(
           children: [
             _stat(
+              context,
               user?.followers ?? 0,
               'Followers',
               Icons.group_rounded,
@@ -909,8 +911,9 @@ class _StatsRow extends StatelessWidget {
                 extra: {'type': 2, 'userId': userId},
               ),
             ),
-            _divider(),
+            _divider(context),
             _stat(
+              context,
               user?.following ?? 0,
               'Following',
               Icons.person_add_rounded,
@@ -920,8 +923,9 @@ class _StatsRow extends StatelessWidget {
                 extra: {'type': 1, 'userId': userId},
               ),
             ),
-            _divider(),
+            _divider(context),
             _stat(
+              context,
               user?.visitors ?? 0,
               'Visitors',
               Icons.visibility_rounded,
@@ -931,8 +935,9 @@ class _StatsRow extends StatelessWidget {
                 extra: {'userId': userId},
               ),
             ),
-            _divider(),
+            _divider(context),
             _stat(
+              context,
               user?.friends ?? 0,
               'Friends',
               Icons.handshake_rounded,
@@ -948,10 +953,11 @@ class _StatsRow extends StatelessWidget {
     );
   }
 
-  Widget _divider() =>
-      Container(height: 28, width: 1, color: const Color(0xFFE8E8F0));
+  Widget _divider(BuildContext context) =>
+      Container(height: 28, width: 1, color: AppTheme.themed(context, 0xFF2E2E3E, 0xFFE8E8F0));
 
   Widget _stat(
+    BuildContext context,
     int count,
     String label,
     IconData icon,
@@ -975,18 +981,18 @@ class _StatsRow extends StatelessWidget {
             const SizedBox(height: 6),
             Text(
               '$count',
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.w800,
-                color: Color(0xFF1A1A2E),
+                color: AppTheme.fg(context),
               ),
             ),
             const SizedBox(height: 2),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 11,
-                color: Color(0xFF9A9AB0),
+                color: AppTheme.fg(context, 0.45),
                 fontWeight: FontWeight.w500,
               ),
             ),
@@ -1248,7 +1254,7 @@ class _TabsSectionState extends State<_TabsSection> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.themed(context, 0xFF1E1E1E),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
@@ -1263,7 +1269,7 @@ class _TabsSectionState extends State<_TabsSection> {
             TabBar(
               controller: widget.tabCtrl,
               labelColor: const Color(0xFF6A5AE0),
-              unselectedLabelColor: const Color(0xFF9A9AB0),
+              unselectedLabelColor: AppTheme.themed(context, 0xFF8A8AA8, 0xFF9A9AB0),
               indicatorColor: const Color(0xFF6A5AE0),
               indicatorSize: TabBarIndicatorSize.label,
               indicatorWeight: 3,
@@ -1331,7 +1337,7 @@ class _TabsSectionState extends State<_TabsSection> {
         Expanded(
           child: Text(
             text,
-            style: const TextStyle(fontSize: 13, color: Color(0xFF1A1A2E)),
+            style: TextStyle(fontSize: 13, color: AppTheme.fg(context)),
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
           ),
@@ -1363,9 +1369,9 @@ class _TabsSectionState extends State<_TabsSection> {
               color: const Color(0xFF6A5AE0).withValues(alpha: 0.3),
             ),
             const SizedBox(height: 8),
-            const Text(
+            Text(
               'No posts yet',
-              style: TextStyle(color: Color(0xFF9A9AB0), fontSize: 13),
+              style: TextStyle(color: AppTheme.fg(context, 0.45), fontSize: 13),
             ),
           ],
         ),
@@ -1386,11 +1392,11 @@ class _TabsSectionState extends State<_TabsSection> {
           child: CachedNetworkImage(
             imageUrl: p.post ?? '',
             fit: BoxFit.cover,
-            placeholder: (_, __) => Container(color: const Color(0xFFF1F1FA)),
+            placeholder: (_, __) => Container(color: AppTheme.themed(context, 0xFF232332, 0xFFF1F1FA)),
             errorWidget:
                 (_, __, ___) => Container(
-                  color: const Color(0xFFF1F1FA),
-                  child: const Icon(Icons.image, color: Color(0xFF9A9AB0)),
+                  color: AppTheme.themed(context, 0xFF232332, 0xFFF1F1FA),
+                  child: Icon(Icons.image, color: AppTheme.fg(context, 0.4)),
                 ),
           ),
         );
@@ -1577,7 +1583,7 @@ class _HonorTabState extends State<_HonorTab>
         Container(
           margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
           decoration: BoxDecoration(
-            color: const Color(0xFFF1F1FA),
+            color: AppTheme.themed(context, 0xFF232332, 0xFFF1F1FA),
             borderRadius: BorderRadius.circular(12),
           ),
           child: TabBar(
@@ -1591,7 +1597,7 @@ class _HonorTabState extends State<_HonorTab>
             ),
             dividerColor: Colors.transparent,
             labelColor: Colors.white,
-            unselectedLabelColor: const Color(0xFF6B6B80),
+            unselectedLabelColor: AppTheme.fg(context, 0.5),
             labelStyle: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
@@ -1648,7 +1654,7 @@ class _HonorTabState extends State<_HonorTab>
             const SizedBox(height: 8),
             Text(
               emptyMsg,
-              style: const TextStyle(color: Color(0xFF9A9AB0), fontSize: 12),
+              style: TextStyle(color: AppTheme.fg(context, 0.45), fontSize: 12),
             ),
           ],
         ),
@@ -1676,7 +1682,7 @@ class _HonorTabState extends State<_HonorTab>
                   children: [
                     Container(
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF5F5FA),
+                        color: AppTheme.themed(context, 0xFF232332, 0xFFF5F5FA),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: const Color(0xFF6A5AE0).withValues(alpha: 0.1),
@@ -1719,9 +1725,9 @@ class _HonorTabState extends State<_HonorTab>
               const SizedBox(height: 4),
               Text(
                 g.name,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 9,
-                  color: Color(0xFF6B6B80),
+                  color: AppTheme.fg(context, 0.55),
                   fontWeight: FontWeight.w500,
                 ),
                 maxLines: 1,
@@ -1832,7 +1838,7 @@ class _GiftDetailScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final title = isReceived ? 'Received From' : 'Sent To';
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F5FB),
+      backgroundColor: AppTheme.themed(context, 0xFF121212, 0xFFF6F5FB),
       appBar: AppBar(
         title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700)),
         backgroundColor: const Color(0xFF6A5AE0),
@@ -1934,8 +1940,8 @@ class _GiftDetailScreen extends StatelessWidget {
                             isReceived
                                 ? 'No sender details available'
                                 : 'No receiver details available',
-                            style: const TextStyle(
-                              color: Color(0xFF9A9AB0),
+                            style: TextStyle(
+                              color: AppTheme.fg(context, 0.45),
                               fontSize: 13,
                             ),
                           ),
@@ -1984,7 +1990,7 @@ class _SenderCard extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.themed(context, 0xFF1E1E1E),
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
@@ -2028,19 +2034,19 @@ class _SenderCard extends StatelessWidget {
                         fit: BoxFit.cover,
                         errorWidget:
                             (_, __, ___) => Container(
-                              color: const Color(0xFFF1F1FA),
-                              child: const Icon(
+                              color: AppTheme.themed(context, 0xFF232332, 0xFFF1F1FA),
+                              child: Icon(
                                 Icons.person,
-                                color: Color(0xFF9A9AB0),
+                                color: AppTheme.fg(context, 0.4),
                                 size: 22,
                               ),
                             ),
                       )
                       : Container(
-                        color: const Color(0xFFF1F1FA),
-                        child: const Icon(
+                        color: AppTheme.themed(context, 0xFF232332, 0xFFF1F1FA),
+                        child: Icon(
                           Icons.person,
-                          color: Color(0xFF9A9AB0),
+                          color: AppTheme.fg(context, 0.4),
                           size: 22,
                         ),
                       ),
@@ -2051,10 +2057,10 @@ class _SenderCard extends StatelessWidget {
           Expanded(
             child: Text(
               sender.name,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
                 fontWeight: FontWeight.w700,
-                color: Color(0xFF1A1A2E),
+                color: AppTheme.fg(context),
               ),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
@@ -2300,7 +2306,7 @@ class _MenuTabContent extends StatelessWidget {
           Container(
             margin: const EdgeInsets.fromLTRB(16, 12, 16, 8),
             decoration: BoxDecoration(
-              color: const Color(0xFFF1F1FA),
+              color: AppTheme.themed(context, 0xFF232332, 0xFFF1F1FA),
               borderRadius: BorderRadius.circular(12),
             ),
             child: TabBar(
@@ -2313,7 +2319,7 @@ class _MenuTabContent extends StatelessWidget {
               ),
               dividerColor: Colors.transparent,
               labelColor: Colors.white,
-              unselectedLabelColor: const Color(0xFF6B6B80),
+              unselectedLabelColor: AppTheme.fg(context, 0.5),
               labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w700),
               unselectedLabelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
               padding: const EdgeInsets.all(3),
@@ -2330,19 +2336,19 @@ class _MenuTabContent extends StatelessWidget {
               children: [
                 SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                  child: _menuGroup('Account', accountItems, showTitle: false),
+                  child: _menuGroup(context, 'Account', accountItems, showTitle: false),
                 ),
                 SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                  child: _menuGroup('Premium', premiumItems, showTitle: false),
+                  child: _menuGroup(context, 'Premium', premiumItems, showTitle: false),
                 ),
                 SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                  child: _menuGroup('Centers', centerItems, showTitle: false),
+                  child: _menuGroup(context, 'Centers', centerItems, showTitle: false),
                 ),
                 SingleChildScrollView(
                   padding: const EdgeInsets.fromLTRB(8, 0, 8, 8),
-                  child: _menuGroup('Support', supportItems, showTitle: false),
+                  child: _menuGroup(context, 'Support', supportItems, showTitle: false),
                 ),
               ],
             ),
@@ -2374,7 +2380,7 @@ class _MenuTabContent extends StatelessWidget {
         role.contains('recharge');
   }
 
-  Widget _menuGroup(String title, List<_MenuItem> items, {bool showTitle = true}) {
+  Widget _menuGroup(BuildContext context, String title, List<_MenuItem> items, {bool showTitle = true}) {
     // Use the item count as the column count (capped at 4) so single-row
     // groups are evenly distributed and centered instead of being left-aligned.
     final crossAxisCount = items.length.clamp(1, 4);
@@ -2386,10 +2392,10 @@ class _MenuTabContent extends StatelessWidget {
             padding: const EdgeInsets.only(left: 4, bottom: 8),
             child: Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 13,
                 fontWeight: FontWeight.w800,
-                color: Color(0xFF1A1A2E),
+                color: AppTheme.fg(context),
                 letterSpacing: 0.3,
               ),
             ),
@@ -2397,7 +2403,7 @@ class _MenuTabContent extends StatelessWidget {
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: Colors.white,
+            color: AppTheme.themed(context, 0xFF1E1E1E),
             borderRadius: BorderRadius.circular(16),
             boxShadow: [
               BoxShadow(
@@ -2456,9 +2462,9 @@ class _MenuTile extends StatelessWidget {
           const SizedBox(height: 8),
           Text(
             item.label,
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 11,
-              color: Color(0xFF6B6B80),
+              color: AppTheme.fg(context, 0.55),
               fontWeight: FontWeight.w600,
             ),
             textAlign: TextAlign.center,

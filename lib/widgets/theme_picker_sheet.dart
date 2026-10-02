@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import '../models/theme_root.dart';
 import '../services/api_service.dart';
+import '../theme/app_theme.dart';
 import 'package:belive/widgets/preloader.dart';
 
 void showThemePickerSheet(
@@ -54,9 +55,9 @@ class _ThemePickerSheetState extends State<_ThemePickerSheet> {
     return Container(
       height: MediaQuery.of(context).size.height * 0.5,
       padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         children: [
@@ -64,16 +65,16 @@ class _ThemePickerSheetState extends State<_ThemePickerSheet> {
             child: Container(
               width: 40, height: 4,
               margin: const EdgeInsets.only(bottom: 16),
-              decoration: BoxDecoration(color: Colors.white30, borderRadius: BorderRadius.circular(2)),
+              decoration: BoxDecoration(color: AppTheme.fg(context, 0.3), borderRadius: BorderRadius.circular(2)),
             ),
           ),
-          const Text('Choose Background',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+          Text('Choose Background',
+              style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 16),
           if (_loading)
             const Expanded(child: Center(child: Preloader()))
           else if (_themes.isEmpty)
-            const Expanded(child: Center(child: Text('No themes available', style: TextStyle(color: Colors.white54))))
+            Expanded(child: Center(child: Text('No themes available', style: TextStyle(color: AppTheme.fg(context, 0.54)))))
           else
             Expanded(
               child: GridView.builder(
@@ -101,14 +102,14 @@ class _ThemePickerSheetState extends State<_ThemePickerSheet> {
                               imageUrl: url,
                               fit: BoxFit.cover,
                               width: double.infinity,
-                              placeholder: (_, __) => Container(color: Colors.white10),
-                              errorWidget: (_, __, ___) => Container(color: Colors.white10, child: const Icon(Icons.broken_image, color: Colors.white24)),
+                              placeholder: (_, __) => Container(color: AppTheme.fg(context, 0.1)),
+                              errorWidget: (_, __, ___) => Container(color: AppTheme.fg(context, 0.1), child: Icon(Icons.broken_image, color: AppTheme.fg(context, 0.24))),
                             ),
                           ),
                         ),
                         if (name.isNotEmpty) ...[
                           const SizedBox(height: 4),
-                          Text(name, style: const TextStyle(color: Colors.white, fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
+                          Text(name, style: TextStyle(color: AppTheme.fg(context), fontSize: 10), maxLines: 1, overflow: TextOverflow.ellipsis),
                         ],
                       ],
                     ),

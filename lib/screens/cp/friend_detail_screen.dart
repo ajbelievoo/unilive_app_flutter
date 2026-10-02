@@ -83,7 +83,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: AppTheme.themed(context, 0xFF0D0815, 0xFFFAFAFE),
       body: _loading
           ? const Center(child: Preloader())
           : _friend == null
@@ -100,6 +100,10 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
         SliverAppBar(
           pinned: true,
           expandedHeight: 200,
+          // Keep the dark brand header surface in both modes (matches the
+          // friendHeaderGradient's own dark end stop) so white icons stay
+          // readable when collapsed.
+          backgroundColor: AppTheme.cpDarkBg,
           flexibleSpace: FlexibleSpaceBar(
             background: Container(
               decoration: const BoxDecoration(gradient: AppTheme.primaryGradient),
@@ -298,7 +302,9 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
       padding: const EdgeInsets.all(20),
       borderRadius: 28,
       borderColor: AppTheme.friendAccent.withValues(alpha: 0.22),
-      backgroundColor: AppTheme.cpDarkCard.withValues(alpha: 0.88),
+      backgroundColor: AppTheme.isDark(context)
+          ? AppTheme.cpDarkCard.withValues(alpha: 0.88)
+          : Colors.white,
       shadow: [
         BoxShadow(color: AppTheme.friendAccent.withValues(alpha: 0.25), blurRadius: 24, offset: const Offset(0, 8)),
       ],
@@ -315,7 +321,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
                 errorBuilder: (_, __, ___) => const Icon(Icons.star, size: 22, color: AppTheme.primary),
               ),
               const SizedBox(width: 8),
-              const Text('Friendship Bond', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+              Text('Friendship Bond', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.fg(context))),
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
@@ -345,11 +351,13 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
       padding: const EdgeInsets.all(20),
       borderRadius: 28,
       borderColor: AppTheme.friendAccent.withValues(alpha: 0.15),
-      backgroundColor: AppTheme.cpDarkCard.withValues(alpha: 0.88),
+      backgroundColor: AppTheme.isDark(context)
+          ? AppTheme.cpDarkCard.withValues(alpha: 0.88)
+          : Colors.white,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Stats', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+          Text('Stats', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.fg(context))),
           const SizedBox(height: 14),
           Row(
             children: [
@@ -378,7 +386,7 @@ class _FriendDetailScreenState extends State<FriendDetailScreen> {
       child: Container(
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: AppTheme.cardBg(context),
           borderRadius: BorderRadius.circular(18),
           boxShadow: AppTheme.cardShadow,
           border: Border.all(

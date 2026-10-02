@@ -5,6 +5,8 @@ library family_reward;
 
 import 'package:flutter/material.dart';
 
+import '../../theme/app_theme.dart';
+
 class FamilyRewardScreen extends StatelessWidget {
   const FamilyRewardScreen({super.key});
 
@@ -20,11 +22,14 @@ class FamilyRewardScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
+      decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
-          colors: [Color(0xFF050A23), Color(0xFF0A1A4A)],
+          colors: AppTheme.bgGradient(
+            context,
+            const [Color(0xFF050A23), Color(0xFF0A1A4A)],
+          ),
         ),
       ),
       child: ListView(

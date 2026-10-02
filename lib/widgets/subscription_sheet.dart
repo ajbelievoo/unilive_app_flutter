@@ -129,15 +129,15 @@ class _SubscriptionSheetState extends State<_SubscriptionSheet> {
     final maxHeight = MediaQuery.of(context).size.height * 0.85;
     return Container(
       constraints: BoxConstraints(maxHeight: maxHeight),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
           _buildHeader(),
-          const Divider(color: Colors.white12),
+          Divider(color: AppTheme.hairline(context)),
           if (_isLoading)
             const Padding(
               padding: EdgeInsets.all(32),
@@ -168,8 +168,8 @@ class _SubscriptionSheetState extends State<_SubscriptionSheet> {
               children: [
                 Text(
                   widget.hostName,
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppTheme.fg(context),
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -178,7 +178,7 @@ class _SubscriptionSheetState extends State<_SubscriptionSheet> {
                 Text(
                   _isSubscribed ? 'Subscribed' : 'Subscribe to unlock exclusive content',
                   style: TextStyle(
-                    color: _isSubscribed ? const Color(0xFF4CAF50) : Colors.white54,
+                    color: _isSubscribed ? const Color(0xFF4CAF50) : AppTheme.fg(context, 0.54),
                     fontSize: 12,
                   ),
                 ),
@@ -187,7 +187,7 @@ class _SubscriptionSheetState extends State<_SubscriptionSheet> {
           ),
           GestureDetector(
             onTap: () => Navigator.pop(context),
-            child: const Icon(Icons.close, color: Colors.white54),
+            child: Icon(Icons.close, color: AppTheme.fg(context, 0.54)),
           ),
         ],
       ),
@@ -200,17 +200,17 @@ class _SubscriptionSheetState extends State<_SubscriptionSheet> {
         padding: const EdgeInsets.all(32),
         child: Column(
           children: [
-            const Icon(Icons.subscriptions_outlined, color: Colors.white38, size: 48),
+            Icon(Icons.subscriptions_outlined, color: AppTheme.fg(context, 0.38), size: 48),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'No subscription tiers available',
-              style: TextStyle(color: Colors.white54, fontSize: 14),
+              style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 14),
             ),
             const SizedBox(height: 8),
             Text(
               '${widget.hostName} hasn\'t created any subscription tiers yet.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 12),
+              style: TextStyle(color: AppTheme.fg(context, 0.3), fontSize: 12),
             ),
           ],
         ),
@@ -234,9 +234,9 @@ class _SubscriptionSheetState extends State<_SubscriptionSheet> {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,8 +246,8 @@ class _SubscriptionSheetState extends State<_SubscriptionSheet> {
               Expanded(
                 child: Text(
                   tier.name ?? 'Tier',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppTheme.fg(context),
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
                   ),
@@ -274,24 +274,24 @@ class _SubscriptionSheetState extends State<_SubscriptionSheet> {
             const SizedBox(height: 8),
             Text(
               tier.description!,
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
+              style: TextStyle(color: AppTheme.fg(context, 0.6), fontSize: 13),
             ),
           ],
           const SizedBox(height: 8),
           Row(
             children: [
-              Icon(Icons.access_time, color: Colors.white.withValues(alpha: 0.4), size: 14),
+              Icon(Icons.access_time, color: AppTheme.fg(context, 0.4), size: 14),
               const SizedBox(width: 4),
               Text(
                 '${tier.durationDays} days',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+                style: TextStyle(color: AppTheme.fg(context, 0.5), fontSize: 12),
               ),
               const SizedBox(width: 12),
-              Icon(Icons.photo_library, color: Colors.white.withValues(alpha: 0.4), size: 14),
+              Icon(Icons.photo_library, color: AppTheme.fg(context, 0.4), size: 14),
               const SizedBox(width: 4),
               Text(
                 '${tier.images.length} exclusive photos',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+                style: TextStyle(color: AppTheme.fg(context, 0.5), fontSize: 12),
               ),
             ],
           ),
@@ -314,8 +314,8 @@ class _SubscriptionSheetState extends State<_SubscriptionSheet> {
                           width: 80,
                           height: 80,
                           fit: BoxFit.cover,
-                          placeholder: (_, __) => Container(color: Colors.white12),
-                          errorWidget: (_, __, ___) => Container(color: Colors.white12),
+                          placeholder: (_, __) => Container(color: AppTheme.fg(context, 0.12)),
+                          errorWidget: (_, __, ___) => Container(color: AppTheme.fg(context, 0.12)),
                         ),
                         Container(
                           width: 80,
@@ -359,14 +359,14 @@ class _SubscriptionSheetState extends State<_SubscriptionSheet> {
           children: [
             const Icon(Icons.check_circle, color: Color(0xFF4CAF50), size: 48),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'You are subscribed!',
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+              style: TextStyle(color: AppTheme.fg(context), fontSize: 16, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               'No exclusive photos available yet.',
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
+              style: TextStyle(color: AppTheme.fg(context, 0.5), fontSize: 13),
             ),
           ],
         ),
@@ -384,7 +384,7 @@ class _SubscriptionSheetState extends State<_SubscriptionSheet> {
                 const SizedBox(width: 8),
                 Text(
                   'Exclusive Photos (${_exclusiveImages.length})',
-                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: AppTheme.fg(context), fontSize: 14, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -402,10 +402,10 @@ class _SubscriptionSheetState extends State<_SubscriptionSheet> {
                     child: CachedNetworkImage(
                       imageUrl: VideoUtil.getFullImageUrl(_exclusiveImages[i]),
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(color: Colors.white12),
+                      placeholder: (_, __) => Container(color: AppTheme.fg(context, 0.12)),
                       errorWidget: (_, __, ___) => Container(
-                        color: Colors.white12,
-                        child: const Center(child: Icon(Icons.broken_image, color: Colors.white38)),
+                        color: AppTheme.fg(context, 0.12),
+                        child: Center(child: Icon(Icons.broken_image, color: AppTheme.fg(context, 0.38))),
                       ),
                     ),
                   ),
@@ -424,7 +424,7 @@ class _SubscriptionSheetState extends State<_SubscriptionSheet> {
                   height: 6,
                   margin: const EdgeInsets.only(right: 4),
                   decoration: BoxDecoration(
-                    color: i == _currentImageIndex ? AppTheme.primary : Colors.white24,
+                    color: i == _currentImageIndex ? AppTheme.primary : AppTheme.fg(context, 0.24),
                     borderRadius: BorderRadius.circular(3),
                   ),
                 ),

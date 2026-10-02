@@ -8,6 +8,7 @@ import 'dart:ui';
 
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
 import 'ai_feature_guard.dart';
 
 /// Model for a single menu action.
@@ -74,10 +75,10 @@ class _HostMenuSheet extends StatelessWidget {
         child: Container(
           height: maxHeight,
           decoration: BoxDecoration(
-            color: const Color(0xFF1A1A2E).withValues(alpha: 0.82),
+            color: AppTheme.themed(context, 0xD01A1A2E, 0xF5FFFFFF),
             borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
             border: Border.all(
-              color: Colors.white.withValues(alpha: 0.12),
+              color: AppTheme.hairline(context),
               width: 1.2,
             ),
           ),
@@ -90,7 +91,7 @@ class _HostMenuSheet extends StatelessWidget {
                   height: 5,
                   margin: const EdgeInsets.only(top: 12, bottom: 8),
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.25),
+                    color: AppTheme.fg(context, 0.25),
                     borderRadius: BorderRadius.circular(4),
                   ),
                 ),
@@ -125,8 +126,8 @@ class _HostMenuSheet extends StatelessWidget {
                       const SizedBox(width: 12),
                       Text(
                         title,
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: AppTheme.fg(context),
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
                         ),
@@ -135,7 +136,7 @@ class _HostMenuSheet extends StatelessWidget {
                       Text(
                         '${items.length} options',
                         style: TextStyle(
-                          color: Colors.white.withValues(alpha: 0.5),
+                          color: AppTheme.fg(context, 0.5),
                           fontSize: 12,
                           fontWeight: FontWeight.w500,
                         ),
@@ -262,8 +263,8 @@ class _MenuCardState extends State<_MenuCard>
               maxLines: 2,
               textAlign: TextAlign.center,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: AppTheme.fg(context),
                 fontSize: 12,
                 fontWeight: FontWeight.w600,
                 height: 1.2,

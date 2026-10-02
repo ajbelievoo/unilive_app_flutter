@@ -74,7 +74,13 @@ class _AgencyDashboardScreenState extends State<AgencyDashboardScreen> with Sing
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(gradient: AppTheme.darkGradient),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: AppTheme.bgGradient(context, AppTheme.darkGradient.colors),
+          ),
+        ),
         child: SafeArea(
           child: Column(children: [
             // Header.
@@ -82,14 +88,14 @@ class _AgencyDashboardScreenState extends State<AgencyDashboardScreen> with Sing
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
               child: Row(children: [
                 IconButton(
-                  icon: const Icon(Icons.arrow_back, color: Colors.white),
+                  icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)),
                   onPressed: () => Navigator.pop(context),
                 ),
-                const Expanded(
-                  child: Text('Agency Center', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                Expanded(
+                  child: Text('Agency Center', style: TextStyle(color: AppTheme.fg(context), fontSize: 22, fontWeight: FontWeight.bold)),
                 ),
                 IconButton(
-                  icon: const Icon(Icons.business, color: Colors.white),
+                  icon: Icon(Icons.business, color: AppTheme.fg(context)),
                   onPressed: () => context.pushNamed('/agencyList'),
                 ),
               ]),
@@ -113,8 +119,8 @@ class _AgencyDashboardScreenState extends State<AgencyDashboardScreen> with Sing
               TabBar(
                 controller: _tabCtrl,
                 indicatorColor: AppTheme.primary,
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white54,
+                labelColor: AppTheme.fg(context),
+                unselectedLabelColor: AppTheme.fg(context, 0.54),
                 isScrollable: true,
                 tabs: const [
                   Tab(text: 'Overview'),
@@ -235,7 +241,7 @@ class _OverviewTab extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListView(padding: const EdgeInsets.all(16), children: [
-      const SectionHeader(title: 'Quick Actions', color: Colors.white),
+      SectionHeader(title: 'Quick Actions', color: AppTheme.fg(context)),
       const SizedBox(height: 8),
       GridView.count(
         crossAxisCount: 3,
@@ -253,24 +259,24 @@ class _OverviewTab extends StatelessWidget {
         ],
       ),
       const SizedBox(height: 16),
-      const SectionHeader(title: 'Agency Info', color: Colors.white),
+      SectionHeader(title: 'Agency Info', color: AppTheme.fg(context)),
       const SizedBox(height: 8),
       GlassCard(
         child: Column(children: [
           _InfoRow(label: 'Owner', value: agency.ownerName ?? 'You'),
-          const Divider(color: Colors.white10),
+          Divider(color: AppTheme.hairline(context)),
           _InfoRow(label: 'Created', value: agency.createdAt ?? 'Unknown'),
-          const Divider(color: Colors.white10),
+          Divider(color: AppTheme.hairline(context)),
           _InfoRow(label: 'Agency Code', value: agency.code ?? 'N/A'),
-          const Divider(color: Colors.white10),
+          Divider(color: AppTheme.hairline(context)),
           _InfoRow(label: 'Unique ID', value: agency.uniqueId?.toString() ?? 'N/A'),
-          const Divider(color: Colors.white10),
+          Divider(color: AppTheme.hairline(context)),
           _InfoRow(label: 'Mobile', value: agency.mobile ?? 'N/A'),
-          const Divider(color: Colors.white10),
+          Divider(color: AppTheme.hairline(context)),
           _InfoRow(label: 'Bank Details', value: agency.bankDetails?.isNotEmpty == true ? agency.bankDetails! : 'Not set'),
-          const Divider(color: Colors.white10),
+          Divider(color: AppTheme.hairline(context)),
           _InfoRow(label: 'Redeem Enabled', value: agency.redeemEnable ? 'Yes' : 'No'),
-          const Divider(color: Colors.white10),
+          Divider(color: AppTheme.hairline(context)),
           _InfoRow(label: 'Description', value: agency.description ?? 'No description'),
         ]),
       ),
@@ -508,7 +514,7 @@ class _PendingRequestsTabState extends State<_PendingRequestsTab> {
           margin: const EdgeInsets.only(bottom: 12),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: AppTheme.surface,
+            color: AppTheme.cardBg(context),
             borderRadius: BorderRadius.circular(16),
           ),
           child: Column(
@@ -521,19 +527,19 @@ class _PendingRequestsTabState extends State<_PendingRequestsTab> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(req.name ?? 'User', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                      Text(req.mobileNumber ?? '', style: const TextStyle(color: Colors.white54, fontSize: 12)),
-                      Text('Live type: ${req.liveType == 1 ? 'AUDIO' : 'VIDEO'}', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                      Text(req.name ?? 'User', style: TextStyle(color: AppTheme.fg(context), fontWeight: FontWeight.bold)),
+                      Text(req.mobileNumber ?? '', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 12)),
+                      Text('Live type: ${req.liveType == 1 ? 'AUDIO' : 'VIDEO'}', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 12)),
                     ],
                   ),
                 ),
               ]),
               const SizedBox(height: 10),
               if (req.bio != null && req.bio!.isNotEmpty)
-                Text('Bio: ${req.bio}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                Text('Bio: ${req.bio}', style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 12)),
               if (req.bankDetails != null && req.bankDetails!.isNotEmpty) ...[
                 const SizedBox(height: 4),
-                Text('Bank: ${req.bankDetails}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                Text('Bank: ${req.bankDetails}', style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 12)),
               ],
               const SizedBox(height: 12),
               Row(children: [
@@ -575,7 +581,7 @@ class _ActionCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: AppTheme.cardBg(context),
           borderRadius: BorderRadius.circular(16),
         ),
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
@@ -586,7 +592,7 @@ class _ActionCard extends StatelessWidget {
             child: Icon(icon, color: Colors.white, size: 22),
           ),
           const SizedBox(height: 6),
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 11, fontWeight: FontWeight.w500)),
+          Text(label, style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 11, fontWeight: FontWeight.w500)),
         ]),
       ),
     );
@@ -605,8 +611,8 @@ class _InfoRow extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white54, fontSize: 13)),
-          Expanded(child: Text(value, textAlign: TextAlign.right, style: const TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500))),
+          Text(label, style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 13)),
+          Expanded(child: Text(value, textAlign: TextAlign.right, style: TextStyle(color: AppTheme.fg(context), fontSize: 13, fontWeight: FontWeight.w500))),
         ],
       ),
     );
@@ -662,7 +668,7 @@ class _HostsTabState extends State<_HostsTab> {
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: AppTheme.surface,
+              color: AppTheme.cardBg(context),
               borderRadius: BorderRadius.circular(16),
             ),
             child: Row(children: [
@@ -671,13 +677,13 @@ class _HostsTabState extends State<_HostsTab> {
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                   Row(children: [
-                    Text(h.name ?? 'Host', style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                    Text(h.name ?? 'Host', style: TextStyle(color: AppTheme.fg(context), fontWeight: FontWeight.w600)),
                     if (h.isOnline) ...[
                       const SizedBox(width: 6),
                       Container(width: 8, height: 8, decoration: const BoxDecoration(color: Colors.green, shape: BoxShape.circle)),
                     ],
                   ]),
-                  Text('@${h.username ?? ''} â€¢ ${h.liveHours}h live', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                  Text('@${h.username ?? ''} â€¢ ${h.liveHours}h live', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 12)),
                 ]),
               ),
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
@@ -686,10 +692,10 @@ class _HostsTabState extends State<_HostsTab> {
                   const SizedBox(width: 4),
                   Text(formatCount(h.revenue), style: const TextStyle(color: Colors.cyan, fontWeight: FontWeight.bold, fontSize: 14)),
                 ]),
-                Text('Bal: ${formatCount(h.balance)}', style: const TextStyle(color: Colors.white54, fontSize: 11)),
+                Text('Bal: ${formatCount(h.balance)}', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 11)),
               ]),
               PopupMenuButton(
-                icon: const Icon(Icons.more_vert, color: Colors.white54),
+                icon: Icon(Icons.more_vert, color: AppTheme.fg(context, 0.54)),
                 itemBuilder: (_) => [
                   const PopupMenuItem(value: 'remove', child: Text('Remove Host')),
                 ],
@@ -753,13 +759,13 @@ class _RevenueTabState extends State<_RevenueTab> {
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
                 gradient: selected ? AppTheme.purpleGradient : null,
-                color: selected ? null : AppTheme.surface,
+                color: selected ? null : AppTheme.cardBg(context),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Text(
                 p[0].toUpperCase() + p.substring(1),
                 textAlign: TextAlign.center,
-                style: TextStyle(color: selected ? Colors.white : Colors.white54, fontWeight: FontWeight.w600, fontSize: 13),
+                style: TextStyle(color: selected ? Colors.white : AppTheme.fg(context, 0.54), fontWeight: FontWeight.w600, fontSize: 13),
               ),
             ),
           ),
@@ -778,7 +784,7 @@ class _RevenueTabState extends State<_RevenueTab> {
           Expanded(child: _SummaryCard(label: 'Host Payout', value: formatCount(_data!.totalHostPayout), icon: Icons.payments, gradient: AppTheme.pinkGradient)),
         ]),
         const SizedBox(height: 16),
-        const SectionHeader(title: 'Breakdown', color: Colors.white),
+        SectionHeader(title: 'Breakdown', color: AppTheme.fg(context)),
         const SizedBox(height: 8),
         if (_data!.entries.isEmpty)
           const EmptyState(icon: Icons.bar_chart, title: 'No Data', subtitle: 'Revenue data will appear here')
@@ -786,11 +792,11 @@ class _RevenueTabState extends State<_RevenueTab> {
           ..._data!.entries.map((e) => Container(
                 margin: const EdgeInsets.only(bottom: 6),
                 padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(color: AppTheme.surface, borderRadius: BorderRadius.circular(12)),
+                decoration: BoxDecoration(color: AppTheme.cardBg(context), borderRadius: BorderRadius.circular(12)),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(e.date ?? '', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+                    Text(e.date ?? '', style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 13)),
                     Row(children: [
                       const Icon(Icons.diamond, size: 14, color: Colors.cyan),
                       const SizedBox(width: 4),
@@ -869,7 +875,7 @@ class _WithdrawalTabState extends State<_WithdrawalTab> {
         gradient: AppTheme.greenGradient,
       ),
       const SizedBox(height: 16),
-      const SectionHeader(title: 'History', color: Colors.white),
+      SectionHeader(title: 'History', color: AppTheme.fg(context)),
       if (_withdrawals.isEmpty)
         const EmptyState(icon: Icons.history, title: 'No Withdrawals', subtitle: 'Your withdrawal history will appear here')
       else
@@ -885,12 +891,12 @@ class _WithdrawalTabState extends State<_WithdrawalTab> {
           return Container(
             margin: const EdgeInsets.only(bottom: 8),
             padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(color: AppTheme.surface, borderRadius: BorderRadius.circular(12)),
+            decoration: BoxDecoration(color: AppTheme.cardBg(context), borderRadius: BorderRadius.circular(12)),
             child: Row(children: [
               Expanded(
                 child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(formatCount(w.amount), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16)),
-                  Text(w.requestedAt ?? '', style: const TextStyle(color: Colors.white54, fontSize: 12)),
+                  Text(formatCount(w.amount), style: TextStyle(color: AppTheme.fg(context), fontWeight: FontWeight.bold, fontSize: 16)),
+                  Text(w.requestedAt ?? '', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 12)),
                 ]),
               ),
               Container(
@@ -958,14 +964,20 @@ class _CreateAgencyScreenState extends State<CreateAgencyScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(gradient: AppTheme.darkGradient),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: AppTheme.bgGradient(context, AppTheme.darkGradient.colors),
+          ),
+        ),
         child: SafeArea(
           child: Column(children: [
             Padding(
               padding: const EdgeInsets.all(16),
               child: Row(children: [
-                IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: () => Navigator.pop(context)),
-                const Text('Create Agency', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                IconButton(icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)), onPressed: () => Navigator.pop(context)),
+                Text('Create Agency', style: TextStyle(color: AppTheme.fg(context), fontSize: 22, fontWeight: FontWeight.bold)),
               ]),
             ),
             Expanded(
@@ -996,18 +1008,18 @@ class _CreateAgencyScreenState extends State<CreateAgencyScreen> {
 
   Widget _field(String label, TextEditingController ctrl, String hint, {int maxLines = 1, TextInputType? keyboardType}) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
+      Text(label, style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 13, fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       TextField(
         controller: ctrl,
         maxLines: maxLines,
         keyboardType: keyboardType,
-        style: const TextStyle(color: Colors.white),
+        style: TextStyle(color: AppTheme.fg(context)),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+          hintStyle: TextStyle(color: AppTheme.fg(context, 0.3)),
           filled: true,
-          fillColor: AppTheme.surfaceLight,
+          fillColor: AppTheme.themed(context, 0xFF1E1E1E, 0xFFF1F1FA),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
         ),
       ),
@@ -1073,14 +1085,20 @@ class _AgencyWithdrawScreenState extends State<AgencyWithdrawScreen> {
     final agencyId = (ModalRoute.of(context)?.settings.arguments as Map?)?['agencyId'] as String? ?? '';
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(gradient: AppTheme.darkGradient),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: AppTheme.bgGradient(context, AppTheme.darkGradient.colors),
+          ),
+        ),
         child: SafeArea(
           child: Column(children: [
             Padding(
               padding: const EdgeInsets.all(16),
               child: Row(children: [
-                IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white), onPressed: () => Navigator.pop(context)),
-                const Text('Withdraw Funds', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)),
+                IconButton(icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)), onPressed: () => Navigator.pop(context)),
+                Text('Withdraw Funds', style: TextStyle(color: AppTheme.fg(context), fontSize: 22, fontWeight: FontWeight.bold)),
               ]),
             ),
             Expanded(
@@ -1123,13 +1141,13 @@ class _AgencyWithdrawScreenState extends State<AgencyWithdrawScreen> {
           padding: const EdgeInsets.symmetric(vertical: 12),
           decoration: BoxDecoration(
             gradient: selected ? AppTheme.greenGradient : null,
-            color: selected ? null : AppTheme.surface,
+            color: selected ? null : AppTheme.cardBg(context),
             borderRadius: BorderRadius.circular(12),
           ),
           child: Column(children: [
-            Icon(icon, color: selected ? Colors.white : Colors.white54, size: 20),
+            Icon(icon, color: selected ? Colors.white : AppTheme.fg(context, 0.54), size: 20),
             const SizedBox(height: 4),
-            Text(label, style: TextStyle(color: selected ? Colors.white : Colors.white54, fontSize: 11, fontWeight: FontWeight.w600)),
+            Text(label, style: TextStyle(color: selected ? Colors.white : AppTheme.fg(context, 0.54), fontSize: 11, fontWeight: FontWeight.w600)),
           ]),
         ),
       ),
@@ -1138,18 +1156,18 @@ class _AgencyWithdrawScreenState extends State<AgencyWithdrawScreen> {
 
   Widget _field(String label, TextEditingController ctrl, String hint, {int maxLines = 1, TextInputType? keyboardType}) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      Text(label, style: const TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
+      Text(label, style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 13, fontWeight: FontWeight.w500)),
       const SizedBox(height: 8),
       TextField(
         controller: ctrl,
         maxLines: maxLines,
         keyboardType: keyboardType,
-        style: const TextStyle(color: Colors.white),
+        style: TextStyle(color: AppTheme.fg(context)),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+          hintStyle: TextStyle(color: AppTheme.fg(context, 0.3)),
           filled: true,
-          fillColor: AppTheme.surfaceLight,
+          fillColor: AppTheme.themed(context, 0xFF1E1E1E, 0xFFF1F1FA),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
         ),
       ),

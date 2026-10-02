@@ -12,6 +12,7 @@ import 'package:intl/intl.dart';
 
 import '../models/leaderboard_complain_models.dart';
 import '../services/api_service.dart';
+import '../theme/app_theme.dart';
 // format_utils no longer used; counts formatted via intl NumberFormat.compact
 import '../utils/log.dart';
 import '../utils/media_utils.dart';
@@ -31,7 +32,7 @@ void showLiveRankingSheet(
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    backgroundColor: const Color(0xFF1A1A2E),
+    backgroundColor: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
     ),
@@ -167,12 +168,12 @@ class _LiveRankingSheetState extends State<_LiveRankingSheet> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Weekly Fans Ranking',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
+                    color: AppTheme.fg(context),
                   ),
                 ),
                 const SizedBox(height: 2),
@@ -184,12 +185,12 @@ class _LiveRankingSheetState extends State<_LiveRankingSheet> {
             ),
           ),
           IconButton(
-            icon: const Icon(Icons.refresh, color: Colors.white70, size: 22),
+            icon: Icon(Icons.refresh, color: AppTheme.fg(context, 0.7), size: 22),
             tooltip: 'Refresh',
             onPressed: _loadData,
           ),
           IconButton(
-            icon: const Icon(Icons.close, color: Colors.white70, size: 22),
+            icon: Icon(Icons.close, color: AppTheme.fg(context, 0.7), size: 22),
             tooltip: 'Close',
             onPressed: () => Navigator.pop(context),
           ),
@@ -210,7 +211,7 @@ class _LiveRankingSheetState extends State<_LiveRankingSheet> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.08),
+                color: AppTheme.themed(context, 0x14FFFFFF, 0xFFF1F1FA),
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(color: const Color(0xFF7E3FF2).withValues(alpha: 0.5)),
               ),
@@ -239,7 +240,7 @@ class _LiveRankingSheetState extends State<_LiveRankingSheet> {
   void _openPeriodPicker() {
     showModalBottomSheet(
       context: context,
-      backgroundColor: const Color(0xFF1A1A2E),
+      backgroundColor: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -250,7 +251,7 @@ class _LiveRankingSheetState extends State<_LiveRankingSheet> {
             title: Text(
               _periodLabels[p] ?? p,
               style: TextStyle(
-                color: _period == p ? const Color(0xFF7E3FF2) : Colors.white,
+                color: _period == p ? const Color(0xFF7E3FF2) : AppTheme.fg(context),
                 fontWeight: _period == p ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -275,13 +276,13 @@ class _LiveRankingSheetState extends State<_LiveRankingSheet> {
       return const Center(child: Preloader(color: Color(0xFF7E3FF2)));
     }
     if (_list.isEmpty) {
-      return const Center(
+      return Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.emoji_events_outlined, size: 56, color: Colors.white24),
-            SizedBox(height: 12),
-            Text('No gifters yet', style: TextStyle(color: Colors.white54, fontSize: 14)),
+            Icon(Icons.emoji_events_outlined, size: 56, color: AppTheme.fg(context, 0.24)),
+            const SizedBox(height: 12),
+            Text('No gifters yet', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 14)),
           ],
         ),
       );
@@ -381,7 +382,7 @@ class _LiveRankingSheetState extends State<_LiveRankingSheet> {
                     Text(
                       entry.displayName,
                       style: TextStyle(
-                        color: Colors.white,
+                        color: AppTheme.fg(context),
                         fontSize: i == 1 ? 14 : 12,
                         fontWeight: FontWeight.bold,
                       ),
@@ -425,9 +426,9 @@ class _LiveRankingSheetState extends State<_LiveRankingSheet> {
         margin: const EdgeInsets.symmetric(horizontal: 14, vertical: 5),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
+          color: AppTheme.themed(context, 0x0DFFFFFF, 0xFFF1F1FA),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.06)),
+          border: Border.all(color: AppTheme.hairline(context)),
         ),
         child: Row(
           children: [
@@ -436,8 +437,8 @@ class _LiveRankingSheetState extends State<_LiveRankingSheet> {
               width: 36,
               child: Text(
                 rank.toString().padLeft(2, '0'),
-                style: const TextStyle(
-                  color: Colors.white70,
+                style: TextStyle(
+                  color: AppTheme.fg(context, 0.7),
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
                 ),
@@ -463,8 +464,8 @@ class _LiveRankingSheetState extends State<_LiveRankingSheet> {
                       Flexible(
                         child: Text(
                           entry.displayName,
-                          style: const TextStyle(
-                            color: Colors.white,
+                          style: TextStyle(
+                            color: AppTheme.fg(context),
                             fontSize: 13,
                             fontWeight: FontWeight.bold,
                           ),
@@ -500,7 +501,7 @@ class _LiveRankingSheetState extends State<_LiveRankingSheet> {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        color: Colors.white12,
+        color: AppTheme.fg(context, 0.12),
         shape: BoxShape.circle,
         image: (image ?? '').isNotEmpty
             ? DecorationImage(
@@ -510,7 +511,7 @@ class _LiveRankingSheetState extends State<_LiveRankingSheet> {
             : null,
       ),
       child: (image ?? '').isEmpty
-          ? Icon(Icons.person, color: Colors.white54, size: size * 0.5)
+          ? Icon(Icons.person, color: AppTheme.fg(context, 0.54), size: size * 0.5)
           : null,
     );
 
@@ -577,14 +578,14 @@ class _LiveRankingSheetState extends State<_LiveRankingSheet> {
   Widget _countryChip(String? country) {
     final code = (country ?? '').toUpperCase();
     if (code.isEmpty) {
-      return const Icon(Icons.public, color: Colors.white38, size: 14);
+      return Icon(Icons.public, color: AppTheme.fg(context, 0.38), size: 14);
     }
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.25),
+        color: AppTheme.fg(context, 0.1),
         borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.white24, width: 0.5),
+        border: Border.all(color: AppTheme.hairline(context), width: 0.5),
       ),
       child: Text(
         _countryFlag(code),

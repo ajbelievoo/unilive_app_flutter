@@ -241,12 +241,12 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
                   width: double.infinity,
                   height: double.infinity,
                   errorWidget: (_, __, ___) => Container(
-                    color: isDark ? AppTheme.surfaceLight : AppTheme.lightBg,
+                    color: isDark ? const Color(0xFF232332) : AppTheme.lightBg,
                     child: const Icon(Icons.image, size: 32),
                   ),
                 )
               : Container(
-                  color: isDark ? AppTheme.surfaceLight : AppTheme.lightBg,
+                  color: isDark ? const Color(0xFF232332) : AppTheme.lightBg,
                   child: const Center(
                     child: Icon(Icons.wallpaper, size: 40, color: Colors.grey),
                   ),
@@ -328,7 +328,7 @@ class _ProfileBackgroundScreenState extends State<ProfileBackgroundScreen> {
               width: double.infinity,
               height: double.infinity,
               errorWidget: (_, __, ___) => Container(
-                color: isDark ? AppTheme.surfaceLight : AppTheme.lightBg,
+                color: isDark ? const Color(0xFF232332) : AppTheme.lightBg,
                 child: const Icon(Icons.image, size: 32),
               ),
             ),

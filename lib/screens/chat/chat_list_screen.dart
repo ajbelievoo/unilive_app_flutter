@@ -431,7 +431,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
                 borderSide: BorderSide.none,
               ),
               filled: true,
-              fillColor: Colors.grey.shade100,
+              fillColor: AppTheme.themed(context, 0xFF1E1E1E, 0xFFF5F5F5),
               contentPadding: const EdgeInsets.symmetric(
                 horizontal: 16,
                 vertical: 10,
@@ -525,7 +525,7 @@ class _ChatListScreenState extends State<ChatListScreen> {
       selectedColor: AppTheme.primary.withValues(alpha: 0.2),
       checkmarkColor: AppTheme.primary,
       labelStyle: TextStyle(
-        color: selected ? AppTheme.primary : AppTheme.textSecondary,
+        color: selected ? AppTheme.primary : AppTheme.fg(context, 0.6),
         fontSize: 13,
       ),
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
@@ -566,13 +566,22 @@ class _ChatListScreenState extends State<ChatListScreen> {
         decoration: BoxDecoration(
           gradient:
               hasUnread
-                  ? const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFFFBF7FF), Color(0xFFF3E9FF)],
-                  )
+                  ? (AppTheme.isDark(context)
+                      ? LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          AppTheme.primary.withValues(alpha: 0.22),
+                          AppTheme.primary.withValues(alpha: 0.10),
+                        ],
+                      )
+                      : const LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [Color(0xFFFBF7FF), Color(0xFFF3E9FF)],
+                      ))
                   : null,
-          color: hasUnread ? null : Colors.white,
+          color: hasUnread ? null : AppTheme.cardBg(context),
           borderRadius: BorderRadius.circular(18),
           boxShadow: [
             BoxShadow(
@@ -721,17 +730,17 @@ class _ChatListScreenState extends State<ChatListScreen> {
                         isLive
                             ? Colors.pink
                             : (c.unreadCount > 0
-                                ? AppTheme.textPrimary
-                                : AppTheme.textSecondary),
+                                ? AppTheme.fg(context)
+                                : AppTheme.fg(context, 0.6)),
                     fontWeight: isLive ? FontWeight.bold : FontWeight.normal,
                   ),
                 ),
               ),
               if (c.muted)
-                const Icon(
+                Icon(
                   Icons.volume_off,
                   size: 14,
-                  color: AppTheme.textTertiary,
+                  color: AppTheme.fg(context, 0.4),
                 ),
             ],
           ),
@@ -749,14 +758,14 @@ class _ChatListScreenState extends State<ChatListScreen> {
                       color:
                           c.unreadCount > 0
                               ? Colors.green
-                              : AppTheme.textTertiary,
+                              : AppTheme.fg(context, 0.4),
                     ),
                   ),
                   PopupMenuButton<String>(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.more_vert,
                       size: 18,
-                      color: AppTheme.textTertiary,
+                      color: AppTheme.fg(context, 0.4),
                     ),
                     padding: EdgeInsets.zero,
                     itemBuilder:
@@ -962,21 +971,21 @@ class _ChatListScreenState extends State<ChatListScreen> {
 
   Widget _emptyState() {
     return ListView(
-      children: const [
-        SizedBox(height: 120),
-        Icon(Icons.chat_bubble_outline, size: 72, color: AppTheme.textTertiary),
-        SizedBox(height: 16),
+      children: [
+        const SizedBox(height: 120),
+        Icon(Icons.chat_bubble_outline, size: 72, color: AppTheme.fg(context, 0.4)),
+        const SizedBox(height: 16),
         Center(
           child: Text(
             'No conversations yet',
-            style: TextStyle(fontSize: 16, color: AppTheme.textSecondary),
+            style: TextStyle(fontSize: 16, color: AppTheme.fg(context, 0.6)),
           ),
         ),
-        SizedBox(height: 8),
+        const SizedBox(height: 8),
         Center(
           child: Text(
             'Tap the pencil icon to start chatting',
-            style: TextStyle(fontSize: 13, color: AppTheme.textTertiary),
+            style: TextStyle(fontSize: 13, color: AppTheme.fg(context, 0.4)),
           ),
         ),
       ],

@@ -16,6 +16,7 @@ import 'package:provider/provider.dart';
 import '../constants/const.dart';
 import '../services/session_manager.dart';
 import '../services/socket_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/log.dart';
 import '../widgets/user_avatar.dart';
 
@@ -149,23 +150,23 @@ class _PkHandRaiseSheetState extends State<PkHandRaiseSheet> {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1E1E2A),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF1E1E2A, 0xFFF8F7FE),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: Column(mainAxisSize: MainAxisSize.min, children: [
-        Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+        Container(width: 40, height: 4, decoration: BoxDecoration(color: AppTheme.fg(context, 0.24), borderRadius: BorderRadius.circular(2))),
         const SizedBox(height: 16),
         Text(
           widget.isHost ? 'Raised Hands' : 'Raise Hand',
-          style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w600),
+          style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.w600),
         ),
         const SizedBox(height: 16),
         if (widget.isHost) ...[
           if (_raisedHands.isEmpty)
             Padding(
               padding: const EdgeInsets.symmetric(vertical: 32),
-              child: Text('No raised hands yet', style: TextStyle(color: Colors.white.withValues(alpha: 0.5))),
+              child: Text('No raised hands yet', style: TextStyle(color: AppTheme.fg(context, 0.5))),
             )
           else
             ConstrainedBox(
@@ -173,12 +174,12 @@ class _PkHandRaiseSheetState extends State<PkHandRaiseSheet> {
               child: ListView.separated(
                 shrinkWrap: true,
                 itemCount: _raisedHands.length,
-                separatorBuilder: (_, __) => const Divider(color: Colors.white10, height: 1),
+                separatorBuilder: (_, __) => Divider(color: AppTheme.hairline(context), height: 1),
                 itemBuilder: (_, i) {
                   final h = _raisedHands[i];
                   return ListTile(
                     leading: UserAvatar(imageUrl: h.image, size: 40),
-                    title: Text(h.name, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+                    title: Text(h.name, style: TextStyle(color: AppTheme.fg(context), fontWeight: FontWeight.w500)),
                     trailing: Row(mainAxisSize: MainAxisSize.min, children: [
                       IconButton(
                         icon: const Icon(Icons.check_circle, color: Colors.green),
@@ -198,13 +199,13 @@ class _PkHandRaiseSheetState extends State<PkHandRaiseSheet> {
           Icon(
             _myHandRaised ? Icons.pan_tool : Icons.back_hand,
             size: 64,
-            color: _myHandRaised ? Colors.amber : Colors.white70,
+            color: _myHandRaised ? Colors.amber : AppTheme.fg(context, 0.7),
           ),
           const SizedBox(height: 16),
           Text(
             _myHandRaised ? 'Hand raised â€” waiting for host' : 'Raise your hand to join the PK',
             textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14),
+            style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 14),
           ),
           const SizedBox(height: 20),
           SizedBox(

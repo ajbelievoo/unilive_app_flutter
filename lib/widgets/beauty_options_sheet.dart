@@ -6,6 +6,7 @@ library beauty_options;
 import 'package:agora_rtc_engine/agora_rtc_engine.dart';
 import 'package:flutter/material.dart';
 
+import '../theme/app_theme.dart';
 import '../utils/log.dart';
 
 /// Shows the beauty options bottom sheet.
@@ -72,9 +73,9 @@ class _BeautyOptionsSheetState extends State<BeautyOptionsSheet> {
   Widget build(BuildContext context) {
     final bottomPadding = MediaQuery.of(context).viewPadding.bottom;
     return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       child: SafeArea(
         top: false,
@@ -90,15 +91,15 @@ class _BeautyOptionsSheetState extends State<BeautyOptionsSheet> {
                   height: 4,
                   margin: const EdgeInsets.only(bottom: 16),
                   decoration: BoxDecoration(
-                    color: Colors.white30,
+                    color: AppTheme.fg(context, 0.3),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
               ),
-              const Text('Beauty Options',
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('Beauty Options',
+                  style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
-              const Text('Lightening Contrast', style: TextStyle(color: Colors.white70, fontSize: 14)),
+              Text('Lightening Contrast', style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 14)),
               const SizedBox(height: 8),
               Row(
                 children: [
@@ -141,7 +142,7 @@ class _BeautyOptionsSheetState extends State<BeautyOptionsSheet> {
                       }
                       widget.onBeautyActiveChanged?.call(false);
                     },
-                    child: const Text('Reset', style: TextStyle(color: Colors.white70, fontSize: 15)),
+                    child: Text('Reset', style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 15)),
                   ),
                   FilledButton(
                     style: FilledButton.styleFrom(
@@ -173,14 +174,14 @@ class _BeautyOptionsSheetState extends State<BeautyOptionsSheet> {
           padding: const EdgeInsets.symmetric(vertical: 10),
           decoration: BoxDecoration(
             gradient: selected ? const LinearGradient(colors: [Color(0xFF7E3FF2), Color(0xFF00E5FF)]) : null,
-            color: selected ? null : Colors.white.withValues(alpha: 0.1),
+            color: selected ? null : AppTheme.themed(context, 0x1AFFFFFF, 0xFFF1F1FA),
             borderRadius: BorderRadius.circular(14),
           ),
           child: Text(
             label,
             textAlign: TextAlign.center,
             style: TextStyle(
-              color: selected ? Colors.white : Colors.white70,
+              color: selected ? Colors.white : AppTheme.fg(context, 0.7),
               fontSize: 12,
               fontWeight: FontWeight.w600,
             ),
@@ -196,7 +197,7 @@ class _BeautyOptionsSheetState extends State<BeautyOptionsSheet> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+          Text(label, style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 14)),
           Slider(
             value: value,
             min: 0,

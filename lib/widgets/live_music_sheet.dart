@@ -7,6 +7,7 @@ import 'package:fluttertoast/fluttertoast.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+import '../theme/app_theme.dart';
 import '../utils/log.dart';
 import 'package:belive/widgets/preloader.dart';
 
@@ -194,9 +195,9 @@ class _LiveMusicSheetState extends State<_LiveMusicSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: SafeArea(
@@ -205,22 +206,22 @@ class _LiveMusicSheetState extends State<_LiveMusicSheet> {
           children: [
             Row(
               children: [
-                const Expanded(
-                  child: Text('Live Music', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                Expanded(
+                  child: Text('Live Music', style: TextStyle(color: AppTheme.fg(context), fontSize: 16, fontWeight: FontWeight.bold)),
                 ),
                 IconButton(
                   onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, color: Colors.white70),
+                  icon: Icon(Icons.close, color: AppTheme.fg(context, 0.7)),
                 ),
               ],
             ),
-            const Divider(color: Colors.white12),
+            Divider(color: AppTheme.hairline(context)),
             if (_loading)
               const SizedBox(height: 120, child: Center(child: Preloader()))
             else if (_tracks.isEmpty)
-              const SizedBox(
+              SizedBox(
                 height: 120,
-                child: Center(child: Text('No songs added yet', style: TextStyle(color: Colors.white70))),
+                child: Center(child: Text('No songs added yet', style: TextStyle(color: AppTheme.fg(context, 0.7)))),
               )
             else
               ConstrainedBox(
@@ -234,11 +235,11 @@ class _LiveMusicSheetState extends State<_LiveMusicSheet> {
                     return ListTile(
                       leading: Icon(
                         isPlaying ? Icons.pause_circle_filled : (isCurrent ? Icons.play_circle_filled : Icons.music_note),
-                        color: isCurrent ? const Color(0xFF7E3FF2) : Colors.white70,
+                        color: isCurrent ? const Color(0xFF7E3FF2) : AppTheme.fg(context, 0.7),
                       ),
                       title: Text(
                         _tracks[i].name,
-                        style: TextStyle(color: isCurrent ? Colors.white : Colors.white70, fontSize: 14),
+                        style: TextStyle(color: isCurrent ? AppTheme.fg(context) : AppTheme.fg(context, 0.7), fontSize: 14),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -248,7 +249,7 @@ class _LiveMusicSheetState extends State<_LiveMusicSheet> {
                           if (isCurrent)
                             IconButton(
                               onPressed: _pauseOrResume,
-                              icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow, color: Colors.white),
+                              icon: Icon(isPlaying ? Icons.pause : Icons.play_arrow, color: AppTheme.fg(context)),
                             ),
                           IconButton(
                             onPressed: () => _removeAt(i),

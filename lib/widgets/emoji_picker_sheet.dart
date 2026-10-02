@@ -156,10 +156,10 @@ class _EmojiPickerSheetState extends State<_EmojiPickerSheet>
 
     return Container(
       height: height * 0.55,
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
-        boxShadow: [
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF1A1A2E),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+        boxShadow: const [
           BoxShadow(color: Color(0x1A000000), blurRadius: 24, offset: Offset(0, -8)),
         ],
       ),
@@ -171,11 +171,11 @@ class _EmojiPickerSheetState extends State<_EmojiPickerSheet>
             if (_loading)
               const Expanded(child: Center(child: Preloader()))
             else if (_reactions.isEmpty && _categories.isEmpty)
-              const Expanded(
+              Expanded(
                 child: Center(
                   child: Text(
                     'No reactions',
-                    style: TextStyle(color: Colors.black54, fontSize: 14),
+                    style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 14),
                   ),
                 ),
               )
@@ -205,7 +205,7 @@ class _EmojiPickerSheetState extends State<_EmojiPickerSheet>
         height: 4,
         margin: const EdgeInsets.only(top: 10, bottom: 6),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.15),
+          color: AppTheme.fg(context, 0.15),
           borderRadius: BorderRadius.circular(2),
         ),
       ),
@@ -220,8 +220,8 @@ class _EmojiPickerSheetState extends State<_EmojiPickerSheet>
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
-        border: Border(top: BorderSide(color: Colors.black.withValues(alpha: 0.06))),
+        color: AppTheme.themed(context, 0xFF1A1A2E),
+        border: Border(top: BorderSide(color: AppTheme.hairline(context))),
       ),
       child: SafeArea(
         top: false,
@@ -229,13 +229,13 @@ class _EmojiPickerSheetState extends State<_EmojiPickerSheet>
           controller: _tabController,
           isScrollable: true,
           indicator: BoxDecoration(
-            color: const Color(0xFFF1F2F4),
+            color: AppTheme.themed(context, 0xFF2A2A3E, 0xFFF1F2F4),
             borderRadius: BorderRadius.circular(22),
           ),
           indicatorPadding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
           indicatorSize: TabBarIndicatorSize.tab,
           labelColor: AppTheme.primary,
-          unselectedLabelColor: Colors.black45,
+          unselectedLabelColor: AppTheme.fg(context, 0.45),
           tabs: tabs,
         ),
       ),
@@ -260,11 +260,11 @@ class _EmojiPickerSheetState extends State<_EmojiPickerSheet>
 
   Widget _reactionGrid() {
     if (!_reactionsLoaded) {
-      return const Center(child: Preloader(color: Colors.black26));
+      return Center(child: Preloader(color: AppTheme.fg(context, 0.26)));
     }
     if (_reactions.isEmpty) {
-      return const Center(
-        child: Text('No reactions', style: TextStyle(color: Colors.black54, fontSize: 14)),
+      return Center(
+        child: Text('No reactions', style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 14)),
       );
     }
     return GridView.builder(
@@ -299,7 +299,7 @@ class _EmojiPickerSheetState extends State<_EmojiPickerSheet>
   Widget _giftGrid(String categoryId) {
     final gifts = _giftsByCategory[categoryId] ?? [];
     if (gifts.isEmpty) {
-      return const Center(child: Preloader(color: Colors.black26));
+      return Center(child: Preloader(color: AppTheme.fg(context, 0.26)));
     }
     final session = context.read<SessionManager>();
     final canUsePremiumEmoji = VipPrivilegeHelper.canUsePremiumEmoji(session);

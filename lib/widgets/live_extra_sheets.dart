@@ -10,6 +10,7 @@ import '../models/room_runtime_models.dart';
 import '../services/host_features_service.dart';
 import '../services/session_manager.dart';
 import '../services/socket_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/format_utils.dart' show diamondsToBeans;
 import '../utils/log.dart';
 import 'package:belive/widgets/preloader.dart';
@@ -62,16 +63,16 @@ class _PkVoteSheet extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: const EdgeInsets.all(16),
       child: SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Vote', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text('Vote', style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 16),
             Row(
               children: [
@@ -202,22 +203,22 @@ class _HostLuckySheetState extends State<_HostLuckySheet> {
     return DefaultTabController(
       length: 2,
       child: Container(
-        decoration: const BoxDecoration(
-          color: Color(0xFF1A1A2E),
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        decoration: BoxDecoration(
+          color: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
         ),
         padding: const EdgeInsets.all(16),
         child: SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Lucky', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('Lucky', style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold)),
               const SizedBox(height: 8),
-              const TabBar(
-                indicatorColor: Color(0xFF7E3FF2),
-                labelColor: Colors.white,
-                unselectedLabelColor: Colors.white70,
-                tabs: [Tab(text: 'Draw'), Tab(text: 'Lucky Bag')],
+              TabBar(
+                indicatorColor: const Color(0xFF7E3FF2),
+                labelColor: AppTheme.fg(context),
+                unselectedLabelColor: AppTheme.fg(context, 0.7),
+                tabs: const [Tab(text: 'Draw'), Tab(text: 'Lucky Bag')],
               ),
               const SizedBox(height: 8),
               SizedBox(
@@ -233,7 +234,7 @@ class _HostLuckySheetState extends State<_HostLuckySheet> {
                                 ? const Preloader()
                                 : Text(
                                     _drawResult ?? 'Tap Spin to pick a lucky viewer',
-                                    style: const TextStyle(color: Colors.white, fontSize: 16),
+                                    style: TextStyle(color: AppTheme.fg(context), fontSize: 16),
                                     textAlign: TextAlign.center,
                                   ),
                           ),
@@ -254,21 +255,21 @@ class _HostLuckySheetState extends State<_HostLuckySheet> {
                         TextField(
                           controller: _coinsCtrl,
                           keyboardType: TextInputType.number,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: const InputDecoration(
+                          style: TextStyle(color: AppTheme.fg(context)),
+                          decoration: InputDecoration(
                             labelText: 'Total Diamonds',
-                            labelStyle: TextStyle(color: Colors.white70),
-                            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                            labelStyle: TextStyle(color: AppTheme.fg(context, 0.7)),
+                            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppTheme.hairline(context))),
                           ),
                         ),
                         TextField(
                           controller: _countCtrl,
                           keyboardType: TextInputType.number,
-                          style: const TextStyle(color: Colors.white),
-                          decoration: const InputDecoration(
+                          style: TextStyle(color: AppTheme.fg(context)),
+                          decoration: InputDecoration(
                             labelText: 'Number of Bags',
-                            labelStyle: TextStyle(color: Colors.white70),
-                            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                            labelStyle: TextStyle(color: AppTheme.fg(context, 0.7)),
+                            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: AppTheme.hairline(context))),
                           ),
                         ),
                         const SizedBox(height: 16),
@@ -354,19 +355,19 @@ class _LuckyBagClaimSheetState extends State<_LuckyBagClaimSheet> {
   @override
   Widget build(BuildContext context) {
     return Container(
-      decoration: const BoxDecoration(
-        color: Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
       ),
       padding: const EdgeInsets.all(16),
       child: SafeArea(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Lucky Bag', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            Text('Lucky Bag', style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 24),
             if (!_available && !_claimed)
-              const Text('No lucky bag active right now', style: TextStyle(color: Colors.white70))
+              Text('No lucky bag active right now', style: TextStyle(color: AppTheme.fg(context, 0.7)))
             else if (_claimed)
               const Icon(Icons.check_circle, color: Colors.green, size: 64)
             else
@@ -510,9 +511,9 @@ class _AudioRoomLiveStatsSheetState extends State<_AudioRoomLiveStatsSheet> {
         final e = _earningsNotifier.value ?? _earnings;
 
         return Container(
-          decoration: const BoxDecoration(
-            color: Color(0xFF1A1A2E),
-            borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+          decoration: BoxDecoration(
+            color: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
           ),
           padding: const EdgeInsets.all(20),
           child: SafeArea(
@@ -520,10 +521,10 @@ class _AudioRoomLiveStatsSheetState extends State<_AudioRoomLiveStatsSheet> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
+                Text(
                   'Live Stats',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppTheme.fg(context),
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -587,7 +588,7 @@ class _AudioRoomLiveStatsSheetState extends State<_AudioRoomLiveStatsSheet> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.3),
+        color: AppTheme.themed(context, 0x4D000000, 0xFFF1F1FA),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -597,13 +598,13 @@ class _AudioRoomLiveStatsSheetState extends State<_AudioRoomLiveStatsSheet> {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
+              style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 14),
             ),
           ),
           Text(
             value,
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: AppTheme.fg(context),
               fontSize: 16,
               fontWeight: FontWeight.bold,
             ),

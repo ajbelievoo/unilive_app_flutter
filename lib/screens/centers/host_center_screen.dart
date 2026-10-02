@@ -404,7 +404,13 @@ class _HostCenterScreenState extends State<HostCenterScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(gradient: AppTheme.darkGradient),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: AppTheme.bgGradient(context, AppTheme.darkGradient.colors),
+          ),
+        ),
         child: SafeArea(
           child: Column(children: [
             _buildHeader(),
@@ -458,7 +464,7 @@ class _HostCenterScreenState extends State<HostCenterScreen>
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(children: [
         IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)),
           onPressed: () => Navigator.pop(context),
         ),
         UserAvatar(
@@ -473,17 +479,17 @@ class _HostCenterScreenState extends State<HostCenterScreen>
             children: [
               Text(
                 user?.name ?? user?.username ?? 'Host',
-                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold),
               ),
               Text(
                 'Host Center',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
+                style: TextStyle(color: AppTheme.fg(context, 0.6), fontSize: 13),
               ),
             ],
           ),
         ),
         IconButton(
-          icon: const Icon(Icons.refresh, color: Colors.white70),
+          icon: Icon(Icons.refresh, color: AppTheme.fg(context, 0.7)),
           onPressed: _loadAll,
         ),
       ]),
@@ -534,10 +540,10 @@ class _HostCenterScreenState extends State<HostCenterScreen>
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Host Analytics',
             style: TextStyle(
-              color: Colors.white,
+              color: AppTheme.fg(context),
               fontSize: 18,
               fontWeight: FontWeight.bold,
             ),
@@ -546,7 +552,7 @@ class _HostCenterScreenState extends State<HostCenterScreen>
           Text(
             'Live time, earnings & host activity at a glance',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.6),
+              color: AppTheme.fg(context, 0.6),
               fontSize: 12,
             ),
           ),
@@ -662,6 +668,7 @@ class _HostCenterScreenState extends State<HostCenterScreen>
     String? subLabel,
     VoidCallback? onTap,
   }) {
+    final isDark = AppTheme.isDark(context);
     Widget card = SizedBox(
       width: width ?? 96,
       child: Container(
@@ -676,7 +683,7 @@ class _HostCenterScreenState extends State<HostCenterScreen>
             ],
           ),
           borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+          border: Border.all(color: AppTheme.hairline(context)),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: 0.10),
@@ -693,16 +700,18 @@ class _HostCenterScreenState extends State<HostCenterScreen>
             Container(
               padding: const EdgeInsets.all(5),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
+                color: isDark
+                    ? Colors.white.withValues(alpha: 0.15)
+                    : gradient[0].withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Icon(icon, color: Colors.white, size: 14),
+              child: Icon(icon, color: isDark ? Colors.white : gradient[0], size: 14),
             ),
             const SizedBox(height: 8),
             Text(
               value,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: AppTheme.fg(context),
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
                 letterSpacing: -0.5,
@@ -713,7 +722,7 @@ class _HostCenterScreenState extends State<HostCenterScreen>
               Text(
                 subLabel!,
                 style: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.80),
+                  color: AppTheme.fg(context, 0.80),
                   fontSize: 8,
                   fontWeight: FontWeight.w500,
                 ),
@@ -725,7 +734,7 @@ class _HostCenterScreenState extends State<HostCenterScreen>
             Text(
               label,
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.65),
+                color: AppTheme.fg(context, 0.65),
                 fontSize: 9,
                 fontWeight: FontWeight.w500,
               ),
@@ -747,8 +756,8 @@ class _HostCenterScreenState extends State<HostCenterScreen>
       controller: _tabCtrl,
       isScrollable: true,
       indicatorColor: AppTheme.primary,
-      labelColor: Colors.white,
-      unselectedLabelColor: Colors.white54,
+      labelColor: AppTheme.fg(context),
+      unselectedLabelColor: AppTheme.fg(context, 0.54),
       labelStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
       tabs: const [
         Tab(text: 'Analytics'),
@@ -781,7 +790,7 @@ class _HostCenterScreenState extends State<HostCenterScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Earnings', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                Text('Earnings', style: TextStyle(color: AppTheme.fg(context), fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 _infoRow('Beans', formatCount(rCoin), Icons.grain),
                 _infoRow('Total Earned', formatCount(earnCoin), Icons.trending_up),
@@ -800,7 +809,7 @@ class _HostCenterScreenState extends State<HostCenterScreen>
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  const Text('My Agency', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text('My Agency', style: TextStyle(color: AppTheme.fg(context), fontSize: 16, fontWeight: FontWeight.bold)),
                   const SizedBox(height: 16),
                   _infoRow('Agency', hostAgency['name']?.toString() ?? 'N/A', Icons.business),
                   _infoRow('Agency ID', hostAgency['uniqueId']?.toString() ?? 'N/A', Icons.code),
@@ -816,7 +825,7 @@ class _HostCenterScreenState extends State<HostCenterScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Monthly Summary', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                Text('Monthly Summary', style: TextStyle(color: AppTheme.fg(context), fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 _infoRow('Audio Valid Days', '$totalAudioDays', Icons.mic),
                 _infoRow('Video Valid Days', '$totalVideoDays', Icons.videocam),
@@ -831,7 +840,7 @@ class _HostCenterScreenState extends State<HostCenterScreen>
         ),
         const SizedBox(height: 16),
         if (liveData.isNotEmpty) ...[
-          const Text('Recent Sessions', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+          Text('Recent Sessions', style: TextStyle(color: AppTheme.fg(context), fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           ...liveData.take(5).map((item) {
             final d = item as Map<String, dynamic>;
@@ -872,8 +881,8 @@ class _HostCenterScreenState extends State<HostCenterScreen>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Total Settled', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                Text(formatCount(total), style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                Text('Total Settled', style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 14)),
+                Text(formatCount(total), style: TextStyle(color: AppTheme.fg(context), fontSize: 20, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -909,9 +918,9 @@ class _HostCenterScreenState extends State<HostCenterScreen>
       child: Container(
         padding: const EdgeInsets.all(4),
         decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.05),
+          color: AppTheme.cardBg(context),
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+          border: Border.all(color: AppTheme.hairline(context)),
         ),
         child: Row(
           children: [
@@ -944,7 +953,7 @@ class _HostCenterScreenState extends State<HostCenterScreen>
           child: Text(
             label,
             style: TextStyle(
-              color: active ? Colors.white : Colors.white.withValues(alpha: 0.6),
+              color: active ? Colors.white : AppTheme.fg(context, 0.6),
               fontSize: 13,
               fontWeight: FontWeight.bold,
             ),
@@ -988,9 +997,9 @@ class _HostCenterScreenState extends State<HostCenterScreen>
       child: Row(children: [
         Icon(icon, color: AppTheme.primary, size: 18),
         const SizedBox(width: 12),
-        Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14)),
+        Text(label, style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 14)),
         const Spacer(),
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+        Text(value, style: TextStyle(color: AppTheme.fg(context), fontSize: 14, fontWeight: FontWeight.w600)),
       ]),
     );
   }
@@ -1004,9 +1013,9 @@ class _HostCenterScreenState extends State<HostCenterScreen>
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: Row(children: [
         Container(
@@ -1022,16 +1031,16 @@ class _HostCenterScreenState extends State<HostCenterScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(type == 'audio' ? 'Audio Live' : 'Video Live', style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+              Text(type == 'audio' ? 'Audio Live' : 'Video Live', style: TextStyle(color: AppTheme.fg(context), fontSize: 14, fontWeight: FontWeight.w600)),
               if (date.isNotEmpty)
-                Text(date.split('T').first, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12)),
+                Text(date.split('T').first, style: TextStyle(color: AppTheme.fg(context, 0.5), fontSize: 12)),
             ],
           ),
         ),
         Column(
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
-            Text('${minutes}m', style: const TextStyle(color: Colors.white70, fontSize: 13)),
+            Text('${minutes}m', style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 13)),
             Text(formatCount(coins), style: const TextStyle(color: Color(0xFFFFB800), fontSize: 14, fontWeight: FontWeight.bold)),
           ],
         ),
@@ -1052,9 +1061,9 @@ class _HostCenterScreenState extends State<HostCenterScreen>
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: Row(children: [
         Container(
@@ -1070,9 +1079,9 @@ class _HostCenterScreenState extends State<HostCenterScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(formatCount(amount), style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+              Text(formatCount(amount), style: TextStyle(color: AppTheme.fg(context), fontSize: 15, fontWeight: FontWeight.bold)),
               if (date.isNotEmpty)
-                Text(date.split('T').first, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12)),
+                Text(date.split('T').first, style: TextStyle(color: AppTheme.fg(context, 0.5), fontSize: 12)),
             ],
           ),
         ),
@@ -1214,7 +1223,7 @@ class _HostCenterScreenState extends State<HostCenterScreen>
             const SizedBox(width: 12),
             Expanded(
               child: Text('${type == 'audio' ? 'Audio' : 'Video'} Live Task',
-                  style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  style: TextStyle(color: AppTheme.fg(context), fontSize: 16, fontWeight: FontWeight.bold)),
             ),
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
@@ -1265,14 +1274,14 @@ class _HostCenterScreenState extends State<HostCenterScreen>
               width: double.infinity,
               padding: const EdgeInsets.symmetric(vertical: 10),
               decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.05),
+                color: AppTheme.cardBg(context),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                border: Border.all(color: AppTheme.hairline(context)),
               ),
               child: Center(
                 child: Text(
                   'In Progress ${(overallProgress * 100).toInt()}%',
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13, fontWeight: FontWeight.w600),
+                  style: TextStyle(color: AppTheme.fg(context, 0.6), fontSize: 13, fontWeight: FontWeight.w600),
                 ),
               ),
             ),
@@ -1328,9 +1337,9 @@ class _HostCenterScreenState extends State<HostCenterScreen>
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: Row(children: [
         Container(
@@ -1347,18 +1356,18 @@ class _HostCenterScreenState extends State<HostCenterScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(title, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+              Text(title, style: TextStyle(color: AppTheme.fg(context), fontSize: 15, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Text(
                 subtitle,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
+                style: TextStyle(color: AppTheme.fg(context, 0.6), fontSize: 12),
               ),
               if (completedAt.isNotEmpty)
                 Text(
                   completedAt.split('T').first,
-                  style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11),
+                  style: TextStyle(color: AppTheme.fg(context, 0.4), fontSize: 11),
                 ),
             ],
           ),
@@ -1414,7 +1423,7 @@ class _HostCenterScreenState extends State<HostCenterScreen>
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(children: [
-          Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 12)),
+          Text(label, style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 12)),
           const Spacer(),
           Text(value, style: TextStyle(color: color, fontSize: 12, fontWeight: FontWeight.bold)),
         ]),
@@ -1424,7 +1433,7 @@ class _HostCenterScreenState extends State<HostCenterScreen>
           child: LinearProgressIndicator(
             value: progress,
             minHeight: 6,
-            backgroundColor: Colors.white.withValues(alpha: 0.1),
+            backgroundColor: AppTheme.hairline(context),
             valueColor: AlwaysStoppedAnimation<Color>(color),
           ),
         ),

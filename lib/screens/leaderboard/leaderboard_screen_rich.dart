@@ -87,21 +87,22 @@ class _LeaderboardScreenRichState extends State<LeaderboardScreenRich> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0B0B10),
+      backgroundColor: AppTheme.themed(context, 0xFF0B0B10, 0xFFF8F7FE),
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
         centerTitle: true,
-        systemOverlayStyle: AppTheme.systemDark,
+        systemOverlayStyle:
+            AppTheme.isDark(context) ? AppTheme.systemDark : AppTheme.systemLight,
         leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
+          icon: Icon(Icons.arrow_back_ios, color: AppTheme.fg(context)),
           onPressed: () => Navigator.of(context).maybePop(),
         ),
-        title: const Text(
+        title: Text(
           'Leaderboard',
           style: TextStyle(
-            color: Colors.white,
+            color: AppTheme.fg(context),
             fontSize: 18,
             fontWeight: FontWeight.bold,
           ),
@@ -111,6 +112,8 @@ class _LeaderboardScreenRichState extends State<LeaderboardScreenRich> {
         alignment: Alignment.topLeft,
         children: [
           const Positioned.fill(child: _PalaceBackground()),
+          // In light mode the palace artwork is replaced by the soft light
+          // gradient inside _PalaceBackground itself.
           Positioned.fill(
             child: SafeArea(
               child: Column(
@@ -170,13 +173,13 @@ class _LeaderboardScreenRichState extends State<LeaderboardScreenRich> {
                                 colors: [Color(0xFFFFE55C), Color(0xFFFFB800)],
                               )
                               : null,
-                      color: selected ? null : const Color(0xFF1A1A24),
+                      color: selected ? null : AppTheme.cardBg(context),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color:
                             selected
                                 ? const Color(0xFFFFD700)
-                                : const Color(0xFF2A2A3A),
+                                : AppTheme.hairline(context),
                         width: 1.2,
                       ),
                     ),
@@ -185,7 +188,9 @@ class _LeaderboardScreenRichState extends State<LeaderboardScreenRich> {
                       duration: const Duration(milliseconds: 200),
                       style: TextStyle(
                         color:
-                            selected ? const Color(0xFF0B0B10) : Colors.white70,
+                            selected
+                                ? const Color(0xFF0B0B10)
+                                : AppTheme.fg(context, 0.7),
                         fontSize: 13,
                         fontWeight:
                             selected ? FontWeight.bold : FontWeight.w500,
@@ -237,7 +242,9 @@ class _LeaderboardScreenRichState extends State<LeaderboardScreenRich> {
                     label,
                     style: TextStyle(
                       color:
-                          selected ? const Color(0xFFFFD700) : Colors.white60,
+                          selected
+                              ? const Color(0xFFFFD700)
+                              : AppTheme.fg(context, 0.6),
                       fontSize: 13,
                       fontWeight: selected ? FontWeight.bold : FontWeight.w500,
                     ),
@@ -338,17 +345,17 @@ class _LeaderboardCategoryPageState extends State<LeaderboardCategoryPage>
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.cloud_off, color: Colors.white38, size: 48),
+            Icon(Icons.cloud_off, color: AppTheme.fg(context, 0.38), size: 48),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'Failed to load leaderboard',
-              style: TextStyle(color: Colors.white70, fontSize: 15),
+              style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 15),
             ),
             const SizedBox(height: 6),
             Text(
               error,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white38, fontSize: 12),
+              style: TextStyle(color: AppTheme.fg(context, 0.38), fontSize: 12),
             ),
             const SizedBox(height: 16),
             GestureDetector(
@@ -553,7 +560,7 @@ class _PodiumPlayer extends StatelessWidget {
               overflow: TextOverflow.ellipsis,
               textAlign: TextAlign.center,
               style: TextStyle(
-                color: entry.isVIP ? const Color(0xFFFFD54F) : Colors.white,
+                color: entry.isVIP ? const Color(0xFFFFD54F) : AppTheme.fg(context),
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
                 shadows:
@@ -716,14 +723,14 @@ class _BadgeRow extends StatelessWidget {
           margin: const EdgeInsets.only(left: 3),
           padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
           decoration: BoxDecoration(
-            color: const Color(0xFF2A2A3A),
+            color: AppTheme.themed(context, 0xFF2A2A3A, 0xFFF1F1FA),
             borderRadius: BorderRadius.circular(4),
-            border: Border.all(color: const Color(0xFF3A3A4A), width: 0.5),
+            border: Border.all(color: AppTheme.hairline(context), width: 0.5),
           ),
           child: Text(
             'ID: ${entry.uniqueId}',
-            style: const TextStyle(
-              color: Colors.white,
+            style: TextStyle(
+              color: AppTheme.fg(context),
               fontSize: 9,
               fontWeight: FontWeight.w600,
             ),
@@ -760,8 +767,8 @@ class _GemValue extends StatelessWidget {
         const SizedBox(width: 3),
         Text(
           _formatValue(value),
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: AppTheme.fg(context),
             fontSize: 12,
             fontWeight: FontWeight.bold,
           ),
@@ -805,10 +812,12 @@ class _RankCard extends StatelessWidget {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: isMe ? const Color(0xFF2A2410) : const Color(0xFF16161F),
+          color: isMe
+              ? AppTheme.themed(context, 0xFF2A2410, 0xFFFFF8E1)
+              : AppTheme.cardBg(context),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
-            color: isMe ? const Color(0xFFFFD700) : const Color(0xFF2A2A38),
+            color: isMe ? const Color(0xFFFFD700) : AppTheme.hairline(context),
             width: isMe ? 1.6 : 1,
           ),
           boxShadow:
@@ -852,7 +861,7 @@ class _RankCard extends StatelessWidget {
                                     ? const Color(0xFFFFD700)
                                     : (entry.isVIP
                                         ? const Color(0xFFFFD54F)
-                                        : Colors.white),
+                                        : AppTheme.fg(context)),
                             fontSize: 14,
                             fontWeight: FontWeight.w600,
                           ),
@@ -909,12 +918,14 @@ class _RankNumber extends StatelessWidget {
       alignment: Alignment.center,
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        color: isTop ? const Color(0xFFFFD700) : const Color(0xFF2A2A3A),
+        color: isTop
+            ? const Color(0xFFFFD700)
+            : AppTheme.themed(context, 0xFF2A2A3A, 0xFFE8E8F0),
       ),
       child: Text(
         text,
         style: TextStyle(
-          color: isTop ? const Color(0xFF0B0B10) : Colors.white,
+          color: isTop ? const Color(0xFF0B0B10) : AppTheme.fg(context),
           fontSize: 11,
           fontWeight: FontWeight.bold,
         ),
@@ -928,6 +939,23 @@ class _PalaceBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!AppTheme.isDark(context)) {
+      // Light mode: soft gradient instead of the dark palace artwork.
+      return Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: AppTheme.bgGradient(
+              context,
+              const [Color(0xFF0B0B10), Color(0xFF0B0B10)],
+            ),
+          ),
+        ),
+      );
+    }
     return Image.asset(
       'assets/images/leaderboard.webp',
       fit: BoxFit.cover,

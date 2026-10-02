@@ -14,6 +14,7 @@ import '../services/audio_room_engine_service.dart';
 import '../services/floating_room_service.dart';
 import '../services/session_manager.dart';
 import '../services/socket_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/format_utils.dart';
 import '../utils/log.dart';
 import '../utils/media_utils.dart';
@@ -495,7 +496,7 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
     return Container(
       height: halfHeight,
       decoration: BoxDecoration(
-        color: isVIP ? const Color(0xFF1E1B2E) : Colors.white,
+        color: isVIP ? const Color(0xFF1E1B2E) : AppTheme.themed(context, 0xFF1E1B2E),
         borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
       ),
       child: ClipRRect(
@@ -592,7 +593,7 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
               child: IconButton(
                 icon: Icon(
                   Icons.arrow_back,
-                  color: isVIP ? Colors.white70 : Colors.black54,
+                  color: isVIP ? Colors.white70 : AppTheme.fg(context, 0.54),
                   size: 22,
                 ),
                 onPressed: () => Navigator.pop(context),
@@ -604,7 +605,7 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
               child: IconButton(
                 icon: Icon(
                   Icons.report_problem_outlined,
-                  color: isVIP ? Colors.white70 : Colors.black54,
+                  color: isVIP ? Colors.white70 : AppTheme.fg(context, 0.54),
                   size: 22,
                 ),
                 onPressed: () => Navigator.pop(context),
@@ -619,7 +620,7 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
                 child: Container(
                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
                   decoration: BoxDecoration(
-                    color: isVIP ? const Color(0xFF1E1B2E) : Colors.white,
+                    color: isVIP ? const Color(0xFF1E1B2E) : AppTheme.themed(context, 0xFF1E1B2E),
                     boxShadow: [
                       BoxShadow(
                         color: Colors.black.withValues(alpha: 0.1),
@@ -643,8 +644,8 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
     final isVIP = (user?.isVIP ?? false) || seat.isVIP;
     final followers = user?.followers ?? 0;
     final bio = user?.bio ?? '';
-    final textColor = isVIP ? Colors.white : const Color(0xFF1A1A2E);
-    final subTextColor = isVIP ? Colors.white70 : Colors.black54;
+    final textColor = isVIP ? Colors.white : AppTheme.fg(context);
+    final subTextColor = isVIP ? Colors.white70 : AppTheme.fg(context, 0.54);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.center,
@@ -1011,9 +1012,9 @@ class _ProfileRoomCardState extends State<_ProfileRoomCard> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 7),
         decoration: BoxDecoration(
-          color: const Color(0xFFF6F5FB),
+          color: AppTheme.themed(context, 0x14FFFFFF, 0xFFF6F5FB),
           borderRadius: BorderRadius.circular(10),
-          border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+          border: Border.all(color: AppTheme.hairline(context)),
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,

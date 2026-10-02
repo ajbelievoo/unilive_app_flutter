@@ -9,6 +9,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 
 import '../screens/games/game_webview_screen.dart';
+import '../theme/app_theme.dart';
 import '../utils/log.dart';
 import '../utils/media_utils.dart';
 
@@ -60,7 +61,7 @@ void showGameListSheet(BuildContext context, {List<dynamic>? games}) {
   showModalBottomSheet(
     context: context,
     isScrollControlled: true,
-    backgroundColor: const Color(0xFF1A1A2E),
+    backgroundColor: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -84,11 +85,11 @@ void showGameListSheet(BuildContext context, {List<dynamic>? games}) {
                 child: const Icon(Icons.sports_esports, color: Colors.white, size: 22),
               ),
               const SizedBox(width: 12),
-              const Text('Games',
-                  style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+              Text('Games',
+                  style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold)),
               const Spacer(),
               IconButton(
-                icon: const Icon(Icons.close, color: Colors.white70),
+                icon: Icon(Icons.close, color: AppTheme.fg(context, 0.7)),
                 onPressed: () => Navigator.pop(context),
               ),
             ],
@@ -97,14 +98,14 @@ void showGameListSheet(BuildContext context, {List<dynamic>? games}) {
           // Game grid
           Expanded(
             child: items.isEmpty
-                ? const Center(
+                ? Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.sports_esports, size: 48, color: Colors.white24),
-                        SizedBox(height: 8),
+                        Icon(Icons.sports_esports, size: 48, color: AppTheme.fg(context, 0.24)),
+                        const SizedBox(height: 8),
                         Text('No games available',
-                            style: TextStyle(color: Colors.white54, fontSize: 14)),
+                            style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 14)),
                       ],
                     ),
                   )
@@ -151,9 +152,9 @@ void showGameListSheet(BuildContext context, {List<dynamic>? games}) {
                         },
                         child: Container(
                           decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.05),
+                            color: AppTheme.themed(context, 0x0DFFFFFF, 0xFFF1F1FA),
                             borderRadius: BorderRadius.circular(14),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                            border: Border.all(color: AppTheme.hairline(context)),
                           ),
                           child: Padding(
                             padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
@@ -199,8 +200,8 @@ void showGameListSheet(BuildContext context, {List<dynamic>? games}) {
                                 const SizedBox(height: 8),
                                 Text(
                                   g.name ?? 'Game',
-                                  style: const TextStyle(
-                                      color: Colors.white,
+                                  style: TextStyle(
+                                      color: AppTheme.fg(context),
                                       fontSize: 12,
                                       fontWeight: FontWeight.w600),
                                   maxLines: 1,

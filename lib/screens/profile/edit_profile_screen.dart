@@ -205,15 +205,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       backgroundColor: Colors.transparent,
       builder: (ctx) => Container(
         padding: const EdgeInsets.all(20),
-        decoration: const BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+        decoration: BoxDecoration(
+          color: AppTheme.themed(ctx, 0xFF1E1E1E),
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
         ),
         child: SafeArea(
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text('Cover Photo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF1A1A2E))),
+              Text('Cover Photo', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: AppTheme.fg(ctx))),
               const SizedBox(height: 16),
               _coverOptionTile(Icons.photo_library, 'Gallery', 'Pick from your phone', () {
                 Navigator.pop(ctx);
@@ -247,15 +247,15 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         onTap();
       },
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      tileColor: const Color(0xFFF6F5FB),
+      tileColor: AppTheme.themed(context, 0xFF232332, 0xFFF6F5FB),
       leading: Container(
         padding: const EdgeInsets.all(10),
         decoration: BoxDecoration(color: AppTheme.primary.withValues(alpha: 0.12), shape: BoxShape.circle),
         child: Icon(icon, color: AppTheme.primary, size: 22),
       ),
-      title: Text(title, style: const TextStyle(fontWeight: FontWeight.w700, color: Color(0xFF1A1A2E), fontSize: 14)),
-      subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: AppTheme.textTertiary)),
-      trailing: const Icon(Icons.chevron_right, color: Color(0xFF9A9AB0)),
+      title: Text(title, style: TextStyle(fontWeight: FontWeight.w700, color: AppTheme.fg(context), fontSize: 14)),
+      subtitle: Text(subtitle, style: TextStyle(fontSize: 12, color: AppTheme.fg(context, 0.45))),
+      trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.4)),
     );
   }
 
@@ -459,7 +459,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
     final existingAvatar = user?.image ?? '';
     final existingCover = user?.coverImage ?? '';
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F5FB),
+      backgroundColor: AppTheme.themed(context, 0xFF121212, 0xFFF6F5FB),
       extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: const Text('Edit Profile', style: TextStyle(fontWeight: FontWeight.w700)),
@@ -564,8 +564,8 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         ),
                         child: Container(
                           padding: const EdgeInsets.all(3),
-                          decoration: const BoxDecoration(
-                            color: Color(0xFFF6F5FB),
+                          decoration: BoxDecoration(
+                            color: AppTheme.themed(context, 0xFF121212, 0xFFF6F5FB),
                             shape: BoxShape.circle,
                           ),
                           child: Stack(
@@ -573,14 +573,14 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                             children: [
                               CircleAvatar(
                                 radius: 56,
-                                backgroundColor: const Color(0xFFE8E8F5),
+                                backgroundColor: AppTheme.themed(context, 0xFF2A2A3A, 0xFFE8E8F5),
                                 backgroundImage: _avatar != null
                                     ? FileImage(_avatar!)
                                     : (existingAvatar.isNotEmpty
                                         ? CachedNetworkImageProvider(VideoUtil.getFullImageUrl(existingAvatar))
                                         : null),
                                 child: _avatar == null && existingAvatar.isEmpty
-                                    ? const Icon(Icons.camera_alt, size: 30, color: Color(0xFF9A9AB0))
+                                    ? Icon(Icons.camera_alt, size: 30, color: AppTheme.fg(context, 0.4))
                                     : null,
                               ),
                               // Camera badge so users know the avatar is tappable
@@ -616,7 +616,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
               child: Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: Colors.white,
+                  color: AppTheme.themed(context, 0xFF1E1E1E),
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
@@ -634,7 +634,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                     Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFF6F5FB),
+                        color: AppTheme.themed(context, 0xFF232332, 0xFFF6F5FB),
                         borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: AppTheme.primary.withValues(alpha: 0.15)),
                       ),
@@ -643,10 +643,10 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         children: [
                           Text(
                             user?.name ?? 'Preview',
-                            style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: Color(0xFF1A1A2E)),
+                            style: TextStyle(fontSize: 15, fontWeight: FontWeight.w800, color: AppTheme.fg(context)),
                           ),
                           const SizedBox(height: 8),
-                          ProfileBadgeRow.fromUser(user ?? User(), isDark: false),
+                          ProfileBadgeRow.fromUser(user ?? User(), isDark: AppTheme.isDark(context)),
                         ],
                       ),
                     ),
@@ -762,7 +762,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
                         child: Container(
                           padding: const EdgeInsets.all(14),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFF1F1FA),
+                            color: AppTheme.themed(context, 0xFF232332, 0xFFF1F1FA),
                             borderRadius: BorderRadius.circular(16),
                             border: Border.all(color: AppTheme.primary.withValues(alpha: 0.3)),
                           ),
@@ -828,7 +828,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
   Widget _sectionLabel(String text) {
     return Text(
       text,
-      style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: Color(0xFF1A1A2E), letterSpacing: 0.3),
+      style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800, color: AppTheme.fg(context), letterSpacing: 0.3),
     );
   }
 
@@ -838,7 +838,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
       hintText: hintText,
       prefixIcon: Icon(icon, color: const Color(0xFF6A5AE0), size: 20),
       filled: true,
-      fillColor: const Color(0xFFF6F5FB),
+      fillColor: AppTheme.themed(context, 0xFF232332, 0xFFF6F5FB),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(14),
         borderSide: BorderSide.none,
@@ -851,7 +851,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
         borderRadius: BorderRadius.circular(14),
         borderSide: const BorderSide(color: Color(0xFF6A5AE0), width: 1.5),
       ),
-      labelStyle: const TextStyle(color: Color(0xFF6B6B80), fontWeight: FontWeight.w500),
+      labelStyle: TextStyle(color: AppTheme.fg(context, 0.55), fontWeight: FontWeight.w500),
     );
   }
 
@@ -881,7 +881,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
           gradient: selected
               ? const LinearGradient(colors: [Color(0xFF7B61FF), Color(0xFF4F8DFD)])
               : null,
-          color: selected ? null : const Color(0xFFF1F1FA),
+          color: selected ? null : AppTheme.themed(context, 0xFF232332, 0xFFF1F1FA),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
             color: selected ? Colors.transparent : const Color(0xFF6A5AE0).withValues(alpha: 0.15),
@@ -895,7 +895,7 @@ class _EditProfileScreenState extends State<EditProfileScreen> {
             Text(
               label,
               style: TextStyle(
-                color: selected ? Colors.white : const Color(0xFF1A1A2E),
+                color: selected ? Colors.white : AppTheme.fg(context),
                 fontWeight: FontWeight.w700,
               ),
             ),

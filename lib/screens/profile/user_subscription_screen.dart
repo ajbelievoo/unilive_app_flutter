@@ -109,7 +109,7 @@ class _UserSubscriptionScreenState extends State<UserSubscriptionScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0E0E13),
+      backgroundColor: AppTheme.themed(context, 0xFF0E0E13, 0xFFF6F5FB),
       body: _isLoading
           ? const Center(child: Preloader(color: AppTheme.primary))
           : CustomScrollView(
@@ -128,8 +128,8 @@ class _UserSubscriptionScreenState extends State<UserSubscriptionScreen> {
     return SliverAppBar(
       expandedHeight: 280,
       pinned: true,
-      backgroundColor: const Color(0xFF1A1A2E),
-      foregroundColor: Colors.white,
+      backgroundColor: AppTheme.themed(context, 0xFF1A1A2E),
+      foregroundColor: Colors.white, // back icon sits over the banner image
       flexibleSpace: FlexibleSpaceBar(
         background: Stack(
           fit: StackFit.expand,
@@ -218,17 +218,17 @@ class _UserSubscriptionScreenState extends State<UserSubscriptionScreen> {
         padding: const EdgeInsets.all(32),
         child: Column(
           children: [
-            const Icon(Icons.subscriptions_outlined, color: Colors.white38, size: 56),
+            Icon(Icons.subscriptions_outlined, color: AppTheme.fg(context, 0.38), size: 56),
             const SizedBox(height: 16),
-            const Text(
+            Text(
               'No Subscription Plans',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
             Text(
               '${widget.hostName} hasn\'t created any subscription plans yet.',
               textAlign: TextAlign.center,
-              style: const TextStyle(color: Colors.white54, fontSize: 14),
+              style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 14),
             ),
           ],
         ),
@@ -240,18 +240,18 @@ class _UserSubscriptionScreenState extends State<UserSubscriptionScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'Choose a Plan',
             style: TextStyle(
-              color: Colors.white,
+              color: AppTheme.fg(context),
               fontSize: 22,
               fontWeight: FontWeight.bold,
             ),
           ),
           const SizedBox(height: 4),
-          const Text(
+          Text(
             'Subscribe with diamonds and unlock exclusive photos',
-            style: TextStyle(color: Colors.white54, fontSize: 14),
+            style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 14),
           ),
           const SizedBox(height: 20),
           ..._tiers.map((tier) => _buildTierCard(tier)),
@@ -265,9 +265,9 @@ class _UserSubscriptionScreenState extends State<UserSubscriptionScreen> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: const Color(0xFF1B1B26),
+        color: AppTheme.themed(context, 0xFF1B1B26),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -277,8 +277,8 @@ class _UserSubscriptionScreenState extends State<UserSubscriptionScreen> {
               Expanded(
                 child: Text(
                   tier.name ?? 'Tier',
-                  style: const TextStyle(
-                    color: Colors.white,
+                  style: TextStyle(
+                    color: AppTheme.fg(context),
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
@@ -312,24 +312,24 @@ class _UserSubscriptionScreenState extends State<UserSubscriptionScreen> {
             const SizedBox(height: 10),
             Text(
               tier.description!,
-              style: const TextStyle(color: Colors.white70, fontSize: 14),
+              style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 14),
             ),
           ],
           const SizedBox(height: 12),
           Row(
             children: [
-              const Icon(Icons.access_time, color: Colors.white38, size: 16),
+              Icon(Icons.access_time, color: AppTheme.fg(context, 0.38), size: 16),
               const SizedBox(width: 4),
               Text(
                 '${tier.durationDays} days',
-                style: const TextStyle(color: Colors.white54, fontSize: 13),
+                style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 13),
               ),
               const SizedBox(width: 16),
-              const Icon(Icons.photo_library, color: Colors.white38, size: 16),
+              Icon(Icons.photo_library, color: AppTheme.fg(context, 0.38), size: 16),
               const SizedBox(width: 4),
               Text(
                 '${tier.images.length} exclusive photos',
-                style: const TextStyle(color: Colors.white54, fontSize: 13),
+                style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 13),
               ),
             ],
           ),
@@ -354,13 +354,13 @@ class _UserSubscriptionScreenState extends State<UserSubscriptionScreen> {
                           placeholder: (_, __) => Container(
                             width: 90,
                             height: 90,
-                            color: Colors.white12,
+                            color: AppTheme.fg(context, 0.12),
                           ),
                           errorWidget: (_, __, ___) => Container(
                             width: 90,
                             height: 90,
-                            color: Colors.white12,
-                            child: const Icon(Icons.broken_image, color: Colors.white38),
+                            color: AppTheme.fg(context, 0.12),
+                            child: Icon(Icons.broken_image, color: AppTheme.fg(context, 0.38)),
                           ),
                         ),
                         Container(
@@ -412,7 +412,7 @@ class _UserSubscriptionScreenState extends State<UserSubscriptionScreen> {
           Container(
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF1B1B26),
+              color: AppTheme.themed(context, 0xFF1B1B26),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(color: const Color(0xFF4CAF50).withValues(alpha: 0.3)),
             ),
@@ -426,8 +426,8 @@ class _UserSubscriptionScreenState extends State<UserSubscriptionScreen> {
                     children: [
                       Text(
                         'Active: ${sub?.tierName ?? "Subscribed"}',
-                        style: const TextStyle(
-                          color: Colors.white,
+                        style: TextStyle(
+                          color: AppTheme.fg(context),
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
@@ -436,7 +436,7 @@ class _UserSubscriptionScreenState extends State<UserSubscriptionScreen> {
                       if (sub?.expiresAt != null)
                         Text(
                           'Expires: ${_formatDate(sub!.expiresAt!)}',
-                          style: const TextStyle(color: Colors.white54, fontSize: 13),
+                          style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 13),
                         ),
                     ],
                   ),
@@ -447,16 +447,16 @@ class _UserSubscriptionScreenState extends State<UserSubscriptionScreen> {
           const SizedBox(height: 24),
           // Exclusive photos
           if (_exclusiveImages.isEmpty) ...[
-            const Center(
+            Center(
               child: Padding(
-                padding: EdgeInsets.all(32),
+                padding: const EdgeInsets.all(32),
                 child: Column(
                   children: [
-                    Icon(Icons.photo_library_outlined, color: Colors.white38, size: 48),
-                    SizedBox(height: 12),
+                    Icon(Icons.photo_library_outlined, color: AppTheme.fg(context, 0.38), size: 48),
+                    const SizedBox(height: 12),
                     Text(
                       'No exclusive photos yet',
-                      style: TextStyle(color: Colors.white54, fontSize: 15),
+                      style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 15),
                     ),
                   ],
                 ),
@@ -467,10 +467,10 @@ class _UserSubscriptionScreenState extends State<UserSubscriptionScreen> {
               children: [
                 const Icon(Icons.lock_open, color: Color(0xFF4CAF50), size: 20),
                 const SizedBox(width: 8),
-                const Text(
+                Text(
                   'Exclusive Photos',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppTheme.fg(context),
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -478,7 +478,7 @@ class _UserSubscriptionScreenState extends State<UserSubscriptionScreen> {
                 const SizedBox(width: 8),
                 Text(
                   '(${_exclusiveImages.length})',
-                  style: const TextStyle(color: Colors.white54, fontSize: 14),
+                  style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 14),
                 ),
               ],
             ),
@@ -500,10 +500,10 @@ class _UserSubscriptionScreenState extends State<UserSubscriptionScreen> {
                   child: CachedNetworkImage(
                     imageUrl: VideoUtil.getFullImageUrl(_exclusiveImages[i]),
                     fit: BoxFit.cover,
-                    placeholder: (_, __) => Container(color: Colors.white12),
+                    placeholder: (_, __) => Container(color: AppTheme.fg(context, 0.12)),
                     errorWidget: (_, __, ___) => Container(
-                      color: Colors.white12,
-                      child: const Icon(Icons.broken_image, color: Colors.white38),
+                      color: AppTheme.fg(context, 0.12),
+                      child: Icon(Icons.broken_image, color: AppTheme.fg(context, 0.38)),
                     ),
                   ),
                 );

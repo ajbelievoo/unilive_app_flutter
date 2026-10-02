@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import '../models/group_match_model.dart';
 import '../providers/ai_feature_manager.dart';
 import '../services/dynamic_ai_features_service.dart';
+import '../theme/app_theme.dart';
 import '../utils/log.dart';
 import '../utils/media_utils.dart';
 
@@ -18,7 +19,7 @@ import '../utils/media_utils.dart';
 void showGroupMatchSheet(BuildContext context, String hostUserId) {
   showModalBottomSheet(
     context: context,
-    backgroundColor: const Color(0xFF1A1A2E),
+    backgroundColor: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
     shape: const RoundedRectangleBorder(
       borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
     ),
@@ -94,17 +95,17 @@ class _GroupMatchSheetState extends State<_GroupMatchSheet> {
               children: [
                 const Icon(Icons.group_work, color: Colors.cyan, size: 24),
                 const SizedBox(width: 8),
-                const Text(
+                Text(
                   'Group Room Match',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: AppTheme.fg(context),
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
                 const Spacer(),
                 IconButton(
-                  icon: const Icon(Icons.close, color: Colors.white54),
+                  icon: Icon(Icons.close, color: AppTheme.fg(context, 0.54)),
                   onPressed: () => Navigator.pop(context),
                 ),
               ],
@@ -134,14 +135,14 @@ class _GroupMatchSheetState extends State<_GroupMatchSheet> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color: selected ? Colors.cyan : Colors.white.withValues(alpha: 0.1),
+                      color: selected ? Colors.cyan : AppTheme.themed(context, 0x1AFFFFFF, 0xFFF1F1FA),
                       borderRadius: BorderRadius.circular(16),
                       border: selected ? Border.all(color: Colors.cyan) : null,
                     ),
                     child: Text(
                       tag,
                       style: TextStyle(
-                        color: selected ? Colors.black : Colors.white70,
+                        color: selected ? Colors.black : AppTheme.fg(context, 0.7),
                         fontSize: 12,
                         fontWeight: selected ? FontWeight.bold : FontWeight.normal,
                       ),
@@ -181,7 +182,7 @@ class _GroupMatchSheetState extends State<_GroupMatchSheet> {
           children: [
             const Icon(Icons.error_outline, color: Colors.red, size: 40),
             const SizedBox(height: 8),
-            Text(_error!, style: const TextStyle(color: Colors.white70, fontSize: 14)),
+            Text(_error!, style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 14)),
           ],
         ),
       );
@@ -192,16 +193,16 @@ class _GroupMatchSheetState extends State<_GroupMatchSheet> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Icon(Icons.search_off, color: Colors.white30, size: 48),
+            Icon(Icons.search_off, color: AppTheme.fg(context, 0.3), size: 48),
             const SizedBox(height: 12),
-            const Text(
+            Text(
               'No matches found right now',
-              style: TextStyle(color: Colors.white54, fontSize: 14),
+              style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 14),
             ),
             const SizedBox(height: 4),
-            const Text(
+            Text(
               'Try selecting different interests',
-              style: TextStyle(color: Colors.white30, fontSize: 12),
+              style: TextStyle(color: AppTheme.fg(context, 0.3), fontSize: 12),
             ),
           ],
         ),
@@ -218,7 +219,7 @@ class _GroupMatchSheetState extends State<_GroupMatchSheet> {
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: AppTheme.themed(context, 0x0FFFFFFF, 0xFFF1F1FA),
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(
@@ -232,15 +233,15 @@ class _GroupMatchSheetState extends State<_GroupMatchSheet> {
                   ? CachedNetworkImage(
                       imageUrl: VideoUtil.getFullImageUrl(host.image!),
                       fit: BoxFit.cover,
-                      placeholder: (_, __) => Container(color: Colors.white12),
+                      placeholder: (_, __) => Container(color: AppTheme.fg(context, 0.12)),
                       errorWidget: (_, __, ___) => Container(
-                        color: Colors.white12,
-                        child: const Icon(Icons.person, color: Colors.white30),
+                        color: AppTheme.fg(context, 0.12),
+                        child: Icon(Icons.person, color: AppTheme.fg(context, 0.3)),
                       ),
                     )
                   : Container(
-                      color: Colors.white12,
-                      child: const Icon(Icons.person, color: Colors.white30),
+                      color: AppTheme.fg(context, 0.12),
+                      child: Icon(Icons.person, color: AppTheme.fg(context, 0.3)),
                     ),
             ),
           ),
@@ -254,7 +255,7 @@ class _GroupMatchSheetState extends State<_GroupMatchSheet> {
                   children: [
                     Text(
                       host.name ?? 'Host',
-                      style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold),
+                      style: TextStyle(color: AppTheme.fg(context), fontSize: 14, fontWeight: FontWeight.bold),
                     ),
                     if (host.isLive) ...[
                       const SizedBox(width: 6),
@@ -274,7 +275,7 @@ class _GroupMatchSheetState extends State<_GroupMatchSheet> {
                   spacing: 4,
                   children: host.tags.map((t) => Chip(
                     label: Text(t, style: const TextStyle(fontSize: 10)),
-                    labelStyle: const TextStyle(color: Colors.white70),
+                    labelStyle: TextStyle(color: AppTheme.fg(context, 0.7)),
                     backgroundColor: Colors.cyan.withValues(alpha: 0.2),
                     padding: EdgeInsets.zero,
                     materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,

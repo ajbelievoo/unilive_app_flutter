@@ -65,12 +65,12 @@ class CoupleAvatarPair extends StatelessWidget {
           Positioned(
             left: 0,
             top: 5,
-            child: _avatar(user1, size / 2, ringColor1),
+            child: _avatar(context, user1, size / 2, ringColor1),
           ),
           Positioned(
             left: size - overlap,
             top: 5,
-            child: _avatar(user2, size / 2, ringColor2),
+            child: _avatar(context, user2, size / 2, ringColor2),
           ),
           if (showHeart) ...[
             Positioned(
@@ -109,7 +109,7 @@ class CoupleAvatarPair extends StatelessWidget {
     );
   }
 
-  Widget _avatar(dynamic u, double radius, Color ring) {
+  Widget _avatar(BuildContext context, dynamic u, double radius, Color ring) {
     final image = u?.image as String?;
     final name = u?.name as String?;
     return Container(
@@ -128,13 +128,13 @@ class CoupleAvatarPair extends StatelessWidget {
       ),
       child: Container(
         margin: const EdgeInsets.all(2.5),
-        decoration: const BoxDecoration(
+        decoration: BoxDecoration(
           shape: BoxShape.circle,
-          color: AppTheme.cpDarkSurface,
+          color: AppTheme.themed(context, 0xFF1A1428, 0xFFF1F1FA),
         ),
         child: CircleAvatar(
           radius: radius - 5,
-          backgroundColor: AppTheme.cpDarkSurfaceLight,
+          backgroundColor: AppTheme.themed(context, 0xFF241B38, 0xFFE8E8F0),
           backgroundImage: (image != null && image.isNotEmpty)
               ? CachedNetworkImageProvider(image)
               : null,
@@ -231,7 +231,7 @@ class BondProgressBar extends StatelessWidget {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(fontSize: 12, color: AppTheme.cpDarkTextSecondary)),
+            Text(label, style: TextStyle(fontSize: 12, color: AppTheme.fg(context, 0.6))),
             Text('${formatCount(current)} / ${formatCount(target)}',
                 style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: accentColor)),
           ],
@@ -242,7 +242,7 @@ class BondProgressBar extends StatelessWidget {
           child: LinearProgressIndicator(
             value: pct,
             minHeight: 12,
-            backgroundColor: AppTheme.cpDarkSurfaceLight,
+            backgroundColor: AppTheme.themed(context, 0xFF241B38, 0xFFE8E8F0),
             valueColor: AlwaysStoppedAnimation<Color>(accentColor),
           ),
         ),
@@ -286,7 +286,7 @@ class CPStatTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
       decoration: BoxDecoration(
-        color: AppTheme.cpDarkCard,
+        color: AppTheme.themed(context, 0xFF1E1832, 0xFFF5F5FA),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: color.withValues(alpha: 0.2),
@@ -318,10 +318,10 @@ class CPStatTile extends StatelessWidget {
           FittedBox(
             fit: BoxFit.scaleDown,
             child: Text(value,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.cpDarkText)),
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppTheme.fg(context))),
           ),
           const SizedBox(height: 2),
-          Text(label, style: const TextStyle(fontSize: 10, color: AppTheme.cpDarkTextSecondary)),
+          Text(label, style: TextStyle(fontSize: 10, color: AppTheme.fg(context, 0.55))),
         ],
       ),
     );
@@ -373,12 +373,12 @@ class CPUserRow extends StatelessWidget {
               margin: const EdgeInsets.all(2.5),
               child: CircleAvatar(
                 radius: 23.5,
-                backgroundColor: AppTheme.cpDarkSurfaceLight,
+                backgroundColor: AppTheme.themed(context, 0xFF241B38, 0xFFE8E8F0),
                 backgroundImage: (user?.image != null && user!.image!.isNotEmpty)
                     ? CachedNetworkImageProvider(user!.image!)
                     : null,
                 child: (user?.image == null || user!.image!.isEmpty)
-                    ? const Icon(Icons.person, color: Colors.white54)
+                    ? Icon(Icons.person, color: AppTheme.fg(context, 0.45))
                     : null,
               ),
             ),
@@ -393,7 +393,7 @@ class CPUserRow extends StatelessWidget {
                     Flexible(
                       child: Text(
                         user?.name ?? 'Unknown',
-                        style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.cpDarkText),
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600, color: AppTheme.fg(context)),
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
@@ -418,7 +418,7 @@ class CPUserRow extends StatelessWidget {
                       height: 6,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
-                        color: user?.isOnline == true ? AppTheme.green : AppTheme.cpDarkTextTertiary,
+                        color: user?.isOnline == true ? AppTheme.green : AppTheme.fg(context, 0.35),
                       ),
                     ),
                     const SizedBox(width: 4),
@@ -426,7 +426,7 @@ class CPUserRow extends StatelessWidget {
                       subtitle ?? (user?.isOnline == true ? 'Online' : 'Offline'),
                       style: TextStyle(
                         fontSize: 12,
-                        color: user?.isOnline == true ? AppTheme.green : AppTheme.cpDarkTextTertiary,
+                        color: user?.isOnline == true ? AppTheme.green : AppTheme.fg(context, 0.45),
                       ),
                     ),
                   ],
@@ -500,11 +500,11 @@ class DarkEmptyState extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             Text(title,
-                style: const TextStyle(color: AppTheme.cpDarkText, fontSize: 16, fontWeight: FontWeight.bold)),
+                style: TextStyle(color: AppTheme.fg(context), fontSize: 16, fontWeight: FontWeight.bold)),
             const SizedBox(height: 6),
             Text(subtitle,
                 textAlign: TextAlign.center,
-                style: const TextStyle(color: AppTheme.cpDarkTextTertiary, fontSize: 13)),
+                style: TextStyle(color: AppTheme.fg(context, 0.45), fontSize: 13)),
           ],
         ),
       ),
@@ -547,10 +547,16 @@ class GlassCard extends StatelessWidget {
           margin: margin,
           padding: padding,
           decoration: BoxDecoration(
-            color: backgroundColor ?? AppTheme.cpDarkCard.withValues(alpha: 0.40),
+            color: backgroundColor ??
+                (AppTheme.isDark(context)
+                    ? AppTheme.cpDarkCard.withValues(alpha: 0.40)
+                    : Colors.white),
             borderRadius: BorderRadius.circular(borderRadius),
             border: Border.all(
-              color: borderColor ?? Colors.white.withValues(alpha: 0.18),
+              color: borderColor ??
+                  (AppTheme.isDark(context)
+                      ? Colors.white.withValues(alpha: 0.18)
+                      : Colors.black.withValues(alpha: 0.08)),
               width: 1,
             ),
             boxShadow: shadow ??

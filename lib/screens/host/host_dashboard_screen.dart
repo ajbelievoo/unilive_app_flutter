@@ -109,12 +109,10 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.background,
+      backgroundColor: Theme.of(context).scaffoldBackgroundColor,
       appBar: AppBar(
         title: const Text('Host Dashboard'),
         centerTitle: true,
-        backgroundColor: AppTheme.surface,
-        foregroundColor: AppTheme.textPrimary,
         elevation: 0,
         scrolledUnderElevation: 0,
         actions: [
@@ -128,7 +126,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
           controller: _tabController,
           isScrollable: true,
           labelColor: AppTheme.primary,
-          unselectedLabelColor: AppTheme.textTertiary,
+          unselectedLabelColor: AppTheme.fg(context, 0.45),
           indicatorColor: AppTheme.primary,
           indicatorSize: TabBarIndicatorSize.label,
           labelStyle: const TextStyle(
@@ -168,7 +166,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
     return RefreshIndicator(
       onRefresh: _loadData,
       color: AppTheme.primary,
-      backgroundColor: AppTheme.surface,
+      backgroundColor: AppTheme.themed(context, 0xFF1E1E1E, 0xFFFFFFFF),
       child: ListView(
         padding: const EdgeInsets.all(16),
         physics: const AlwaysScrollableScrollPhysics(),
@@ -197,10 +195,10 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
           ],
         ),
         const SizedBox(height: 24),
-        const Text(
+        Text(
           'Weekly Analytics',
           style: TextStyle(
-            color: AppTheme.textPrimary,
+            color: AppTheme.fg(context),
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
@@ -280,14 +278,14 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
         height: 200,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: AppTheme.surface,
+          color: AppTheme.cardBg(context),
           borderRadius: BorderRadius.circular(16),
           boxShadow: AppTheme.cardShadow,
         ),
-        child: const Center(
+        child: Center(
           child: Text(
             'No analytics data yet',
-            style: TextStyle(color: AppTheme.textTertiary, fontSize: 14),
+            style: TextStyle(color: AppTheme.fg(context, 0.4), fontSize: 14),
           ),
         ),
       );
@@ -296,7 +294,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
       height: 200,
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
         boxShadow: AppTheme.cardShadow,
       ),
@@ -373,8 +371,8 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
             const SizedBox(height: 16),
             Text(
               _levelTitle(level.title),
-              style: const TextStyle(
-                color: AppTheme.textPrimary,
+              style: TextStyle(
+                color: AppTheme.fg(context),
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
               ),
@@ -389,15 +387,15 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
                     children: [
                       Text(
                         '${level.currentXp} XP',
-                        style: const TextStyle(
-                          color: AppTheme.textSecondary,
+                        style: TextStyle(
+                          color: AppTheme.fg(context, 0.6),
                           fontSize: 12,
                         ),
                       ),
                       Text(
                         '${level.nextLevelXp} XP',
-                        style: const TextStyle(
-                          color: AppTheme.textSecondary,
+                        style: TextStyle(
+                          color: AppTheme.fg(context, 0.6),
                           fontSize: 12,
                         ),
                       ),
@@ -409,7 +407,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
                     child: LinearProgressIndicator(
                       value: level.progress,
                       minHeight: 12,
-                      backgroundColor: AppTheme.surfaceLight,
+                      backgroundColor: AppTheme.hairline(context),
                       valueColor: const AlwaysStoppedAnimation(
                         AppTheme.primary,
                       ),
@@ -418,8 +416,8 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
                   const SizedBox(height: 8),
                   Text(
                     '${(level.progress * 100).round()}% to Level ${level.level + 1}',
-                    style: const TextStyle(
-                      color: AppTheme.textTertiary,
+                    style: TextStyle(
+                      color: AppTheme.fg(context, 0.4),
                       fontSize: 12,
                     ),
                   ),
@@ -438,15 +436,15 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
       return RefreshIndicator(
         onRefresh: _loadData,
         color: AppTheme.primary,
-        backgroundColor: AppTheme.surface,
-        child: const SingleChildScrollView(
-          physics: AlwaysScrollableScrollPhysics(),
+        backgroundColor: AppTheme.themed(context, 0xFF1E1E1E, 0xFFFFFFFF),
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
           child: SizedBox(
             height: 300,
             child: Center(
               child: Text(
                 'No achievements yet',
-                style: TextStyle(color: AppTheme.textTertiary, fontSize: 14),
+                style: TextStyle(color: AppTheme.fg(context, 0.4), fontSize: 14),
               ),
             ),
           ),
@@ -456,7 +454,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
     return RefreshIndicator(
       onRefresh: _loadData,
       color: AppTheme.primary,
-      backgroundColor: AppTheme.surface,
+      backgroundColor: AppTheme.themed(context, 0xFF1E1E1E, 0xFFFFFFFF),
       child: GridView.builder(
         padding: const EdgeInsets.all(16),
         physics: const AlwaysScrollableScrollPhysics(),
@@ -470,10 +468,10 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
       itemBuilder: (_, i) {
         final a = _achievements[i];
         final (icon, color) = _achievementStyle(a.id);
-        final fg = a.unlocked ? color : AppTheme.textTertiary;
+        final fg = a.unlocked ? color : AppTheme.fg(context, 0.4);
         return Container(
           decoration: BoxDecoration(
-            color: AppTheme.surface,
+            color: AppTheme.cardBg(context),
             borderRadius: BorderRadius.circular(16),
             boxShadow: AppTheme.cardShadow,
           ),
@@ -492,7 +490,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
                   child: Icon(
                     icon,
                     size: 28,
-                    color: a.unlocked ? color : AppTheme.textTertiary,
+                    color: a.unlocked ? color : AppTheme.fg(context, 0.4),
                   ),
                 ),
                 const SizedBox(height: 10),
@@ -501,8 +499,8 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
                   style: TextStyle(
                     color:
                         a.unlocked
-                            ? AppTheme.textPrimary
-                            : AppTheme.textTertiary,
+                            ? AppTheme.fg(context)
+                            : AppTheme.fg(context, 0.4),
                     fontWeight: FontWeight.bold,
                     fontSize: 13,
                   ),
@@ -514,8 +512,8 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
                   style: TextStyle(
                     color:
                         a.unlocked
-                            ? AppTheme.textSecondary
-                            : AppTheme.textTertiary,
+                            ? AppTheme.fg(context, 0.6)
+                            : AppTheme.fg(context, 0.4),
                     fontSize: 10,
                   ),
                   textAlign: TextAlign.center,
@@ -571,7 +569,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
     return RefreshIndicator(
       onRefresh: _loadData,
       color: AppTheme.primary,
-      backgroundColor: AppTheme.surface,
+      backgroundColor: AppTheme.themed(context, 0xFF1E1E1E, 0xFFFFFFFF),
       child: ListView(
         padding: const EdgeInsets.all(16),
         physics: const AlwaysScrollableScrollPhysics(),
@@ -602,8 +600,8 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
         const SizedBox(width: 8),
         Text(
           title,
-          style: const TextStyle(
-            color: AppTheme.textPrimary,
+          style: TextStyle(
+            color: AppTheme.fg(context),
             fontSize: 16,
             fontWeight: FontWeight.bold,
           ),
@@ -620,7 +618,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
         boxShadow: AppTheme.cardShadow,
       ),
@@ -636,8 +634,8 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
                     Expanded(
                       child: Text(
                         task.title,
-                        style: const TextStyle(
-                          color: AppTheme.textPrimary,
+                        style: TextStyle(
+                          color: AppTheme.fg(context),
                           fontWeight: FontWeight.bold,
                           fontSize: 14,
                         ),
@@ -656,8 +654,8 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
                 const SizedBox(height: 4),
                 Text(
                   task.description,
-                  style: const TextStyle(
-                    color: AppTheme.textSecondary,
+                  style: TextStyle(
+                    color: AppTheme.fg(context, 0.6),
                     fontSize: 12,
                   ),
                 ),
@@ -670,7 +668,7 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
                         child: LinearProgressIndicator(
                           value: progress,
                           minHeight: 8,
-                          backgroundColor: AppTheme.surfaceLight,
+                          backgroundColor: AppTheme.hairline(context),
                           valueColor: AlwaysStoppedAnimation(
                             task.completed ? AppTheme.green : AppTheme.primary,
                           ),
@@ -680,8 +678,8 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
                     const SizedBox(width: 8),
                     Text(
                       '${task.progress}/${task.target}',
-                      style: const TextStyle(
-                        color: AppTheme.textTertiary,
+                      style: TextStyle(
+                        color: AppTheme.fg(context, 0.4),
                         fontSize: 11,
                       ),
                     ),
@@ -737,11 +735,11 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
                             ? AppTheme.green
                             : canClaim
                             ? AppTheme.primary
-                            : AppTheme.surfaceVariant,
+                            : AppTheme.themed(context, 0xFF2A2A3E, 0xFFE8E8F0),
                     foregroundColor:
                         task.claimed || canClaim
                             ? Colors.white
-                            : AppTheme.textTertiary,
+                            : AppTheme.fg(context, 0.4),
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     minimumSize: Size.zero,
                     shape: RoundedRectangleBorder(
@@ -781,9 +779,9 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
       builder:
           (ctx) => Container(
             padding: const EdgeInsets.all(20),
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            decoration: BoxDecoration(
+              color: AppTheme.themed(ctx, 0xFF1E1E1E, 0xFFFFFFFF),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -794,10 +792,10 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
                     Expanded(
                       child: Text(
                         'Rules: ${task.title}',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
-                          color: AppTheme.textPrimary,
+                          color: AppTheme.fg(ctx),
                         ),
                       ),
                     ),
@@ -810,9 +808,9 @@ class _HostDashboardScreenState extends State<HostDashboardScreen>
                 const SizedBox(height: 12),
                 Text(
                   task.rules.isNotEmpty ? task.rules : defaultRules,
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 13,
-                    color: AppTheme.textSecondary,
+                    color: AppTheme.fg(ctx, 0.6),
                     height: 1.5,
                   ),
                 ),
@@ -869,7 +867,7 @@ class _StatCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: AppTheme.surface,
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
         boxShadow: AppTheme.cardShadow,
       ),
@@ -879,15 +877,15 @@ class _StatCard extends StatelessWidget {
           const SizedBox(height: 10),
           Text(
             value,
-            style: const TextStyle(
-              color: AppTheme.textPrimary,
+            style: TextStyle(
+              color: AppTheme.fg(context),
               fontWeight: FontWeight.bold,
               fontSize: 18,
             ),
           ),
           Text(
             label,
-            style: const TextStyle(color: AppTheme.textSecondary, fontSize: 12),
+            style: TextStyle(color: AppTheme.fg(context, 0.6), fontSize: 12),
           ),
         ],
       ),

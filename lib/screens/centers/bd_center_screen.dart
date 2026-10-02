@@ -108,7 +108,13 @@ class _BdCenterScreenState extends State<BdCenterScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(gradient: AppTheme.darkGradient),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: AppTheme.bgGradient(context, AppTheme.darkGradient.colors),
+          ),
+        ),
         child: SafeArea(
           child: Column(children: [
             _buildHeader(),
@@ -151,7 +157,7 @@ class _BdCenterScreenState extends State<BdCenterScreen>
       padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
       child: Row(children: [
         IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
+          icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)),
           onPressed: () => Navigator.pop(context),
         ),
         UserAvatar(
@@ -166,17 +172,17 @@ class _BdCenterScreenState extends State<BdCenterScreen>
             children: [
               Text(
                 user?.name ?? user?.username ?? 'BD',
-                style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                style: TextStyle(color: AppTheme.fg(context), fontSize: 18, fontWeight: FontWeight.bold),
               ),
               Text(
                 'BD Center',
-                style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
+                style: TextStyle(color: AppTheme.fg(context, 0.6), fontSize: 13),
               ),
             ],
           ),
         ),
         IconButton(
-          icon: const Icon(Icons.refresh, color: Colors.white70),
+          icon: Icon(Icons.refresh, color: AppTheme.fg(context, 0.7)),
           onPressed: _loadAll,
         ),
       ]),
@@ -231,8 +237,8 @@ class _BdCenterScreenState extends State<BdCenterScreen>
     return TabBar(
       controller: _tabCtrl,
       indicatorColor: AppTheme.primary,
-      labelColor: Colors.white,
-      unselectedLabelColor: Colors.white54,
+      labelColor: AppTheme.fg(context),
+      unselectedLabelColor: AppTheme.fg(context, 0.54),
       labelStyle: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
       tabs: const [
         Tab(text: 'Dashboard'),
@@ -262,7 +268,7 @@ class _BdCenterScreenState extends State<BdCenterScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('BD Profile', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                Text('BD Profile', style: TextStyle(color: AppTheme.fg(context), fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 _infoRow('BD Name', data['name']?.toString() ?? 'N/A', Icons.person),
                 _infoRow('BD Code', data['bdCode']?.toString() ?? 'N/A', Icons.code),
@@ -281,7 +287,7 @@ class _BdCenterScreenState extends State<BdCenterScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Earnings', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                Text('Earnings', style: TextStyle(color: AppTheme.fg(context), fontSize: 16, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 16),
                 _infoRow('Current Diamonds', formatCount(currentCoin), Icons.diamond),
                 _infoRow('Agency Diamonds', formatCount(currentAgencyCoin), Icons.business),
@@ -294,7 +300,7 @@ class _BdCenterScreenState extends State<BdCenterScreen>
         ),
         const SizedBox(height: 16),
         if (earningData.isNotEmpty) ...[
-          const Text('Weekly Earnings', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+          Text('Weekly Earnings', style: TextStyle(color: AppTheme.fg(context), fontSize: 16, fontWeight: FontWeight.bold)),
           const SizedBox(height: 8),
           ...earningData.take(7).map((item) {
             final d = item as Map<String, dynamic>;
@@ -335,8 +341,8 @@ class _BdCenterScreenState extends State<BdCenterScreen>
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text('Total Settled', style: TextStyle(color: Colors.white70, fontSize: 14)),
-                Text(formatCount(total), style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold)),
+                Text('Total Settled', style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 14)),
+                Text(formatCount(total), style: TextStyle(color: AppTheme.fg(context), fontSize: 20, fontWeight: FontWeight.bold)),
               ],
             ),
           ),
@@ -371,9 +377,9 @@ class _BdCenterScreenState extends State<BdCenterScreen>
       child: Row(children: [
         Icon(icon, color: AppTheme.primary, size: 18),
         const SizedBox(width: 12),
-        Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14)),
+        Text(label, style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 14)),
         const Spacer(),
-        Text(value, style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+        Text(value, style: TextStyle(color: AppTheme.fg(context), fontSize: 14, fontWeight: FontWeight.w600)),
       ]),
     );
   }
@@ -385,7 +391,7 @@ class _BdCenterScreenState extends State<BdCenterScreen>
       child: Row(children: [
         Icon(icon, color: AppTheme.primary, size: 18),
         const SizedBox(width: 12),
-        Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14)),
+        Text(label, style: TextStyle(color: AppTheme.fg(context, 0.7), fontSize: 14)),
         const SizedBox(width: 8),
         Expanded(
           child: isValid
@@ -405,7 +411,7 @@ class _BdCenterScreenState extends State<BdCenterScreen>
                   ),
                 )
               : Text(url, textAlign: TextAlign.end,
-                  style: const TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600)),
+                  style: TextStyle(color: AppTheme.fg(context), fontSize: 14, fontWeight: FontWeight.w600)),
         ),
         if (isValid) ...[
           const SizedBox(width: 8),
@@ -414,7 +420,7 @@ class _BdCenterScreenState extends State<BdCenterScreen>
               Clipboard.setData(ClipboardData(text: url));
               Fluttertoast.showToast(msg: 'Invite link copied');
             },
-            child: const Icon(Icons.copy, color: Colors.white54, size: 16),
+            child: Icon(Icons.copy, color: AppTheme.fg(context, 0.54), size: 16),
           ),
         ],
       ]),
@@ -439,9 +445,9 @@ class _BdCenterScreenState extends State<BdCenterScreen>
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: Row(children: [
         Container(
@@ -454,7 +460,7 @@ class _BdCenterScreenState extends State<BdCenterScreen>
         ),
         const SizedBox(width: 12),
         Expanded(
-          child: Text(week, style: const TextStyle(color: Colors.white, fontSize: 14)),
+          child: Text(week, style: TextStyle(color: AppTheme.fg(context), fontSize: 14)),
         ),
         Text(formatCount(coins), style: const TextStyle(color: Color(0xFFFFB800), fontSize: 15, fontWeight: FontWeight.bold)),
       ]),
@@ -474,9 +480,9 @@ class _BdCenterScreenState extends State<BdCenterScreen>
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: Row(children: [
         ClipRRect(
@@ -495,15 +501,15 @@ class _BdCenterScreenState extends State<BdCenterScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(name, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+              Text(name, style: TextStyle(color: AppTheme.fg(context), fontSize: 15, fontWeight: FontWeight.bold)),
               const SizedBox(height: 4),
               Row(children: [
-                Icon(Icons.people, color: Colors.white.withValues(alpha: 0.5), size: 14),
+                Icon(Icons.people, color: AppTheme.fg(context, 0.5), size: 14),
                 const SizedBox(width: 4),
-                Text('$hostCount hosts', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12)),
+                Text('$hostCount hosts', style: TextStyle(color: AppTheme.fg(context, 0.5), fontSize: 12)),
                 if (agencyCode != null) ...[
                   const SizedBox(width: 12),
-                  Text('Code: $agencyCode', style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12)),
+                  Text('Code: $agencyCode', style: TextStyle(color: AppTheme.fg(context, 0.5), fontSize: 12)),
                 ],
               ]),
             ],
@@ -534,9 +540,9 @@ class _BdCenterScreenState extends State<BdCenterScreen>
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: Row(children: [
         Container(
@@ -552,9 +558,9 @@ class _BdCenterScreenState extends State<BdCenterScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(formatCount(amount), style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+              Text(formatCount(amount), style: TextStyle(color: AppTheme.fg(context), fontSize: 15, fontWeight: FontWeight.bold)),
               if (date.isNotEmpty)
-                Text(date.split('T').first, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12)),
+                Text(date.split('T').first, style: TextStyle(color: AppTheme.fg(context, 0.5), fontSize: 12)),
             ],
           ),
         ),
@@ -584,9 +590,9 @@ class _BdCenterScreenState extends State<BdCenterScreen>
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        border: Border.all(color: AppTheme.hairline(context)),
       ),
       child: Row(children: [
         ClipRRect(
@@ -605,9 +611,9 @@ class _BdCenterScreenState extends State<BdCenterScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(name, style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold)),
+              Text(name, style: TextStyle(color: AppTheme.fg(context), fontSize: 15, fontWeight: FontWeight.bold)),
               if (mobile.isNotEmpty)
-                Text(mobile, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12)),
+                Text(mobile, style: TextStyle(color: AppTheme.fg(context, 0.5), fontSize: 12)),
             ],
           ),
         ),

@@ -11,6 +11,7 @@ import 'package:provider/provider.dart';
 import '../models/ai_feature_model.dart';
 import '../providers/ai_feature_manager.dart';
 import '../services/ar_face_sticker_service.dart';
+import '../theme/app_theme.dart';
 
 /// Shows the AR face sticker picker bottom sheet.
 void showArFaceStickerSheet(BuildContext context) {
@@ -47,9 +48,9 @@ class _ArStickerSheetState extends State<_ArStickerSheet> {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.5,
       ),
-      decoration: const BoxDecoration(
-        color: Color(0xFF1A1A2E),
-        borderRadius: BorderRadius.only(
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF1A1A2E, 0xFFF8F7FE),
+        borderRadius: const BorderRadius.only(
           topLeft: Radius.circular(20),
           topRight: Radius.circular(20),
         ),
@@ -64,9 +65,9 @@ class _ArStickerSheetState extends State<_ArStickerSheet> {
               children: [
                 const Icon(Icons.face_retouching_natural, color: Colors.purpleAccent, size: 22),
                 const SizedBox(width: 8),
-                const Text(
+                Text(
                   'AR Stickers',
-                  style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                  style: TextStyle(color: AppTheme.fg(context), fontSize: 16, fontWeight: FontWeight.bold),
                 ),
                 const Spacer(),
                 if (activeId != null)
@@ -88,12 +89,12 @@ class _ArStickerSheetState extends State<_ArStickerSheet> {
                 const SizedBox(width: 8),
                 GestureDetector(
                   onTap: () => Navigator.pop(context),
-                  child: const Icon(Icons.close, color: Colors.white54, size: 20),
+                  child: Icon(Icons.close, color: AppTheme.fg(context, 0.54), size: 20),
                 ),
               ],
             ),
           ),
-          const Divider(color: Colors.white12, height: 1),
+          Divider(color: AppTheme.hairline(context), height: 1),
           // Sticker grid
           Flexible(
             child: GridView.builder(
@@ -116,7 +117,7 @@ class _ArStickerSheetState extends State<_ArStickerSheet> {
                   },
                   child: Container(
                     decoration: BoxDecoration(
-                      color: isActive ? Colors.purple.withValues(alpha: 0.3) : Colors.white.withValues(alpha: 0.05),
+                      color: isActive ? Colors.purple.withValues(alpha: 0.3) : AppTheme.themed(context, 0x0DFFFFFF, 0xFFF1F1FA),
                       borderRadius: BorderRadius.circular(12),
                       border: isActive
                           ? Border.all(color: Colors.purpleAccent, width: 2)
@@ -135,7 +136,7 @@ class _ArStickerSheetState extends State<_ArStickerSheet> {
                         Text(
                           s.name,
                           style: TextStyle(
-                            color: isActive ? Colors.purpleAccent : Colors.white70,
+                            color: isActive ? Colors.purpleAccent : AppTheme.fg(context, 0.7),
                             fontSize: 10,
                             fontWeight: FontWeight.w600,
                           ),

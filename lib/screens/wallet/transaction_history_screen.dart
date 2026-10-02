@@ -211,7 +211,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFF6F4FB),
+      backgroundColor: AppTheme.themed(context, 0xFF121218, 0xFFF6F4FB),
       extendBodyBehindAppBar: true,
       body: Stack(
         alignment: Alignment.topLeft,
@@ -584,7 +584,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
       margin: const EdgeInsets.fromLTRB(16, 14, 16, 6),
       padding: const EdgeInsets.all(5),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: AppTheme.themed(context, 0xFF1B1B26),
         borderRadius: BorderRadius.circular(30),
         boxShadow: [
           BoxShadow(
@@ -637,7 +637,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
                   _tabLabels[i],
                   textAlign: TextAlign.center,
                   style: TextStyle(
-                    color: selected ? Colors.white : AppTheme.textSecondary,
+                    color: selected ? Colors.white : AppTheme.fg(context, 0.6),
                     fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                     fontSize: 13,
                     letterSpacing: 0.2,
@@ -657,7 +657,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
       padding: const EdgeInsets.fromLTRB(16, 6, 16, 4),
       child: Container(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.themed(context, 0xFF1B1B26),
           borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
@@ -669,11 +669,11 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
         ),
         child: TextField(
           controller: _searchController,
-          style: const TextStyle(fontSize: 14, color: AppTheme.textPrimary),
+          style: TextStyle(fontSize: 14, color: AppTheme.fg(context)),
           decoration: InputDecoration(
             hintText: 'Search by title or description…',
-            hintStyle: const TextStyle(
-              color: AppTheme.textTertiary,
+            hintStyle: TextStyle(
+              color: AppTheme.fg(context, 0.4),
               fontSize: 13,
             ),
             prefixIcon: const Icon(
@@ -685,7 +685,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
                 _searchQuery.isNotEmpty
                     ? IconButton(
                       icon: const Icon(Icons.close, size: 20),
-                      color: AppTheme.textTertiary,
+                      color: AppTheme.fg(context, 0.4),
                       onPressed: () {
                         _searchController.clear();
                         setState(() => _searchQuery = '');
@@ -737,9 +737,10 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
 
   // ---- Shimmer loading skeleton -------------------------------------------
   Widget _buildShimmerList() {
+    final isDark = AppTheme.isDark(context);
     return Shimmer.fromColors(
-      baseColor: Colors.grey.shade300,
-      highlightColor: Colors.grey.shade100,
+      baseColor: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.grey.shade300,
+      highlightColor: isDark ? Colors.white.withValues(alpha: 0.16) : Colors.grey.shade100,
       child: ListView.builder(
         physics: const NeverScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(12, 8, 12, 24),
@@ -749,7 +750,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
               margin: const EdgeInsets.only(bottom: 12),
               height: 92,
               decoration: BoxDecoration(
-                color: Colors.white,
+                color: AppTheme.themed(context, 0xFF1B1B26),
                 borderRadius: BorderRadius.circular(20),
               ),
             ),
@@ -790,16 +791,16 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
                 const SizedBox(height: 18),
                 Text(
                   message,
-                  style: const TextStyle(
-                    color: AppTheme.textSecondary,
+                  style: TextStyle(
+                    color: AppTheme.fg(context, 0.6),
                     fontSize: 16,
                     fontWeight: FontWeight.w700,
                   ),
                 ),
                 const SizedBox(height: 6),
-                const Text(
+                Text(
                   'Pull down to refresh',
-                  style: TextStyle(color: AppTheme.textTertiary, fontSize: 12),
+                  style: TextStyle(color: AppTheme.fg(context, 0.4), fontSize: 12),
                 ),
               ],
             ),
@@ -821,9 +822,9 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
       isScrollControlled: true,
       builder:
           (ctx) => Container(
-            decoration: const BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+            decoration: BoxDecoration(
+              color: AppTheme.themed(ctx, 0xFF1E1E1E),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
             ),
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -834,7 +835,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
                   width: 44,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey.shade300,
+                    color: AppTheme.fg(ctx, 0.2),
                     borderRadius: BorderRadius.circular(2),
                   ),
                 ),
@@ -866,10 +867,10 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
                       const SizedBox(height: 14),
                       Text(
                         item.title ?? meta.defaultTitle,
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.w800,
-                          color: AppTheme.textPrimary,
+                          color: AppTheme.fg(ctx),
                         ),
                       ),
                       const SizedBox(height: 6),
@@ -957,8 +958,8 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
             width: 110,
             child: Text(
               label,
-              style: const TextStyle(
-                color: AppTheme.textTertiary,
+              style: TextStyle(
+                color: AppTheme.fg(context, 0.45),
                 fontSize: 13,
               ),
             ),
@@ -968,7 +969,7 @@ class _TransactionHistoryScreenState extends State<TransactionHistoryScreen>
               value,
               textAlign: TextAlign.right,
               style: TextStyle(
-                color: accent ?? AppTheme.textPrimary,
+                color: accent ?? AppTheme.fg(context),
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
               ),
@@ -1137,7 +1138,7 @@ class _TransactionCard extends StatelessWidget {
       child: Container(
         margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: AppTheme.themed(context, 0xFF1B1B26),
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
             BoxShadow(
@@ -1226,8 +1227,8 @@ class _TransactionCard extends StatelessWidget {
                                     item.title ?? meta.defaultTitle,
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
-                                    style: const TextStyle(
-                                      color: AppTheme.textPrimary,
+                                    style: TextStyle(
+                                      color: AppTheme.fg(context),
                                       fontSize: 15,
                                       fontWeight: FontWeight.w800,
                                     ),
@@ -1243,8 +1244,8 @@ class _TransactionCard extends StatelessWidget {
                                 item.description!,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  color: AppTheme.textSecondary,
+                                style: TextStyle(
+                                  color: AppTheme.fg(context, 0.6),
                                   fontSize: 12,
                                 ),
                               ),
@@ -1252,16 +1253,16 @@ class _TransactionCard extends StatelessWidget {
                             const SizedBox(height: 6),
                             Row(
                               children: [
-                                const Icon(
+                                Icon(
                                   Icons.access_time,
                                   size: 12,
-                                  color: AppTheme.textTertiary,
+                                  color: AppTheme.fg(context, 0.4),
                                 ),
                                 const SizedBox(width: 4),
                                 Text(
                                   relativeTime,
-                                  style: const TextStyle(
-                                    color: AppTheme.textTertiary,
+                                  style: TextStyle(
+                                    color: AppTheme.fg(context, 0.4),
                                     fontSize: 11,
                                     fontWeight: FontWeight.w500,
                                   ),
@@ -1294,8 +1295,8 @@ class _TransactionCard extends StatelessWidget {
                           const SizedBox(height: 2),
                           Text(
                             currencyLabel,
-                            style: const TextStyle(
-                              color: AppTheme.textTertiary,
+                            style: TextStyle(
+                              color: AppTheme.fg(context, 0.4),
                               fontSize: 10,
                               fontWeight: FontWeight.w600,
                             ),

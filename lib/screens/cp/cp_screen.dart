@@ -142,9 +142,11 @@ class _CPScreenState extends State<CPScreen>
     final friend = context.watch<FriendProvider>();
 
     final accentColor = _isFriendMode ? AppTheme.friendAccent : AppTheme.cpAccent;
+    final isDark = AppTheme.isDark(context);
+    final vignette = isDark ? AppTheme.cpDarkBg : const Color(0xFFF8F7FE);
 
     return Scaffold(
-      backgroundColor: AppTheme.cpDarkBg,
+      backgroundColor: AppTheme.themed(context, 0xFF0D0815, 0xFFF8F7FE),
       body: Stack(
         children: [
           // Base animated-style gradient
@@ -183,8 +185,8 @@ class _CPScreenState extends State<CPScreen>
                   end: Alignment.bottomCenter,
                   colors: [
                     Colors.transparent,
-                    AppTheme.cpDarkBg.withValues(alpha: 0.4),
-                    AppTheme.cpDarkBg.withValues(alpha: 0.9),
+                    vignette.withValues(alpha: isDark ? 0.4 : 0.55),
+                    vignette.withValues(alpha: isDark ? 0.9 : 0.92),
                   ],
                   stops: const [0.0, 0.6, 1.0],
                 ),
@@ -254,13 +256,15 @@ class _CPScreenState extends State<CPScreen>
                   child: Container(
                     margin: const EdgeInsets.only(top: 6),
                     decoration: BoxDecoration(
-                      color: Colors.black.withValues(alpha: 0.18),
+                      color: isDark
+                          ? Colors.black.withValues(alpha: 0.18)
+                          : Colors.white.withValues(alpha: 0.55),
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(32),
                       ),
                       border: Border(
                         top: BorderSide(
-                          color: Colors.white.withValues(alpha: 0.12),
+                          color: AppTheme.hairline(context),
                           width: 1,
                         ),
                       ),
@@ -620,9 +624,9 @@ class _CPScreenState extends State<CPScreen>
       child: Padding(
         padding: const EdgeInsets.all(2.5),
         child: CircleAvatar(
-          backgroundColor: AppTheme.cpDarkSurfaceLight,
+          backgroundColor: AppTheme.themed(context, 0xFF241B38, 0xFFE8E8F0),
           backgroundImage: image?.isNotEmpty == true ? CachedNetworkImageProvider(image!) : null,
-          child: image?.isNotEmpty != true ? const Icon(Icons.person, color: Colors.white54) : null,
+          child: image?.isNotEmpty != true ? Icon(Icons.person, color: AppTheme.fg(context, 0.45)) : null,
         ),
       ),
     );
@@ -720,7 +724,11 @@ class _CPScreenState extends State<CPScreen>
               margin: const EdgeInsets.only(right: 10),
               decoration: BoxDecoration(
                 gradient: selected ? gradient : null,
-                color: selected ? null : AppTheme.cpDarkCard.withValues(alpha: 0.85),
+                color: selected
+                    ? null
+                    : (AppTheme.isDark(context)
+                        ? AppTheme.cpDarkCard.withValues(alpha: 0.85)
+                        : Colors.white.withValues(alpha: 0.6)),
                 borderRadius: BorderRadius.circular(26),
                 border: Border.all(
                   color: selected ? Colors.white.withValues(alpha: 0.25) : accentColor.withValues(alpha: 0.2),
@@ -889,8 +897,8 @@ class _PrivilegesContent extends StatelessWidget {
                                 isSelected
                                     ? null
                                     : (isUnlocked
-                                        ? AppTheme.cpDarkSurfaceLight
-                                        : AppTheme.cpDarkSurface),
+                                        ? AppTheme.themed(context, 0xFF241B38, 0xFFF1F1FA)
+                                        : AppTheme.themed(context, 0xFF1A1428, 0xFFECE9F6)),
                             borderRadius: BorderRadius.circular(16),
                             border:
                                 isSelected
@@ -922,6 +930,7 @@ class _PrivilegesContent extends StatelessWidget {
                                 ClipRRect(
                                   borderRadius: BorderRadius.circular(10),
                                   child: _buildImageFromUrl(
+                                    context,
                                     levelIcon,
                                     width: 28,
                                     height: 28,
@@ -938,7 +947,7 @@ class _PrivilegesContent extends StatelessWidget {
                                             ? Colors.white
                                             : (isUnlocked
                                                 ? accentColor
-                                                : AppTheme.cpDarkTextTertiary),
+                                                : AppTheme.fg(context, 0.4)),
                                   ),
                                 ),
                               const SizedBox(height: 2),
@@ -949,7 +958,7 @@ class _PrivilegesContent extends StatelessWidget {
                                   color:
                                       isSelected
                                           ? Colors.white70
-                                          : AppTheme.cpDarkTextTertiary,
+                                          : AppTheme.fg(context, 0.4),
                                 ),
                               ),
                             ],
@@ -968,10 +977,10 @@ class _PrivilegesContent extends StatelessWidget {
                           color: accentColor.withValues(alpha: 0.4),
                         ),
                         const SizedBox(height: 6),
-                        const Text(
+                        Text(
                           'No levels available',
                           style: TextStyle(
-                            color: AppTheme.cpDarkTextSecondary,
+                            color: AppTheme.fg(context, 0.6),
                             fontSize: 13,
                           ),
                         ),
@@ -987,10 +996,10 @@ class _PrivilegesContent extends StatelessWidget {
               children: [
                 ImageIcon(const AssetImage("assets/gift/official_gift.png"), color: accentColor.withValues(alpha: 0.3), size: 48),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'No privileges for this level',
                   style: TextStyle(
-                    color: AppTheme.cpDarkTextSecondary,
+                    color: AppTheme.fg(context, 0.6),
                     fontSize: 14,
                   ),
                 ),
@@ -1087,12 +1096,13 @@ IconData _iconForType(String? type) {
   }
 }
 
-Widget _buildImageFromUrl(String url, {double? width, double? height}) {
+Widget _buildImageFromUrl(BuildContext context, String url, {double? width, double? height}) {
+  final placeholderColor = AppTheme.fg(context, 0.4);
   if (url.isEmpty) {
     return Icon(
       Icons.image_not_supported,
       size: width,
-      color: AppTheme.cpDarkTextTertiary,
+      color: placeholderColor,
     );
   }
   if (url.toLowerCase().endsWith('.svg')) {
@@ -1104,7 +1114,7 @@ Widget _buildImageFromUrl(String url, {double? width, double? height}) {
           (_) => Icon(
             Icons.image,
             size: width,
-            color: AppTheme.cpDarkTextTertiary,
+            color: placeholderColor,
           ),
     );
   }
@@ -1115,10 +1125,10 @@ Widget _buildImageFromUrl(String url, {double? width, double? height}) {
     fit: BoxFit.contain,
     placeholder:
         (_, __) =>
-            Icon(Icons.image, size: width, color: AppTheme.cpDarkTextTertiary),
+            Icon(Icons.image, size: width, color: placeholderColor),
     errorWidget:
         (_, __, ___) =>
-            Icon(Icons.image, size: width, color: AppTheme.cpDarkTextTertiary),
+            Icon(Icons.image, size: width, color: placeholderColor),
   );
 }
 
@@ -1146,12 +1156,14 @@ class _PrivilegeCard extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(22),
-        color: unlocked ? AppTheme.cpDarkCard : AppTheme.cpDarkSurface,
+        color: AppTheme.isDark(context)
+            ? (unlocked ? AppTheme.cpDarkCard : AppTheme.cpDarkSurface)
+            : (unlocked ? Colors.white : const Color(0xFFF1F1FA)),
         border: Border.all(
           color:
               unlocked
                   ? accentColor.withValues(alpha: 0.25)
-                  : AppTheme.cpDarkBorder,
+                  : AppTheme.hairline(context),
           width: 1,
         ),
         boxShadow:
@@ -1176,7 +1188,9 @@ class _PrivilegeCard extends StatelessWidget {
                 height: 56,
                 decoration: BoxDecoration(
                   gradient: unlocked ? gradient : null,
-                  color: unlocked ? null : AppTheme.cpDarkSurfaceLight,
+                  color: unlocked
+                      ? null
+                      : AppTheme.themed(context, 0xFF241B38, 0xFFE8E8F0),
                   shape: BoxShape.circle,
                   boxShadow:
                       unlocked
@@ -1191,7 +1205,7 @@ class _PrivilegeCard extends StatelessWidget {
                 ),
                 child: Icon(
                   unlocked ? icon : Icons.lock_outline,
-                  color: unlocked ? Colors.white : AppTheme.cpDarkTextTertiary,
+                  color: unlocked ? Colors.white : AppTheme.fg(context, 0.4),
                   size: 26,
                 ),
               ),
@@ -1203,8 +1217,8 @@ class _PrivilegeCard extends StatelessWidget {
                   fontWeight: FontWeight.w600,
                   color:
                       unlocked
-                          ? AppTheme.cpDarkText
-                          : AppTheme.cpDarkTextTertiary,
+                          ? AppTheme.fg(context)
+                          : AppTheme.fg(context, 0.45),
                 ),
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
@@ -1219,8 +1233,8 @@ class _PrivilegeCard extends StatelessWidget {
                     fontSize: 10,
                     color:
                         unlocked
-                            ? AppTheme.cpDarkTextSecondary
-                            : AppTheme.cpDarkTextTertiary,
+                            ? AppTheme.fg(context, 0.6)
+                            : AppTheme.fg(context, 0.4),
                   ),
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -1234,14 +1248,14 @@ class _PrivilegeCard extends StatelessWidget {
               right: 8,
               child: Container(
                 padding: const EdgeInsets.all(4),
-                decoration: const BoxDecoration(
-                  color: AppTheme.cpDarkSurfaceLight,
+                decoration: BoxDecoration(
+                  color: AppTheme.themed(context, 0xFF241B38, 0xFFE8E8F0),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.lock,
                   size: 12,
-                  color: AppTheme.cpDarkTextTertiary,
+                  color: AppTheme.fg(context, 0.4),
                 ),
               ),
             ),
@@ -1297,12 +1311,12 @@ class _RingGalleryContentState extends State<_RingGalleryContent> {
         final locked = !ring.isUnlocked && myLevel < ring.unlockLevel;
         return Container(
           decoration: BoxDecoration(
-            color: AppTheme.cpDarkCard,
+            color: AppTheme.themed(context, 0xFF1E1832),
             borderRadius: BorderRadius.circular(22),
             border:
                 ring.isEquipped
                     ? Border.all(color: AppTheme.cpAccent, width: 2)
-                    : Border.all(color: AppTheme.cpDarkBorder, width: 1),
+                    : Border.all(color: AppTheme.hairline(context), width: 1),
             boxShadow:
                 ring.isEquipped
                     ? [
@@ -1337,7 +1351,9 @@ class _RingGalleryContentState extends State<_RingGalleryContent> {
                                             )
                                             .toList(),
                                   ),
-                          color: locked ? AppTheme.cpDarkSurface : null,
+                          color: locked
+                              ? AppTheme.themed(context, 0xFF1A1428, 0xFFF1F1FA)
+                              : null,
                           boxShadow:
                               locked
                                   ? null
@@ -1377,7 +1393,7 @@ class _RingGalleryContentState extends State<_RingGalleryContent> {
                                   size: 34,
                                   color:
                                       locked
-                                          ? AppTheme.cpDarkTextTertiary
+                                          ? AppTheme.fg(context, 0.4)
                                           : AppTheme.cpAccent,
                                 ),
                       ),
@@ -1417,14 +1433,14 @@ class _RingGalleryContentState extends State<_RingGalleryContent> {
                               vertical: 3,
                             ),
                             decoration: BoxDecoration(
-                              color: AppTheme.cpDarkSurfaceLight,
+                              color: AppTheme.themed(context, 0xFF241B38, 0xFFE8E8F0),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
                               'Lv.${ring.unlockLevel}',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 10,
-                                color: AppTheme.cpDarkTextTertiary,
+                                color: AppTheme.fg(context, 0.45),
                                 fontWeight: FontWeight.w600,
                               ),
                             ),
@@ -1440,10 +1456,10 @@ class _RingGalleryContentState extends State<_RingGalleryContent> {
                   children: [
                     Text(
                       ring.name ?? 'Ring',
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
-                        color: AppTheme.cpDarkText,
+                        color: AppTheme.fg(context),
                       ),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
@@ -1509,9 +1525,9 @@ class _RingGalleryContentState extends State<_RingGalleryContent> {
                     else
                       Text(
                         'Lv.${ring.unlockLevel} to unlock',
-                        style: const TextStyle(
+                        style: TextStyle(
                           fontSize: 11,
-                          color: AppTheme.cpDarkTextTertiary,
+                          color: AppTheme.fg(context, 0.45),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1561,7 +1577,7 @@ class _RulesContent extends StatelessWidget {
         return Container(
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: AppTheme.cpDarkCard,
+            color: AppTheme.cardBg(context),
             borderRadius: BorderRadius.circular(18),
             border: Border.all(
               color: accentColor.withValues(alpha: 0.15),
@@ -1593,8 +1609,8 @@ class _RulesContent extends StatelessWidget {
               Expanded(
                 child: Text(
                   rules[i],
-                  style: const TextStyle(
-                    color: AppTheme.cpDarkTextSecondary,
+                  style: TextStyle(
+                    color: AppTheme.fg(context, 0.7),
                     fontSize: 14,
                     height: 1.5,
                   ),
@@ -1743,7 +1759,7 @@ class _RequestRow extends StatelessWidget {
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppTheme.cpDarkCard,
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: accentColor.withValues(alpha: 0.15),
@@ -1770,14 +1786,14 @@ class _RequestRow extends StatelessWidget {
               margin: const EdgeInsets.all(2.5),
               child: CircleAvatar(
                 radius: 22,
-                backgroundColor: AppTheme.cpDarkSurfaceLight,
+                backgroundColor: AppTheme.themed(context, 0xFF241B38, 0xFFE8E8F0),
                 backgroundImage:
                     user?.image != null
                         ? CachedNetworkImageProvider(user!.image!)
                         : null,
                 child:
                     user?.image == null
-                        ? const Icon(Icons.person, color: Colors.white54)
+                        ? Icon(Icons.person, color: AppTheme.fg(context, 0.45))
                         : null,
               ),
             ),
@@ -1786,8 +1802,8 @@ class _RequestRow extends StatelessWidget {
           Expanded(
             child: Text(
               user?.name ?? 'Unknown User',
-              style: const TextStyle(
-                color: AppTheme.cpDarkText,
+              style: TextStyle(
+                color: AppTheme.fg(context),
                 fontWeight: FontWeight.bold,
                 fontSize: 15,
               ),
@@ -1800,13 +1816,13 @@ class _RequestRow extends StatelessWidget {
                 onTap: onReject,
                 child: Container(
                   padding: const EdgeInsets.all(8),
-                  decoration: const BoxDecoration(
-                    color: AppTheme.cpDarkSurfaceLight,
+                  decoration: BoxDecoration(
+                    color: AppTheme.themed(context, 0xFF241B38, 0xFFECECF4),
                     shape: BoxShape.circle,
                   ),
-                  child: const Icon(
+                  child: Icon(
                     Icons.close,
-                    color: AppTheme.cpDarkTextSecondary,
+                    color: AppTheme.fg(context, 0.6),
                     size: 20,
                   ),
                 ),
@@ -1967,12 +1983,12 @@ class _RankingRow extends StatelessWidget {
                 ? AppTheme.rankSilver
                 : (rank == 3
                     ? AppTheme.rankBronze
-                    : AppTheme.cpDarkTextTertiary));
+                    : AppTheme.fg(context, 0.4)));
     return Container(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: AppTheme.cpDarkCard,
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(18),
         border:
             isTop3
@@ -1980,7 +1996,7 @@ class _RankingRow extends StatelessWidget {
                   color: rankColor.withValues(alpha: 0.3),
                   width: 1.2,
                 )
-                : Border.all(color: AppTheme.cpDarkBorder, width: 1),
+                : Border.all(color: AppTheme.hairline(context), width: 1),
       ),
       child: Row(
         children: [
@@ -1994,7 +2010,7 @@ class _RankingRow extends StatelessWidget {
                         colors: [rankColor, rankColor.withValues(alpha: 0.6)],
                       )
                       : null,
-              color: isTop3 ? null : AppTheme.cpDarkSurfaceLight,
+              color: isTop3 ? null : AppTheme.themed(context, 0xFF241B38, 0xFFECECF4),
               shape: BoxShape.circle,
               boxShadow:
                   isTop3
@@ -2011,7 +2027,7 @@ class _RankingRow extends StatelessWidget {
               child: Text(
                 '#$rank',
                 style: TextStyle(
-                  color: isTop3 ? Colors.white : AppTheme.cpDarkTextSecondary,
+                  color: isTop3 ? Colors.white : AppTheme.fg(context, 0.6),
                   fontSize: 14,
                   fontWeight: FontWeight.bold,
                 ),
@@ -2022,8 +2038,8 @@ class _RankingRow extends StatelessWidget {
           Expanded(
             child: Text(
               name,
-              style: const TextStyle(
-                color: AppTheme.cpDarkText,
+              style: TextStyle(
+                color: AppTheme.fg(context),
                 fontWeight: FontWeight.bold,
                 fontSize: 14,
               ),
@@ -2286,15 +2302,15 @@ class _DiscoverFilterBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: const BoxDecoration(
-        color: AppTheme.cpDarkSurface,
-        borderRadius: BorderRadius.vertical(bottom: Radius.circular(16)),
+      decoration: BoxDecoration(
+        color: AppTheme.themed(context, 0xFF1A1428, 0xFFF1F1FA),
+        borderRadius: const BorderRadius.vertical(bottom: Radius.circular(16)),
       ),
       child: Wrap(
         spacing: 8,
         runSpacing: 6,
         children: [
-          _filterChip(
+          _filterChip(context,
             label:
                 gender == null
                     ? 'Gender'
@@ -2311,7 +2327,7 @@ class _DiscoverFilterBar extends StatelessWidget {
               onApply();
             },
           ),
-          _filterChip(
+          _filterChip(context,
             label: region == null ? 'Region' : region!,
             selected: region != null,
             onTap: () {
@@ -2323,7 +2339,7 @@ class _DiscoverFilterBar extends StatelessWidget {
               onApply();
             },
           ),
-          _filterChip(
+          _filterChip(context,
             label: 'Online',
             selected: onlineOnly,
             onTap: () {
@@ -2331,7 +2347,7 @@ class _DiscoverFilterBar extends StatelessWidget {
               onApply();
             },
           ),
-          _filterChip(
+          _filterChip(context,
             label: minLevel > 0 ? 'Lv+$minLevel' : 'Any Level',
             selected: minLevel > 0,
             onTap: () {
@@ -2344,7 +2360,8 @@ class _DiscoverFilterBar extends StatelessWidget {
     );
   }
 
-  Widget _filterChip({
+  Widget _filterChip(
+    BuildContext context, {
     required String label,
     required bool selected,
     required VoidCallback onTap,
@@ -2361,7 +2378,7 @@ class _DiscoverFilterBar extends StatelessWidget {
                     colors: [accentColor, accentColor.withValues(alpha: 0.7)],
                   )
                   : null,
-          color: selected ? null : AppTheme.cpDarkCard,
+          color: selected ? null : AppTheme.cardBg(context),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color:
@@ -2410,7 +2427,7 @@ class _InviteCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       decoration: BoxDecoration(
-        color: AppTheme.cpDarkCard,
+        color: AppTheme.cardBg(context),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: accentColor.withValues(alpha: 0.15),
@@ -2445,17 +2462,17 @@ class _InviteCard extends StatelessWidget {
                       margin: const EdgeInsets.all(2.5),
                       child: CircleAvatar(
                         radius: 38,
-                        backgroundColor: AppTheme.cpDarkSurfaceLight,
+                        backgroundColor: AppTheme.themed(context, 0xFF241B38, 0xFFE8E8F0),
                         backgroundImage:
                             (user?.image != null && user!.image!.isNotEmpty)
                                 ? CachedNetworkImageProvider(user!.image!)
                                 : null,
                         child:
                             (user?.image == null || user!.image!.isEmpty)
-                                ? const Icon(
+                                ? Icon(
                                   Icons.person,
                                   size: 36,
-                                  color: Colors.white54,
+                                  color: AppTheme.fg(context, 0.45),
                                 )
                                 : null,
                       ),
@@ -2496,7 +2513,9 @@ class _InviteCard extends StatelessWidget {
                         shape: BoxShape.circle,
                         color: AppTheme.green,
                         border: Border.all(
-                          color: AppTheme.cpDarkCard,
+                          color: AppTheme.isDark(context)
+                              ? AppTheme.cpDarkCard
+                              : Colors.white,
                           width: 2,
                         ),
                       ),
@@ -2511,8 +2530,8 @@ class _InviteCard extends StatelessWidget {
               children: [
                 Text(
                   user?.name ?? 'Unknown',
-                  style: const TextStyle(
-                    color: AppTheme.cpDarkText,
+                  style: TextStyle(
+                    color: AppTheme.fg(context),
                     fontSize: 13,
                     fontWeight: FontWeight.w600,
                   ),

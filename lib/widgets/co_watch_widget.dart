@@ -372,7 +372,7 @@ class _CoWatchWidgetState extends State<CoWatchWidget> {
     return Container(
       margin: const EdgeInsets.fromLTRB(8, 8, 8, 0),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.85),
+        color: AppTheme.themed(context, 0xD9000000, 0xF5FFFFFF),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: AppTheme.primary.withValues(alpha: 0.4)),
       ),
@@ -400,8 +400,8 @@ class _CoWatchWidgetState extends State<CoWatchWidget> {
               c.title.isEmpty ? 'Co-Watch' : c.title,
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: AppTheme.fg(context),
                 fontSize: 13,
                 fontWeight: FontWeight.w600,
               ),
@@ -412,7 +412,7 @@ class _CoWatchWidgetState extends State<CoWatchWidget> {
             iconSize: 18,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            icon: const Icon(Icons.minimize, color: Colors.white70),
+            icon: Icon(Icons.minimize, color: AppTheme.fg(context, 0.7)),
             tooltip: 'Minimize',
             onPressed: c.minimize,
           ),
@@ -421,7 +421,7 @@ class _CoWatchWidgetState extends State<CoWatchWidget> {
             iconSize: 18,
             padding: EdgeInsets.zero,
             constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-            icon: const Icon(Icons.close, color: Colors.white70),
+            icon: Icon(Icons.close, color: AppTheme.fg(context, 0.7)),
             tooltip: 'Close',
             onPressed: widget.onClose,
           ),
@@ -463,24 +463,24 @@ class _CoWatchWidgetState extends State<CoWatchWidget> {
     return AspectRatio(
       aspectRatio: 16 / 9,
       child: Container(
-        color: Colors.black12,
+        color: AppTheme.fg(context, 0.05),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             spin
-                ? const SizedBox(
+                ? SizedBox(
                     width: 22,
                     height: 22,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      color: Colors.white70,
+                      color: AppTheme.fg(context, 0.7),
                     ),
                   )
-                : Icon(icon, color: Colors.white54, size: 32),
+                : Icon(icon, color: AppTheme.fg(context, 0.54), size: 32),
             const SizedBox(height: 8),
             Text(
               label,
-              style: const TextStyle(color: Colors.white54, fontSize: 12),
+              style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 12),
             ),
           ],
         ),
@@ -514,15 +514,15 @@ class _CoWatchWidgetState extends State<CoWatchWidget> {
           const SizedBox(width: 8),
           Text(
             _fmt(pos),
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 10),
+            style: TextStyle(color: AppTheme.fg(context, 0.6), fontSize: 10),
           ),
           Expanded(
             child: SliderTheme(
               data: SliderThemeData(
                 trackHeight: 3,
                 activeTrackColor: AppTheme.primary,
-                inactiveTrackColor: Colors.white24,
-                thumbColor: Colors.white,
+                inactiveTrackColor: AppTheme.fg(context, 0.24),
+                thumbColor: AppTheme.fg(context),
                 overlayColor: AppTheme.primary.withValues(alpha: 0.2),
               ),
               child: Slider(
@@ -548,7 +548,7 @@ class _CoWatchWidgetState extends State<CoWatchWidget> {
           ),
           Text(
             _fmt(dur),
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 10),
+            style: TextStyle(color: AppTheme.fg(context, 0.6), fontSize: 10),
           ),
         ],
       ),
@@ -564,7 +564,7 @@ class _CoWatchWidgetState extends State<CoWatchWidget> {
         margin: const EdgeInsets.fromLTRB(8, 8, 8, 0),
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
         decoration: BoxDecoration(
-          color: Colors.black.withValues(alpha: 0.7),
+          color: AppTheme.themed(context, 0xB3000000, 0xF0FFFFFF),
           borderRadius: BorderRadius.circular(14),
           border: Border.all(color: AppTheme.primary.withValues(alpha: 0.4)),
         ),
@@ -581,7 +581,7 @@ class _CoWatchWidgetState extends State<CoWatchWidget> {
                 c.title.isEmpty ? 'Co-Watch' : c.title,
                 maxLines: 1,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(color: Colors.white, fontSize: 12),
+                style: TextStyle(color: AppTheme.fg(context), fontSize: 12),
               ),
             ),
             IconButton(
@@ -589,7 +589,7 @@ class _CoWatchWidgetState extends State<CoWatchWidget> {
               iconSize: 18,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-              icon: const Icon(Icons.picture_in_picture_alt, color: Colors.white70),
+              icon: Icon(Icons.picture_in_picture_alt, color: AppTheme.fg(context, 0.7)),
               tooltip: 'Maximize',
               onPressed: c.maximize,
             ),
@@ -598,7 +598,7 @@ class _CoWatchWidgetState extends State<CoWatchWidget> {
               iconSize: 18,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
-              icon: const Icon(Icons.close, color: Colors.white70),
+              icon: Icon(Icons.close, color: AppTheme.fg(context, 0.7)),
               tooltip: 'Close',
               onPressed: widget.onClose,
             ),
