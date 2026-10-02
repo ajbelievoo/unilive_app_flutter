@@ -1585,6 +1585,39 @@ class ApiService {
     return RestResponse.fromJson(_asMap(r.data));
   }
 
+  /// Fetch the caller's per-category notification preferences.
+  /// Backend: GET /notification/prefs → {status, data: {all, message, ...}}.
+  static Future<Map<String, bool>?> getNotificationPrefs({
+    required String userId,
+  }) async {
+    final r = await _dio.get(
+      '/notification/prefs',
+      queryParameters: {'userId': userId},
+    );
+    final map = _asMap(r.data);
+    if (map['status'] != true || map['data'] is! Map) return null;
+    final out = <String, bool>{};
+    (map['data'] as Map).forEach((k, v) => out['$k'] = v != false);
+    return out;
+  }
+
+  /// Persist one or more notification preference categories.
+  /// Backend: POST /notification/prefs {userId, prefs:{key:bool}}.
+  static Future<Map<String, bool>?> updateNotificationPrefs({
+    required String userId,
+    required Map<String, bool> prefs,
+  }) async {
+    final r = await _dio.post(
+      '/notification/prefs',
+      data: {'userId': userId, 'prefs': prefs},
+    );
+    final map = _asMap(r.data);
+    if (map['status'] != true || map['data'] is! Map) return null;
+    final out = <String, bool>{};
+    (map['data'] as Map).forEach((k, v) => out['$k'] = v != false);
+    return out;
+  }
+
   // ---- Blocked users ------------------------------------------------------
   static Future<FollowersRoot> getBlockedUsers({
     required String userId,

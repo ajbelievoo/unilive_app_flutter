@@ -110,6 +110,11 @@ class SocketHandlers {
   Stream<Map<String, dynamic>> get cpRoomEntryStream =>
       _cpRoomEntryController.stream;
 
+  final _cpGlobalNotifyController =
+      StreamController<Map<String, dynamic>>.broadcast();
+  Stream<Map<String, dynamic>> get cpGlobalNotifyStream =>
+      _cpGlobalNotifyController.stream;
+
   final _cpTaskUpdateController =
       StreamController<Map<String, dynamic>>.broadcast();
   Stream<Map<String, dynamic>> get cpTaskUpdateStream =>
@@ -189,6 +194,11 @@ class SocketHandlers {
     _unsubscribers.add(
       _socket.on(Const.eventCpRoomEntry, (data) {
         _cpRoomEntryController.add(_unwrapMap(data) ?? <String, dynamic>{});
+      }),
+    );
+    _unsubscribers.add(
+      _socket.on(Const.eventCpGlobalNotify, (data) {
+        _cpGlobalNotifyController.add(_unwrapMap(data) ?? <String, dynamic>{});
       }),
     );
     _unsubscribers.add(
@@ -578,5 +588,12 @@ class SocketHandlers {
     _adminUpdateController.close();
     _coHostController.close();
     _joinRequestController.close();
+    _cpRequestController.close();
+    _cpUpdateController.close();
+    _cpIntimacyController.close();
+    _cpLevelUpController.close();
+    _cpBreakupController.close();
+    _cpRoomEntryController.close();
+    _cpGlobalNotifyController.close();
   }
 }

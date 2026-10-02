@@ -192,6 +192,15 @@ class SessionManager {
     return v ?? true;
   }
 
+  /// Per-category notification preference — defaults to ON until the user
+  /// disables it (mirrors backend `user.notification` keys).
+  bool getNotifPref(String key) => _pref.getBool('notifPref_$key') ?? true;
+  void saveNotifPref(String key, bool value) =>
+      saveBool('notifPref_$key', value);
+  void saveNotifPrefs(Map<String, bool> prefs) {
+    prefs.forEach(saveNotifPref);
+  }
+
   // ---- Policy acceptance --------------------------------------------------
   void savePolicyAccepted(bool value) => saveBool(Const.policyAccepted, value);
   bool getPolicyAccepted() => getBool(Const.policyAccepted);

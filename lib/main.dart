@@ -53,6 +53,7 @@ import 'services/system_ui_service.dart';
 import 'theme/app_theme.dart';
 import 'utils/crash_handler.dart';
 import 'utils/log.dart';
+import 'widgets/cp_effects_overlay.dart';
 import 'widgets/in_app_notification_banner.dart';
 import 'widgets/incoming_call_banner.dart';
 import 'package:belive/widgets/preloader.dart';
@@ -316,26 +317,28 @@ class _BeliveAppState extends State<_BeliveApp>
             ChangeNotifierProvider<ThemeProvider>.value(value: ThemeProvider.instance),
           ],
           child: InAppNotificationBanner(
-            child: _IncomingCallHandler(
+            child: CpEffectsOverlay(
+              child: _IncomingCallHandler(
               child: Builder(
-                builder: (context) {
-                  // Flush any pending notification tap once the router is
-                  // built and the navigator has a valid context.
-                  WidgetsBinding.instance.addPostFrameCallback((_) {
-                    FcmService.instance.flushPendingNavigation();
-                    PushNotificationService.flushPendingNavigation();
-                  });
-                  return MaterialApp.router(
-                    title: 'Unilive',
-                    debugShowCheckedModeBanner: false,
-                    theme: AppTheme.lightTheme,
-                    darkTheme: AppTheme.darkTheme,
-                    themeMode: context.watch<ThemeProvider>().mode,
-                    routerConfig: AppRoutes.router,
-                    builder: (context, child) =>
-                        _bottomNavSafeBuilder(context, _BlockGuard(child: child!)),
-                  );
-                },
+                  builder: (context) {
+                    // Flush any pending notification tap once the router is
+                    // built and the navigator has a valid context.
+                    WidgetsBinding.instance.addPostFrameCallback((_) {
+                      FcmService.instance.flushPendingNavigation();
+                      PushNotificationService.flushPendingNavigation();
+                    });
+                    return MaterialApp.router(
+                      title: 'Unilive',
+                      debugShowCheckedModeBanner: false,
+                      theme: AppTheme.lightTheme,
+                      darkTheme: AppTheme.darkTheme,
+                      themeMode: context.watch<ThemeProvider>().mode,
+                      routerConfig: AppRoutes.router,
+                      builder: (context, child) =>
+                          _bottomNavSafeBuilder(context, _BlockGuard(child: child!)),
+                    );
+                  },
+                ),
               ),
             ),
           ),

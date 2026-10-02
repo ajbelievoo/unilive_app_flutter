@@ -17,6 +17,7 @@ import '../../theme/app_theme.dart';
 import '../../utils/format_utils.dart';
 import '../../widgets/cp_widgets.dart';
 import '../../widgets/premium_ui.dart';
+import '../../widgets/svga_player_widget.dart';
 
 class CPLevelScreen extends StatefulWidget {
   const CPLevelScreen({super.key, this.isFriend = false});
@@ -415,6 +416,9 @@ class _LevelTile extends StatelessWidget {
 
   Widget _buildImage(String url) {
     final lower = url.toLowerCase();
+    if (lower.endsWith('.svga')) {
+      return SvgaPlayer(url: url, repeat: true, fit: BoxFit.cover);
+    }
     if (lower.endsWith('.svg')) {
       return SvgPicture.network(url, fit: BoxFit.cover);
     }

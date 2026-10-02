@@ -406,6 +406,7 @@ class Const {
   static const String eventCpIntimacy = 'cpIntimacy';
   static const String eventCpLevelUp = 'cpLevelUp';
   static const String eventCpBreakup = 'cpBreakup';
+  static const String eventCpGlobalNotify = 'cpGlobalNotify';
   static const String eventCpTaskUpdate = 'cpTaskUpdate';
 
   /// CP/Friend room entrance — emitted when a user with an active relationship

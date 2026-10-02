@@ -121,6 +121,44 @@ const int _kLevelUpDedupeWindowMs = 24 * 60 * 60 * 1000; // 24 hours
 /// Returns true when an identical notification was already shown inside the
 /// dedupe window. The signature map is persisted in SharedPreferences so this
 /// also works inside the background FCM isolate.
+/// Map a push `type` to its `user.notification.<key>` pref (mirrors the
+/// backend TOGGLE_BY_TYPE table in notification.service.js).
+String? _prefKeyForType(String type) {
+  switch (type) {
+    case Const.notificationChat:
+      return 'message';
+    case Const.notificationLive:
+      return 'favoriteLive';
+    case Const.notificationFollow:
+      return 'newFollow';
+    case Const.notificationLike:
+    case Const.notificationComment:
+    case Const.notificationPost:
+    case Const.notificationReel:
+      return 'likeCommentShare';
+    case Const.notificationGift:
+      return 'gift';
+    case Const.notificationCall:
+      return 'call';
+    case Const.notificationCp:
+    case Const.notificationCpLevelUp:
+      return 'cp';
+    case Const.notificationFriend:
+    case Const.notificationFriendLevelUp:
+      return 'friend';
+    case 'FAMILY':
+      return 'family';
+    case Const.notificationSystem:
+    case Const.notificationLevelUp:
+    case Const.notificationVip:
+    case Const.notificationKyc:
+    case Const.notificationReferral:
+      return 'system';
+    default:
+      return null;
+  }
+}
+
 Future<bool> _isDuplicateNotification(String signature) async {
   try {
     final now = DateTime.now().millisecondsSinceEpoch;
@@ -185,6 +223,17 @@ Future<void> _showNotificationForMessage(RemoteMessage message) async {
       'data.data="${data['data']}", '
       'title="${notification?.title}", body="${notification?.body}"');
 
+  // ---- User notification preferences (master + per-category) ----
+  // Checked BEFORE the CALL fast-path so muted categories (and the master
+  // switch) suppress calls too. In a background isolate SessionManager may be
+  // unavailable — default is to show.
+  final session = SessionManager.instance;
+  if (session != null) {
+    if (!session.getNotification()) return;
+    final prefKey = _prefKeyForType(type);
+    if (prefKey != null && !session.getNotifPref(prefKey)) return;
+  }
+
   // ---- CALL type: heads-up notification with full-screen intent ----
   if (type == Const.notificationCall) {
     // Skip CALL FCM when app is in foreground — socket events handle the
@@ -242,11 +291,7 @@ Future<void> _showNotificationForMessage(RemoteMessage message) async {
     return;
   }
 
-  // ---- Check user's notification setting ----
-  // (In background isolate, SessionManager may not be available — that's OK,
-  //  we default to showing the notification.)
-  final session = SessionManager.instance;
-  if (session != null && !session.getNotification()) return;
+
 
   // ---- Skip if chat with this user is already open ----
   // (matches native ChatActivity.isOPEN check — foreground only)

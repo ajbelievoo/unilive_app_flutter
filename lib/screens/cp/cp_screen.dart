@@ -26,6 +26,7 @@ import '../../providers/friend_provider.dart';
 import '../../routes/app_routes.dart';
 import '../../services/session_manager.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/svga_player_widget.dart';
 import '../../utils/format_utils.dart';
 import '../../widgets/cp_widgets.dart';
 
@@ -1103,6 +1104,15 @@ Widget _buildImageFromUrl(BuildContext context, String url, {double? width, doub
       Icons.image_not_supported,
       size: width,
       color: placeholderColor,
+    );
+  }
+  if (url.toLowerCase().endsWith('.svga')) {
+    return SvgaPlayer(
+      url: url,
+      width: width ?? 40,
+      height: height ?? 40,
+      repeat: true,
+      fit: BoxFit.contain,
     );
   }
   if (url.toLowerCase().endsWith('.svg')) {

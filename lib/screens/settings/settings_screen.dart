@@ -4,6 +4,7 @@ import 'package:flutter_cache_manager/flutter_cache_manager.dart';
 import 'package:fluttertoast/fluttertoast.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../misc/web_view_screen.dart';
 import '../../constants/const.dart';
@@ -31,11 +32,11 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _notifications = true;
   bool _darkMode = false;
   bool _videoCallOptIn = true; // Hosts are visible by default; can opt-out.
   bool _doNotDisturb = false;
   bool _autoAnswerVip = false;
+  bool _appRated = false;
 
   @override
   void initState() {
@@ -46,23 +47,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Future<void> _loadPrefs() async {
     final session = context.read<SessionManager>();
     setState(() {
-      _notifications = session.getNotification();
       _darkMode = context.read<ThemeProvider>().isDark;
       _videoCallOptIn = session.getUser()?.videoCallOptIn ?? true;
       _doNotDisturb = session.getBool(Const.doNotDisturb);
       _autoAnswerVip = session.getBool('autoAnswerVip');
+      _appRated = session.getBool('appRated');
     });
     // Load KYC status so the settings tile shows the correct subtitle.
     if (session.userId.isNotEmpty) {
       context.read<KycProvider>().load(session.userId);
     }
-  }
-
-  Future<void> _toggleNotifications(bool v) async {
-    final session = context.read<SessionManager>();
-    session.saveNotification(v);
-    setState(() => _notifications = v);
-    Fluttertoast.showToast(msg: v ? 'Notifications enabled' : 'Notifications disabled');
   }
 
   Future<void> _toggleVideoCallOptIn(bool v) async {
@@ -119,9 +113,42 @@ class _SettingsScreenState extends State<SettingsScreen> {
     final session = context.read<SessionManager>();
     final userName = session.userName;
     Share.share(
-      'Check out Belive! Live streaming, video calls, and more. Download now and follow $userName.',
+      'Check out Belive! Live streaming, video calls, and more. Download now: https://play.google.com/store/apps/details?id=com.believoo.app and follow $userName.',
       subject: 'Belive App',
     );
+  }
+
+  /// Opens the Play Store listing so the user can rate the app. Stores do not
+  /// report back whether a rating was actually submitted, so the flow is
+  /// marked complete once the store page opens — the tile then shows
+  /// "Rating Complete" and becomes inactive.
+  Future<void> _rateApp() async {
+    const packageName = 'com.believoo.app';
+    final session = context.read<SessionManager>();
+    final market = Uri.parse('market://details?id=$packageName');
+    final web = Uri.parse(
+      'https://play.google.com/store/apps/details?id=$packageName',
+    );
+    var launched = false;
+    try {
+      launched = await launchUrl(market, mode: LaunchMode.externalApplication);
+    } catch (_) {}
+    if (!launched) {
+      try {
+        launched = await launchUrl(web, mode: LaunchMode.externalApplication);
+      } catch (_) {}
+    }
+    if (!launched) {
+      Fluttertoast.showToast(msg: 'Could not open the app store');
+      return;
+    }
+    session.saveBool('appRated', true);
+    if (mounted) setState(() => _appRated = true);
+    Fluttertoast.showToast(msg: 'Thank you for rating Belive!');
+  }
+
+  void _noopRated() {
+    Fluttertoast.showToast(msg: 'Rating complete — thank you!');
   }
 
   void _showAboutDialog() {
@@ -188,15 +215,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             context.pushNamed(AppRoutes.blockedUsers);
           }),
           _tile(Icons.notifications_active, 'Notifications', '', onTap: () {
-            context.pushNamed(AppRoutes.notifications);
+            context.pushNamed(AppRoutes.notificationPrefs);
           }),
           _tile(Icons.password, 'Change Password', '', onTap: () => showChangePasswordDialog(context)),
-          SwitchListTile(
-            secondary: const Icon(Icons.notifications, color: Color(0xFF7E3FF2)),
-            title: const Text('Notifications'),
-            value: _notifications,
-            onChanged: _toggleNotifications,
-          ),
           if (context.read<SessionManager>().getUser()?.isHost ?? false) ...[
             SwitchListTile(
               secondary: const Icon(Icons.videocam, color: Color(0xFF7E3FF2)),
@@ -239,6 +260,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
             onChanged: _toggleDarkMode,
           ),
           _tile(Icons.share, 'Share App', '', onTap: _shareApp),
+          _tile(
+            Icons.star_rate,
+            'Rate App',
+            _appRated ? 'Rating Complete' : 'Rate us on the Play Store',
+            onTap: _appRated ? _noopRated : _rateApp,
+            dimmed: _appRated,
+          ),
           _section('Support'),
           _tile(Icons.help, 'FAQ / Help', '', onTap: _showFaq),
           _tile(Icons.bug_report_outlined, 'Report Issue', '', onTap: _showReportIssue),
@@ -246,7 +274,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _tile(Icons.description, 'Terms of Service', '', onTap: () => _openWebView('Terms of Service', 'termsConditionLink')),
           _tile(Icons.info, 'About Us', '', onTap: _showAboutDialog),
           _section('Complaints'),
-          _tile(Icons.report, 'My Complaints', '', onTap: () => context.pushNamed(AppRoutes.complaints)),
+          _tile(Icons.report, 'My Complaints', '', onTap: () => context.pushNamed(AppRoutes.complaintList)),
           _tile(Icons.add_circle, 'Create Complaint', '', onTap: () => context.pushNamed(AppRoutes.createComplaint)),
           _tile(Icons.feedback, 'Feedback', '', onTap: () => context.pushNamed(AppRoutes.feedback)),
           _section('Extras'),
@@ -338,14 +366,18 @@ class _SettingsScreenState extends State<SettingsScreen> {
     return 'Required for withdrawals';
   }
 
-  Widget _tile(IconData icon, String title, String subtitle, {required VoidCallback onTap}) {
-    return ListTile(
-      leading: Icon(icon, color: const Color(0xFF7E3FF2)),
+  Widget _tile(IconData icon, String title, String subtitle, {required VoidCallback onTap, bool dimmed = false}) {
+    final tile = ListTile(
+      leading: Icon(icon, color: dimmed ? Colors.grey : const Color(0xFF7E3FF2)),
       title: Text(title),
       subtitle: subtitle.isEmpty ? null : Text(subtitle, style: const TextStyle(fontSize: 12)),
-      trailing: const Icon(Icons.chevron_right, color: Colors.grey),
+      trailing: dimmed
+          ? const Icon(Icons.check_circle, color: Colors.green)
+          : const Icon(Icons.chevron_right, color: Colors.grey),
       onTap: onTap,
     );
+    if (!dimmed) return tile;
+    return Opacity(opacity: 0.6, child: tile);
   }
 
   void _openWebView(String title, String? settingKey) {

@@ -53,6 +53,7 @@ import '../screens/live/pk_battle_screen.dart';
 import '../screens/main/main_screen.dart';
 import '../screens/notifications/activity_center_screen.dart';
 import '../screens/notifications/notifications_screen.dart';
+import '../screens/settings/notification_prefs_screen.dart';
 import '../screens/profile/edit_profile_screen.dart';
 import '../screens/profile/feedback_screen.dart';
 import '../screens/profile/level_privileges_screen.dart';
@@ -217,6 +218,7 @@ class AppRoutes {
 
   // ---- Notifications -----------------------------------------------------
   static const String notifications = 'notifications';
+  static const String notificationPrefs = 'notificationPrefs';
   static const String activityCenter = 'activityCenter';
 
   // ---- Referral -----------------------------------------------------------
@@ -568,6 +570,7 @@ class AppRoutes {
 
       // Notifications
       _named(notifications, (_) => const NotificationsScreen()),
+      _named(notificationPrefs, (_) => const NotificationPrefsScreen()),
       _named(activityCenter, (_) => const ActivityCenterScreen()),
 
       // Referral

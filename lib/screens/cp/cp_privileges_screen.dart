@@ -17,6 +17,7 @@ import '../../providers/cp_provider.dart';
 import '../../providers/friend_provider.dart';
 import '../../services/session_manager.dart';
 import '../../theme/app_theme.dart';
+import '../../widgets/svga_player_widget.dart';
 
 class CPPrivilegesScreen extends StatefulWidget {
   const CPPrivilegesScreen({super.key, this.isFriend = false, this.cpId = ''});
@@ -489,6 +490,15 @@ class _CPPrivilegesScreenState extends State<CPPrivilegesScreen> {
   // ---------------------------------------------------------------------------
   Widget _buildImage(String url, {double width = 80, double height = 80}) {
     final lower = url.toLowerCase();
+    if (lower.endsWith('.svga')) {
+      return SvgaPlayer(
+        url: url,
+        width: width,
+        height: height,
+        repeat: true,
+        fit: BoxFit.contain,
+      );
+    }
     if (lower.endsWith('.svg')) {
       return SvgPicture.network(
         url,
