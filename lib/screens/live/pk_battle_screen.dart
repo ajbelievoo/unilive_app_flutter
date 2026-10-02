@@ -25,6 +25,7 @@ import '../../services/api_service.dart';
 import '../../services/session_manager.dart';
 import '../../services/socket_service.dart';
 import '../../theme/app_theme.dart';
+import '../../utils/format_utils.dart';
 import '../../utils/log.dart';
 import '../../utils/vip_privilege_helper.dart';
 import '../../widgets/big_gift_overlay.dart';
@@ -680,6 +681,14 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       _pkRoundCount = config.pkRoundCount;
       _battleDuration = config.durationSeconds;
       _isPunishmentRound = false;
+      // New round — top-gifter circles start empty
+      _host1Gifters.clear();
+      _host2Gifters.clear();
+      _pkVoteHost1 = 0;
+      _pkVoteHost2 = 0;
+      _hasVoted = false;
+      _host1Score = 0;
+      _host2Score = 0;
       setState(() => _secondsRemaining = config.durationSeconds);
       _resolveViewerVideoUids();
       _startCountdown();
@@ -1425,8 +1434,12 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
     });
   }
 
+  // `hostNumber` here is the LOCAL side from the side picker (1 = left/local
+  // host, 2 = right/opponent). Convert to canonical session host number —
+  // host1 is always the PK initiator regardless of which room we watch.
   void _sendVote(int hostNumber) {
-    _showVoteChooser(hostNumber);
+    final canonical = (hostNumber == 1) == widget.isHost1 ? 1 : 2;
+    _showVoteChooser(canonical);
   }
 
   /// Vote chooser — one free socket vote per user, then paid diamond votes
@@ -1641,8 +1654,8 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
                                 height: videoHeight,
                                 child: _buildSplitVideo(),
                               ),
-                              _buildScoreBars(),
                               _buildTopGifters(),
+                              _buildScoreBars(),
                               const Spacer(),
                               _buildBottomControls(),
                             ],
@@ -1730,22 +1743,126 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
   String? get _leftHostImage => _hostDisplayImage(widget.isHost1);
   String? get _rightHostImage => _hostDisplayImage(!widget.isHost1);
 
+  // --- Native-style top bar — the room host's header (avatar, name, ID,
+  // live duration, beans, viewer count) so the audience sees the same top
+  // area the host sees on their live screen. ---
   Widget _buildTopBar() {
-    final minutes = (_secondsRemaining ~/ 60).toString().padLeft(2, '0');
-    final seconds = (_secondsRemaining % 60).toString().padLeft(2, '0');
-    final timerColor = _isPunishmentRound ? Colors.purple : Colors.red;
-    final timerLabel = _isPunishmentRound ? 'PUNISHMENT' : 'PK';
+    final room = widget.room;
+    final hostName =
+        (room?.name?.trim().isNotEmpty ?? false)
+            ? room!.name!.trim()
+            : _leftHostName;
+    final hostImage = room?.image ?? _leftHostImage;
+    final hostPublicId =
+        (room?.uniqueId?.trim().isNotEmpty ?? false)
+            ? room!.uniqueId!
+            : (room?.userId ?? '');
+    final viewers = room?.view ?? 0;
+    final beans = room?.rCoin ?? 0;
+    // Live elapsed timer — `time` is the unix seconds the stream started.
+    String elapsed = '';
+    final startSec = room?.time ?? 0;
+    if (startSec > 0) {
+      final diffMs = DateTime.now().millisecondsSinceEpoch - startSec * 1000;
+      if (diffMs > 0) {
+        final d = Duration(milliseconds: diffMs);
+        elapsed =
+            '${d.inMinutes.toString().padLeft(2, '0')}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
+      }
+    }
 
     return Padding(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.fromLTRB(4, 4, 4, 2),
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.close, color: Colors.white),
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(
+              Icons.arrow_back_ios_new,
+              color: Colors.white,
+              size: 20,
+            ),
             onPressed: () => _showExitDialog(),
           ),
+          UserAvatar(imageUrl: hostImage, size: 34),
+          const SizedBox(width: 7),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: 96,
+                child: Text(
+                  hostName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              if (hostPublicId.isNotEmpty)
+                Text(
+                  'ID: $hostPublicId',
+                  style: const TextStyle(color: Colors.white70, fontSize: 11),
+                ),
+            ],
+          ),
+          const SizedBox(width: 8),
+          if (elapsed.isNotEmpty)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFF0E7A3D),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.timer, color: Colors.white, size: 12),
+                  const SizedBox(width: 3),
+                  Text(
+                    elapsed,
+                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+          const SizedBox(width: 6),
+          if (beans > 0)
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+              decoration: BoxDecoration(
+                color: const Color(0xFFB8860B).withValues(alpha: 0.85),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.diamond, color: Colors.white, size: 12),
+                  const SizedBox(width: 3),
+                  Text(
+                    formatCount(beans),
+                    style: const TextStyle(color: Colors.white, fontSize: 11),
+                  ),
+                ],
+              ),
+            ),
+          const Spacer(),
+          const Icon(
+            Icons.visibility_outlined,
+            color: Colors.white70,
+            size: 15,
+          ),
+          const SizedBox(width: 3),
+          Text(
+            formatCount(viewers),
+            style: const TextStyle(color: Colors.white70, fontSize: 12),
+          ),
           IconButton(
-            icon: const Icon(Icons.history, color: Colors.white),
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.history, color: Colors.white, size: 20),
             tooltip: 'Round History',
             onPressed:
                 () => showPkRoundHistorySheet(
@@ -1755,48 +1872,9 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
                   host2Name: _config.host2Name ?? 'Host 2',
                 ),
           ),
-          if (_pkRoundCount > 0)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                'Round $_pkRoundCount',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 12,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          const Spacer(),
-          GestureDetector(
-            onTap: () {
-              final hostId = widget.isHost1 ? _config.host1Id : _config.host2Id;
-              if (hostId != null && hostId.isNotEmpty) {
-                showFansRankingSheet(context, hostUserId: hostId);
-              }
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-              decoration: BoxDecoration(
-                color: timerColor,
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Text(
-                '$timerLabel \u00b7 $minutes:$seconds',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ),
-          ),
-          const Spacer(),
           IconButton(
-            icon: const Icon(Icons.emoji_events, color: Colors.amber),
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.emoji_events, color: Colors.amber, size: 20),
             tooltip: 'Fans Ranking',
             onPressed: () {
               final hostId = widget.isHost1 ? _config.host1Id : _config.host2Id;
@@ -1805,7 +1883,11 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
               }
             },
           ),
-          const SizedBox(width: 8),
+          IconButton(
+            visualDensity: VisualDensity.compact,
+            icon: const Icon(Icons.more_vert, color: Colors.white, size: 20),
+            onPressed: () => _showExitDialog(),
+          ),
         ],
       ),
     );
@@ -2256,7 +2338,8 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
                         style: const TextStyle(color: Colors.white),
                       ),
                       trailing: Text(
-                        '${side == 1 ? _pkVoteHost1 : _pkVoteHost2} votes',
+                        // Local perspective — side 1 = left (local) host
+                        '${(side == 1) == widget.isHost1 ? _pkVoteHost1 : _pkVoteHost2} votes',
                         style: const TextStyle(
                           color: Colors.white54,
                           fontSize: 12,
@@ -2274,7 +2357,9 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
     );
   }
 
-  // --- Top gifters (per host, tracked from gift events) ---
+  // --- Top-3 gifters per host for the CURRENT PK round. Three ranked
+  // circles under each host's video (1st/2nd/3rd), empty slots until gifts
+  // arrive. Maps are cleared on every new round (_resetPkState/pkStart). ---
   Widget _buildTopGifters() {
     final leftGifters =
         widget.isHost1
@@ -2285,53 +2370,24 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
             ? _getTopGifters(_host2Gifters)
             : _getTopGifters(_host1Gifters);
 
-    if (leftGifters.isEmpty && rightGifters.isEmpty) {
-      // Fall back to config top gifters if no live tracking
-      if (_config.topGifters.isEmpty) return const SizedBox.shrink();
-      return _buildConfigTopGifters();
-    }
-
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Expanded(child: _buildGifterList(leftGifters, Colors.blue)),
-          const SizedBox(width: 4),
-          Expanded(child: _buildGifterList(rightGifters, Colors.orange)),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildConfigTopGifters() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Top Gifters',
-            style: TextStyle(color: Colors.white70, fontSize: 12),
+          Expanded(
+            child: _buildGifterCircles(
+              leftGifters,
+              const Color(0xFF35A7FF),
+              alignEnd: false,
+            ),
           ),
-          const SizedBox(height: 4),
-          SizedBox(
-            height: 40,
-            child: ListView.separated(
-              scrollDirection: Axis.horizontal,
-              itemCount: _config.topGifters.length,
-              separatorBuilder: (_, __) => const SizedBox(width: 10),
-              itemBuilder: (_, i) {
-                final g = _config.topGifters[i];
-                return Chip(
-                  avatar: UserAvatar(imageUrl: g.image, size: 24),
-                  label: Text(
-                    '${g.name ?? ''} ${g.coin}',
-                    style: const TextStyle(fontSize: 11),
-                  ),
-                  backgroundColor: Colors.white10,
-                  padding: EdgeInsets.zero,
-                );
-              },
+          _buildPkTimerChip(),
+          Expanded(
+            child: _buildGifterCircles(
+              rightGifters,
+              const Color(0xFFFF4F87),
+              alignEnd: true,
             ),
           ),
         ],
@@ -2339,35 +2395,147 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
     );
   }
 
-  Widget _buildGifterList(List<PkGifter> gifters, Color color) {
-    if (gifters.isEmpty) return const SizedBox.shrink();
-    return SizedBox(
-      height: 60,
-      child: ListView.builder(
-        scrollDirection: Axis.horizontal,
-        itemCount: gifters.length,
-        itemBuilder: (_, i) {
-          final g = gifters[i];
-          return Padding(
-            padding: const EdgeInsets.only(right: 6),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                UserAvatar(imageUrl: g.image, size: 28),
-                const SizedBox(height: 2),
-                Text(
-                  '${g.amount}',
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 10,
+  /// Center pill between the two gifter rows — PK round + countdown.
+  Widget _buildPkTimerChip() {
+    final minutes = (_secondsRemaining ~/ 60).toString().padLeft(2, '0');
+    final seconds = (_secondsRemaining % 60).toString().padLeft(2, '0');
+    final color = _isPunishmentRound ? Colors.purple : const Color(0xFFFF4F87);
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.55),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: color.withValues(alpha: 0.7), width: 1),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          if (_pkRoundCount > 0)
+            Text(
+              'Round $_pkRoundCount',
+              style: const TextStyle(
+                color: Colors.white70,
+                fontSize: 9,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          Text(
+            _isPunishmentRound ? 'PUNISH' : 'PK',
+            style: TextStyle(
+              color: color,
+              fontSize: 10,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          Text(
+            '$minutes:$seconds',
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 13,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// Three ranked gifter circles for one side. Slots always render — empty
+  /// slots show a dimmed gift placeholder so the row is stable.
+  Widget _buildGifterCircles(
+    List<PkGifter> gifters,
+    Color color, {
+    required bool alignEnd,
+  }) {
+    const rankColors = [
+      Color(0xFFFFD54A), // 1st — gold
+      Color(0xFFB0BEC5), // 2nd — silver
+      Color(0xFFCD8B52), // 3rd — bronze
+    ];
+    const rankSizes = [46.0, 40.0, 40.0];
+    final slots = List<Widget>.generate(3, (i) {
+      final g = i < gifters.length ? gifters[i] : null;
+      return _buildGifterCircle(g, i, rankColors[i], rankSizes[i], color);
+    });
+    return Row(
+      mainAxisAlignment:
+          alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+      children: [
+        for (final s in slots)
+          Padding(padding: const EdgeInsets.symmetric(horizontal: 3), child: s),
+      ],
+    );
+  }
+
+  Widget _buildGifterCircle(
+    PkGifter? g,
+    int rank,
+    Color rankColor,
+    double size,
+    Color sideColor,
+  ) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: g != null ? rankColor : Colors.white24,
+                  width: rank == 0 && g != null ? 2 : 1.4,
+                ),
+                color: Colors.black.withValues(alpha: 0.35),
+              ),
+              child:
+                  g != null
+                      ? ClipOval(
+                        child: UserAvatar(imageUrl: g.image, size: size),
+                      )
+                      : Icon(
+                        Icons.card_giftcard,
+                        color: Colors.white24,
+                        size: size * 0.45,
+                      ),
+            ),
+            Positioned(
+              top: -4,
+              left: -4,
+              child: Container(
+                width: 16,
+                height: 16,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: g != null ? rankColor : Colors.white24,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  '${rank + 1}',
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 9,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-              ],
+              ),
             ),
-          );
-        },
-      ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          g != null ? formatCount(g.amount) : '-',
+          style: TextStyle(
+            color: g != null ? sideColor : Colors.white24,
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 
