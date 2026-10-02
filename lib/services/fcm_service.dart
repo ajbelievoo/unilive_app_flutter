@@ -52,7 +52,9 @@ class FcmService {
     // NOTE: we do NOT call requestPermission() here — the home screen first
     // shows the "Enable Notifications?" pre-prompt (NotificationPrompt), and
     // the real OS prompt fires only when the user taps "Yes". Just log status.
-    final settings = await messaging.getNotificationSettings();
+    final settings = await messaging
+        .getNotificationSettings()
+        .timeout(const Duration(seconds: 5));
     Log.d(_tag, 'permission status: ${settings.authorizationStatus}');
 
     // Get and register the FCM token.
@@ -60,7 +62,7 @@ class FcmService {
 
     // Subscribe to default topic (matches native LoginActivity.java)
     try {
-      await messaging.subscribeToTopic("CHAPI");
+      await messaging.subscribeToTopic("CHAPI").timeout(const Duration(seconds: 6));
       Log.d(_tag, 'subscribed to topic: CHAPI');
     } catch (e) {
       Log.e(_tag, 'subscribeToTopic failed', e);
@@ -84,7 +86,9 @@ class FcmService {
     // At this point the MaterialApp.router is typically NOT built yet, so the
     // navigator has no context. We stash the message and flush it later once
     // the router is ready (see [flushPendingNavigation]).
-    final initialMessage = await messaging.getInitialMessage();
+    final initialMessage = await messaging
+        .getInitialMessage()
+        .timeout(const Duration(seconds: 4));
     if (initialMessage != null) {
       Log.d(_tag, 'launched from notification: ${initialMessage.data}');
       _pendingMessage = initialMessage;
@@ -100,7 +104,11 @@ class FcmService {
     SessionManager session,
   ) async {
     try {
-      final token = await messaging.getToken();
+      // getToken() can hang indefinitely on devices/emulators without
+      // Google Play Services — never let it block app startup.
+      final token = await messaging.getToken().timeout(
+        const Duration(seconds: 8),
+      );
       if (token != null && token.isNotEmpty) {
         Log.d(_tag, 'FCM token: $token');
         session.saveFcmToken(token);

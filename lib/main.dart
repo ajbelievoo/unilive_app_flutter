@@ -93,7 +93,16 @@ class _BeliveAppState extends State<_BeliveApp>
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     PushNotificationService.isAppOpen = true;
-    _initFuture = _initializeApp();
+    // Hard cap on the WHOLE init path — if anything still wedges (plugin
+    // hang, dead platform channel), launch with a fallback session instead
+    // of showing the red placeholder forever.
+    _initFuture = _initializeApp().timeout(
+      const Duration(seconds: 22),
+      onTimeout: () {
+        debugPrint('[Main] _initializeApp HARD timeout — fallback session');
+        return SessionManager.fallback();
+      },
+    );
   }
 
   @override
@@ -125,8 +134,15 @@ class _BeliveAppState extends State<_BeliveApp>
   Future<SessionManager> _initializeApp() async {
     // 1. UI style fast set karein (crash handler already initialized in main())
     // Apply status/nav handling that respects 3-button nav and uses full screen
-    // for gesture/hidden navigation.
-    await SystemUiService.instance.applyDefault();
+    // for gesture/hidden navigation. Platform channel calls can hang on odd
+    // devices — box them so the launch never wedges.
+    try {
+      await SystemUiService.instance
+          .applyDefault()
+          .timeout(const Duration(seconds: 4));
+    } catch (e) {
+      debugPrint('[Main] applyDefault timed out/failed: $e');
+    }
 
     // 2. Firebase already initialized in main() for Crashlytics; enable
     //    analytics/crashlytics collection here after session is ready.
@@ -150,7 +166,13 @@ class _BeliveAppState extends State<_BeliveApp>
 
     // 4. Services startup — push notification init is awaited so that
     //    pending notification taps are stashed before the router builds.
-    await _startServices(session);
+    //    HARD time-box: FCM getToken() can hang forever on devices without
+    //    working Play Services — must never block the app launch.
+    try {
+      await _startServices(session).timeout(const Duration(seconds: 12));
+    } catch (e) {
+      debugPrint('[Main] startServices timed out/failed: $e');
+    }
 
     // 5. Check for Play Store in-app update on Android (non-blocking).
     _checkForInAppUpdate();
@@ -258,6 +280,13 @@ class _BeliveAppState extends State<_BeliveApp>
     return FutureBuilder<SessionManager>(
       future: _initFuture,
       builder: (context, snapshot) {
+        // Init threw (or hit the hard timeout): proceed with a fallback
+        // session — a dead plugin must never wedge the whole app on the
+        // red placeholder screen.
+        if (snapshot.hasError) {
+          debugPrint('[Main] init error: ${snapshot.error}');
+          return _buildApp(SessionManager.fallback());
+        }
         if (!snapshot.hasData) {
           debugPrint('[Main] FutureBuilder: waiting for data...');
           // Yeh screen turant dikhni chahiye. Background red rakha hai debug ke liye
@@ -284,8 +313,15 @@ class _BeliveAppState extends State<_BeliveApp>
           );
         }
 
-        final session = snapshot.data!;
-        return MultiProvider(
+        return _buildApp(snapshot.data!);
+      },
+    );
+  }
+
+  /// Builds the full app — provider tree + router. Extracted so the
+  /// FutureBuilder can launch it with a fallback session on init error.
+  Widget _buildApp(SessionManager session) {
+    return MultiProvider(
           providers: [
             Provider<SessionManager>.value(value: session),
             if (_aiFeatureManager != null)
@@ -343,8 +379,6 @@ class _BeliveAppState extends State<_BeliveApp>
             ),
           ),
         );
-      },
-    );
   }
 }
 

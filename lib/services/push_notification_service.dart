@@ -511,16 +511,20 @@ class PushNotificationService {
         requestBadgePermission: true,
         requestSoundPermission: true,
       );
-      await _localNotifications.initialize(
-        const InitializationSettings(android: androidInit, iOS: iosInit),
-        onDidReceiveNotificationResponse: _onNotificationTap,
-      );
+      await _localNotifications
+          .initialize(
+            const InitializationSettings(android: androidInit, iOS: iosInit),
+            onDidReceiveNotificationResponse: _onNotificationTap,
+          )
+          .timeout(const Duration(seconds: 6));
 
       // 1b. Check if the app was launched from a local notification tap
       // (killed state). The background FCM handler shows a local notification,
       // so tapping it launches the app here — NOT via FCM's getInitialMessage.
       final launchDetails =
-          await _localNotifications.getNotificationAppLaunchDetails();
+          await _localNotifications
+              .getNotificationAppLaunchDetails()
+              .timeout(const Duration(seconds: 4));
       if (launchDetails != null &&
           launchDetails.didNotificationLaunchApp &&
           launchDetails.notificationResponse != null) {
@@ -544,7 +548,9 @@ class PushNotificationService {
       // (NotificationPrompt.maybeShow), which calls requestPermission() only
       // when the user taps "Yes". If the permission was already granted,
       // nothing further is needed.
-      final settings = await FirebaseMessaging.instance.getNotificationSettings();
+      final settings = await FirebaseMessaging.instance
+          .getNotificationSettings()
+          .timeout(const Duration(seconds: 6));
       Log.d('PushNotification',
           'notification auth=${settings.authorizationStatus}');
 
@@ -554,11 +560,15 @@ class PushNotificationService {
         alert: true,
         badge: true,
         sound: true,
-      );
+      )
+          .timeout(const Duration(seconds: 6));
 
-      // 5. Initialise FcmService (token + tap handlers + message stream)
+      // 5. Initialise FcmService (token + tap handlers + message stream).
+      //    getToken() can hang forever without Play Services — hard timeout.
       if (session != null) {
-        await FcmService.instance.init(session);
+        await FcmService.instance
+            .init(session)
+            .timeout(const Duration(seconds: 10));
       }
 
       // 6. Handle foreground messages with local notifications
