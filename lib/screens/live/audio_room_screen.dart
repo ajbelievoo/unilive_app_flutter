@@ -1008,6 +1008,10 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   // Room meta settings (rules, 18+ flag, break).
   String _roomRules = '';
   bool _isAgeRestricted = false;
+  // "anyone" | "admins" — who may send room chat.
+  String _chatMode = 'anyone';
+  // "anyone" | "invite" — whether viewers can take seats freely.
+  String _micMode = 'anyone';
   Function? _cancelRoomRulesSub;
   Function? _cancelAgeRestrictionSub;
   Function? _cancelAutoEndTimerSub;
@@ -1133,6 +1137,8 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     _wheatMode = _roomUser.wheatMode;
     _roomRules = _roomUser.roomRules ?? '';
     _isAgeRestricted = _roomUser.isAgeRestricted;
+    _chatMode = _roomUser.chatMode;
+    _micMode = _roomUser.micMode;
     _musicPermission = _roomUser.musicPermission;
     _seats = List<SeatItem>.from(_roomUser.seat);
     Log.d(_tag, 'SEAT_AUDIT initState seats from roomUser:');
@@ -3989,6 +3995,36 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       } catch (_) {}
     });
 
+    // Chat permission updates — "admins" mutes non-admin room chat.
+    _listenExtraSocket('roomChatPermission', (data) {
+      try {
+        final map = _unwrapSocketData(data);
+        final mode =
+            map?['chatMode']?.toString().toLowerCase() ??
+            map?['mode']?.toString().toLowerCase() ??
+            'anyone';
+        setState(() {
+          _chatMode = mode == 'admins' ? 'admins' : 'anyone';
+          _roomUser = _roomUser.copyWith(chatMode: _chatMode);
+        });
+      } catch (_) {}
+    });
+
+    // Mic permission updates — "invite" forces raise-hand even in wheat mode.
+    _listenExtraSocket('micPermission', (data) {
+      try {
+        final map = _unwrapSocketData(data);
+        final mode =
+            map?['micMode']?.toString().toLowerCase() ??
+            map?['mode']?.toString().toLowerCase() ??
+            'anyone';
+        setState(() {
+          _micMode = mode == 'invite' ? 'invite' : 'anyone';
+          _roomUser = _roomUser.copyWith(micMode: _micMode);
+        });
+      } catch (_) {}
+    });
+
     // Room passcode update (host set/changed the room password).
     _cancelPasscodeSub = socket.on('eventRoomPasscode', (data) {
       try {
@@ -4705,9 +4741,11 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       } catch (_) {}
     });
 
-    // Game notification (ports native ongame).
+    // Game notification (ports native ongame). Honors the Effect Settings
+    // "Game Broadcast" toggle.
     _listenExtraSocket('ongame', (data) {
       try {
+        if (!_effectSettings.showGameBroadcast) return;
         final map = _unwrapSocketData(data);
         if (map == null) return;
         final message = map['message']?.toString() ?? '';
@@ -7133,6 +7171,11 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     final session = context.read<SessionManager>();
     if (_bannedChatUsers.contains(session.userId)) {
       Fluttertoast.showToast(msg: 'You are muted from chat in this room');
+      return;
+    }
+    // "Who Can Send Room Chat: Only Owner/Super Admin/Admin" — host setting.
+    if (_chatMode == 'admins' && !_amHost && !_iAmAdmin) {
+      Fluttertoast.showToast(msg: 'Only the host and admins can send chat');
       return;
     }
     if (SecurityModerationService.isSpamming(session.userId)) {
@@ -9763,10 +9806,12 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                 map['senderImage']?.toString() ??
                 map['userImage']?.toString() ??
                 '');
-    _showNotification(
-      '$senderName sent $giftName x$giftCount to $receiverName',
-      userImage: senderImage,
-    );
+    if (_effectSettings.showGiftBroadcast) {
+      _showNotification(
+        '$senderName sent $giftName x$giftCount to $receiverName',
+        userImage: senderImage,
+      );
+    }
 
     // Add a gift comment to the chat list so ALL users in the room see
     // "X sent Y gift to Z" in the comment stream — not just the sender.
@@ -12112,10 +12157,12 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     final allDisplay = isAll ? 'All' : _formatReceiverNames(displayNames);
     final firstReceiverImage =
         receiverImages.isNotEmpty ? receiverImages.first : '';
-    _showNotification(
-      '$senderName sent $giftName x$count to $allDisplay',
-      userImage: senderImage,
-    );
+    if (_effectSettings.showGiftBroadcast) {
+      _showNotification(
+        '$senderName sent $giftName x$count to $allDisplay',
+        userImage: senderImage,
+      );
+    }
 
     // The raw URLs may be .svga/.mp4. The big overlay uses the raw asset;
     // the fly clone and comment bubbles need a static .png thumbnail.
@@ -14148,7 +14195,9 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       } else if (_amHost || _iAmAdmin) {
         _showEmptySeatPopup(s, seatCtx);
       } else if (!s.lock) {
-        if (_wheatMode || _selfPosition != -1) {
+        // "Who Can Take The Mic: Invite-only" disables free join — seat taps
+        // always go through the host-approved raise-hand flow.
+        if ((_wheatMode && _micMode != 'invite') || _selfPosition != -1) {
           _directJoinSeat(s.position);
         } else if (_myPendingSeatRequest != null) {
           _showPendingRequestDialog(s.position);

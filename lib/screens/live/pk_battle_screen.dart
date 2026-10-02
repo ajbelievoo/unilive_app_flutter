@@ -1329,6 +1329,86 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
   }
 
   void _sendVote(int hostNumber) {
+    _showVoteChooser(hostNumber);
+  }
+
+  /// Vote chooser — one free socket vote per user, then paid diamond votes
+  /// through POST /audioRoom/pkVote (server-authoritative coin debit; the
+  /// backend broadcasts pkScoreUpdate to both rooms).
+  void _showVoteChooser(int hostNumber) {
+    final hostName =
+        hostNumber == 1
+            ? (_config.host1Name ?? 'Host 1')
+            : (_config.host2Name ?? 'Host 2');
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1B1B2F),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder:
+          (ctx) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'Vote for $hostName',
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 17,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  if (!_hasVoted)
+                    ListTile(
+                      leading: const Icon(
+                        Icons.check_circle_outline,
+                        color: Color(0xFF00D6A0),
+                      ),
+                      title: const Text(
+                        'Free Vote',
+                        style: TextStyle(color: Colors.white),
+                      ),
+                      subtitle: const Text(
+                        'One per battle',
+                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                      ),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _sendFreeVote(hostNumber);
+                      },
+                    ),
+                  ...[10, 50, 100, 500].map(
+                    (coins) => ListTile(
+                      leading: const Icon(
+                        Icons.diamond,
+                        color: Colors.lightBlueAccent,
+                      ),
+                      title: Text(
+                        '$coins Diamonds',
+                        style: const TextStyle(color: Colors.white),
+                      ),
+                      subtitle: const Text(
+                        'Adds to PK score',
+                        style: TextStyle(color: Colors.white54, fontSize: 12),
+                      ),
+                      onTap: () {
+                        Navigator.pop(ctx);
+                        _sendPaidVote(hostNumber, coins);
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+    );
+  }
+
+  void _sendFreeVote(int hostNumber) {
     if (_hasVoted) {
       Fluttertoast.showToast(msg: 'You already voted');
       return;
@@ -1348,6 +1428,42 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
         _pkVoteHost2++;
       }
     });
+  }
+
+  Future<void> _sendPaidVote(int hostNumber, int coins) async {
+    final session = SessionManager.instance;
+    final pkId = _config.pkId ?? '';
+    final liveId =
+        widget.room?.liveRoomId ??
+        (widget.isHost1 ? _config.host1LiveId : _config.host2LiveId) ??
+        '';
+    if (session == null || pkId.isEmpty || liveId.isEmpty) {
+      Fluttertoast.showToast(msg: 'Voting is not available right now');
+      return;
+    }
+    try {
+      final res = await ApiService.voteAudioPk(
+        pkId: pkId,
+        roomId: liveId,
+        userId: session.userId,
+        host: hostNumber,
+        coin: coins,
+      );
+      if (res.status) {
+        setState(() {
+          if (hostNumber == 1) {
+            _pkVoteHost1++;
+          } else {
+            _pkVoteHost2++;
+          }
+        });
+        Fluttertoast.showToast(msg: 'Voted +$coins diamonds');
+      } else {
+        Fluttertoast.showToast(msg: res.message ?? 'Vote failed');
+      }
+    } catch (e) {
+      Fluttertoast.showToast(msg: 'Vote failed — check your balance');
+    }
   }
 
   // ===========================================================================

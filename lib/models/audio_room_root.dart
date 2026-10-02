@@ -480,6 +480,8 @@ class AudioRoomUser {
     this.seatCount = 9,
     this.wheatMode = false,
     this.musicPermission = 'host',
+    this.chatMode = 'anyone',
+    this.micMode = 'anyone',
   });
 
   final String? id;
@@ -535,6 +537,13 @@ class AudioRoomUser {
   /// Free-join / wheat mode (viewers can take a seat without asking).
   final bool wheatMode;
   final String musicPermission;
+
+  /// Who can send room chat: "anyone" or "admins" (host+admins only).
+  final String chatMode;
+
+  /// Who can take the mic: "anyone" or "invite" (request/invite only —
+  /// forces the raise-hand flow even when wheat mode is on).
+  final String micMode;
 
   List<String> get roomTags {
     return [
@@ -596,6 +605,8 @@ class AudioRoomUser {
     int? seatCount,
     bool? wheatMode,
     String? musicPermission,
+    String? chatMode,
+    String? micMode,
   }) => AudioRoomUser(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -648,6 +659,8 @@ class AudioRoomUser {
     seatCount: seatCount ?? this.seatCount,
     wheatMode: wheatMode ?? this.wheatMode,
     musicPermission: musicPermission ?? this.musicPermission,
+    chatMode: chatMode ?? this.chatMode,
+    micMode: micMode ?? this.micMode,
   );
 
   factory AudioRoomUser.fromJson(Map<String, dynamic> json) {
@@ -761,6 +774,14 @@ class AudioRoomUser {
       ),
       musicPermission:
           parseString(json['musicPermission'])?.toLowerCase() ?? 'host',
+      chatMode:
+          parseString(json['chatMode'] ?? json['chatPermission'])
+              ?.toLowerCase() ??
+          'anyone',
+      micMode:
+          parseString(json['micMode'] ?? json['micPermission'])
+              ?.toLowerCase() ??
+          'anyone',
     );
   }
 

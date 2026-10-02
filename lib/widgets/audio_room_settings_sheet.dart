@@ -114,6 +114,12 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
     _seatCount = widget.roomUser.seatCount.clamp(9, 21);
     _roomRules = widget.roomUser.roomRules ?? '';
     _isAgeRestricted = widget.roomUser.isAgeRestricted;
+    _chatPermission =
+        widget.roomUser.chatMode == 'admins'
+            ? 'Only Owner/Super Admin/Admin'
+            : 'Anyone';
+    _micPermission =
+        widget.roomUser.micMode == 'invite' ? 'Invite-only' : 'Anyone';
     _superMic = widget.superMicEnabled;
     _autoEndMinutes = (widget.autoEndRemainingSeconds / 60).ceil();
     _isOnBreak = widget.isOnBreak;
@@ -170,6 +176,25 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
     SocketService.instance.emit(Const.eventRoomAgeRestriction, {
       'liveStreamingId': widget.roomUser.liveStreamingId,
       'isAgeRestricted': isAgeRestricted,
+      'userId': context.read<SessionManager>().userId,
+    });
+  }
+
+  void _emitChatPermission(String label) {
+    final mode =
+        label == 'Only Owner/Super Admin/Admin' ? 'admins' : 'anyone';
+    SocketService.instance.emit('roomChatPermission', {
+      'liveStreamingId': widget.roomUser.liveStreamingId,
+      'chatMode': mode,
+      'userId': context.read<SessionManager>().userId,
+    });
+  }
+
+  void _emitMicPermission(String label) {
+    final mode = label == 'Invite-only' ? 'invite' : 'anyone';
+    SocketService.instance.emit('micPermission', {
+      'liveStreamingId': widget.roomUser.liveStreamingId,
+      'micMode': mode,
       'userId': context.read<SessionManager>().userId,
     });
   }
@@ -256,7 +281,10 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
       title: 'Who Can Send Room Chat',
       options: const ['Anyone', 'Only Owner/Super Admin/Admin'],
       selected: _chatPermission,
-      onSelected: (v) => setState(() => _chatPermission = v),
+      onSelected: (v) {
+        setState(() => _chatPermission = v);
+        _emitChatPermission(v);
+      },
     );
   }
 
@@ -265,7 +293,10 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
       title: 'Who Can Take The Mic',
       options: const ['Anyone', 'Invite-only'],
       selected: _micPermission,
-      onSelected: (v) => setState(() => _micPermission = v),
+      onSelected: (v) {
+        setState(() => _micPermission = v);
+        _emitMicPermission(v);
+      },
     );
   }
 
@@ -404,12 +435,12 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
   }
 
   Future<void> _showBannedUsers() async {
-    final session = context.read<SessionManager>();
+    final roomId = widget.roomUser.liveStreamingId ?? '';
     try {
-      final res = await ApiService.getBlockedUsers(userId: session.userId);
+      final res = await ApiService.getRoomBannedUsers(roomId);
       if (!mounted) return;
       if (res.users.isEmpty) {
-        _showEmptyListScreen('Blocked List', 'There is no room admin now');
+        _showEmptyListScreen('Blocked List', 'No banned users in this room');
         return;
       }
       Navigator.of(context).push(
@@ -435,9 +466,10 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
                   subtitle: Text(u.uniqueId ?? '', style: TextStyle(color: AppTheme.fg(tileCtx, 0.54), fontSize: 11)),
                   trailing: TextButton(
                     onPressed: () async {
-                      await ApiService.blockUnblock(
-                        userId: session.userId,
-                        blockUserId: u.id ?? '',
+                      await ApiService.banFromRoom(
+                        roomId: roomId,
+                        userId: u.id ?? '',
+                        ban: false,
                       );
                       Fluttertoast.showToast(msg: 'User unbanned');
                     },
@@ -451,6 +483,101 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
       );
     } catch (e) {
       Fluttertoast.showToast(msg: 'Failed to load blocked users');
+    }
+  }
+
+  /// Settings > Admins — the room's real admin list (GET /audioRoom/admin-list).
+  Future<void> _showAdmins() async {
+    final roomId = widget.roomUser.liveStreamingId ?? '';
+    try {
+      final admins = await ApiService.getAudioRoomAdmins(roomId);
+      if (!mounted) return;
+      if (admins.isEmpty) {
+        _showEmptyListScreen('Admins', 'There is no room admin now');
+        return;
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (pageCtx) => Scaffold(
+            backgroundColor: AppTheme.themed(pageCtx, 0xFF121212, 0xFFFAFAFE),
+            appBar: AppBar(
+              backgroundColor: AppTheme.themed(pageCtx, 0xFF121212, 0xFFFAFAFE),
+              elevation: 0,
+              iconTheme: IconThemeData(color: AppTheme.fg(pageCtx)),
+              title: Text('Admins', style: TextStyle(color: AppTheme.fg(pageCtx), fontSize: 18)),
+            ),
+            body: ListView.builder(
+              itemCount: admins.length,
+              itemBuilder: (tileCtx, i) {
+                final a = admins[i] is Map ? Map<String, dynamic>.from(admins[i] as Map) : <String, dynamic>{};
+                final name = a['name']?.toString() ?? a['username']?.toString() ?? 'Admin';
+                final image = a['image']?.toString() ?? a['adminImage']?.toString() ?? '';
+                final uniqueId = a['uniqueId']?.toString() ?? a['adminUserId']?.toString() ?? '';
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundImage: image.isNotEmpty ? CachedNetworkImageProvider(image) : null,
+                    child: image.isEmpty ? const Icon(Icons.person, color: Colors.white) : null,
+                  ),
+                  title: Text(name, style: TextStyle(color: AppTheme.fg(tileCtx, 0.87))),
+                  subtitle: uniqueId.isNotEmpty
+                      ? Text(uniqueId, style: TextStyle(color: AppTheme.fg(tileCtx, 0.54), fontSize: 11))
+                      : null,
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      Fluttertoast.showToast(msg: 'Failed to load admins');
+    }
+  }
+
+  /// Settings > Kick History — real kick log (GET /audioRoom/kickHistory).
+  Future<void> _showKickHistory() async {
+    final roomId = widget.roomUser.liveStreamingId ?? '';
+    try {
+      final history = await ApiService.getAudioRoomKickHistory(roomId);
+      if (!mounted) return;
+      if (history.isEmpty) {
+        _showEmptyListScreen('Kick History', 'No Kick History');
+        return;
+      }
+      Navigator.of(context).push(
+        MaterialPageRoute(
+          builder: (pageCtx) => Scaffold(
+            backgroundColor: AppTheme.themed(pageCtx, 0xFF121212, 0xFFFAFAFE),
+            appBar: AppBar(
+              backgroundColor: AppTheme.themed(pageCtx, 0xFF121212, 0xFFFAFAFE),
+              elevation: 0,
+              iconTheme: IconThemeData(color: AppTheme.fg(pageCtx)),
+              title: Text('Kick History', style: TextStyle(color: AppTheme.fg(pageCtx), fontSize: 18)),
+            ),
+            body: ListView.builder(
+              itemCount: history.length,
+              itemBuilder: (tileCtx, i) {
+                final k = history[i] is Map ? Map<String, dynamic>.from(history[i] as Map) : <String, dynamic>{};
+                final name = k['name']?.toString() ?? 'User';
+                final image = k['image']?.toString() ?? '';
+                final by = k['kickedByName']?.toString() ?? '';
+                return ListTile(
+                  leading: CircleAvatar(
+                    backgroundImage: image.isNotEmpty ? CachedNetworkImageProvider(image) : null,
+                    child: image.isEmpty ? const Icon(Icons.person, color: Colors.white) : null,
+                  ),
+                  title: Text(name, style: TextStyle(color: AppTheme.fg(tileCtx, 0.87))),
+                  subtitle: Text(
+                    by.isNotEmpty ? 'Kicked by $by' : 'Kicked from room',
+                    style: TextStyle(color: AppTheme.fg(tileCtx, 0.54), fontSize: 11),
+                  ),
+                );
+              },
+            ),
+          ),
+        ),
+      );
+    } catch (e) {
+      Fluttertoast.showToast(msg: 'Failed to load kick history');
     }
   }
 
@@ -477,6 +604,11 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
       seatCount: _seatCount,
       privateCode: parsedCode,
       isPublic: parsedCode == 0,
+      chatMode:
+          _chatPermission == 'Only Owner/Super Admin/Admin'
+              ? 'admins'
+              : 'anyone',
+      micMode: _micPermission == 'Invite-only' ? 'invite' : 'anyone',
     );
     widget.onRoomUserChanged(updated);
     Fluttertoast.showToast(msg: 'Settings saved');
@@ -656,7 +788,7 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
           _settingsTile(
             title: 'Admins',
             trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
-            onTap: () => _showEmptyListScreen('Admins', 'There is no room admin now'),
+            onTap: _showAdmins,
           ),
 
           // Blocked List
@@ -670,7 +802,7 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
           _settingsTile(
             title: 'Kick History',
             trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
-            onTap: () => _showEmptyListScreen('Kick History', 'No Kick History'),
+            onTap: _showKickHistory,
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
 

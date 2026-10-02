@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import '../../utils/media_utils.dart';
+import '../services/effect_settings_service.dart';
 import 'svga_player_widget.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
@@ -249,9 +250,16 @@ class VipEntryOverlayState extends State<VipEntryOverlay>
   bool _svgaLoaded = false;
   bool _vehicleLoaded = false;
 
+  /// Effect Settings — when `showVehicleEffect` is off the vehicle phase of
+  /// the entrance is skipped (the entry SVGA + card still play).
+  bool _showVehicleEffect = true;
+
   @override
   void initState() {
     super.initState();
+    EffectSettingsService.instance.getSettings().then((s) {
+      _showVehicleEffect = s.showVehicleEffect;
+    });
     _vehicleController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -351,8 +359,9 @@ class VipEntryOverlayState extends State<VipEntryOverlay>
     final special = entry.isSpecialEntrance;
 
     // If the user has an equipped vehicle, show it before the main entrance.
+    // Skipped entirely when the user disabled "Vehicle Effect" in settings.
     final vehicleUrl = entry.vehicleUrl;
-    if (vehicleUrl != null && vehicleUrl.isNotEmpty) {
+    if (_showVehicleEffect && vehicleUrl != null && vehicleUrl.isNotEmpty) {
       _phase = _EntryPhase.vehicle;
       if (!special) {
         _vehicleController.forward(from: 0.0);

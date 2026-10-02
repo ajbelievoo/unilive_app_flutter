@@ -89,21 +89,15 @@ class EffectSettingsService {
   EffectSettings get settings => _settings;
 
   Future<void> load() async {
-    final prefs = await SharedPreferences.getInstance();
-    final raw = prefs.getString(_key);
-    if (raw == null || raw.isEmpty) {
-      _settings = EffectSettings();
-      return;
-    }
-    try {
-      _settings = EffectSettings.fromJson({'showEnterRoomMessage': true}); // basic parsing fallback
-      // Shared prefs only supports flat keys, so store each toggle separately.
-    } catch (_) {
-      _settings = EffectSettings();
-    }
+    _settings = await _readPrefs();
   }
 
   Future<EffectSettings> getSettings() async {
+    _settings = await _readPrefs();
+    return _settings;
+  }
+
+  Future<EffectSettings> _readPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     return EffectSettings(
       showEnterRoomMessage: prefs.getBool('${_key}_showEnterRoomMessage') ?? true,

@@ -2418,9 +2418,37 @@ class ApiService {
   static Future<FollowersRoot> getRoomBannedUsers(String roomId) async {
     final r = await _dio.get(
       '/audioRoom/bannedUsers',
+      queryParameters: {'liveStreamingId': roomId, 'roomId': roomId},
+    );
+    final map = _asMap(r.data);
+    // Backend returns the list under `bannedUsers`; FollowersRoot only reads
+    // user/users/friends — normalize here.
+    if (map['bannedUsers'] is List) map['users'] = map['bannedUsers'];
+    return FollowersRoot.fromJson(map);
+  }
+
+  /// Current admin list for an audio room (GET /audioRoom/admin-list).
+  static Future<List<dynamic>> getAudioRoomAdmins(String roomId) async {
+    final r = await _dio.get(
+      '/audioRoom/admin-list',
       queryParameters: {'roomId': roomId},
     );
-    return FollowersRoot.fromJson(_asMap(r.data));
+    final map = _asMap(r.data);
+    for (final key in const ['admins', 'adminList', 'data', 'users']) {
+      if (map[key] is List) return map[key] as List;
+    }
+    return const [];
+  }
+
+  /// Kick history for an audio room (GET /audioRoom/kickHistory).
+  static Future<List<dynamic>> getAudioRoomKickHistory(String roomId) async {
+    final r = await _dio.get(
+      '/audioRoom/kickHistory',
+      queryParameters: {'liveStreamingId': roomId, 'roomId': roomId},
+    );
+    final map = _asMap(r.data);
+    if (map['kickHistory'] is List) return map['kickHistory'] as List;
+    return const [];
   }
 
   /// Ban/unban a user from an audio room.
@@ -2483,15 +2511,26 @@ class ApiService {
     return RestResponse.fromJson(_asMap(r.data));
   }
 
-  /// Vote for a host during PK battle.
+  /// Paid vote for a host during PK battle — debits `coin` diamonds from the
+  /// voter and adds them to the chosen host's rank (POST /audioRoom/pkVote).
+  /// Contract: { pkId, liveStreamingId, voterUserId, hostChoice, coin }.
   static Future<RestResponse> voteAudioPk({
+    required String pkId,
     required String roomId,
     required String userId,
     required int host, // 1 or 2
+    required int coin,
   }) async {
     final r = await _dio.post(
       '/audioRoom/pkVote',
-      data: {'roomId': roomId, 'userId': userId, 'host': host},
+      data: {
+        'pkId': pkId,
+        'liveStreamingId': roomId,
+        'roomId': roomId,
+        'voterUserId': userId,
+        'hostChoice': host,
+        'coin': coin,
+      },
     );
     return RestResponse.fromJson(_asMap(r.data));
   }

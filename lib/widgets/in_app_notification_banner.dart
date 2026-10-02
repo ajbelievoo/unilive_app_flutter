@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 
 import '../constants/const.dart';
 import '../routes/navigation_keys.dart';
+import '../services/effect_settings_service.dart';
 import '../services/fcm_service.dart';
 import '../services/lucky_bag_history_service.dart';
 import '../services/push_notification_service.dart';
@@ -103,9 +104,17 @@ class _InAppNotificationBannerState extends State<InAppNotificationBanner> {
     );
   }
 
-  void _onLuckyBagCreated(dynamic value) {
+  Future<void> _onLuckyBagCreated(dynamic value) async {
     final payload = _unwrap(value);
     if (payload == null || !mounted) return;
+    // "Lucky Bag Broadcast" toggle — the room marquee banner is suppressed
+    // when the user turned it off in Effect Settings (history still records).
+    final settings = await EffectSettingsService.instance.getSettings();
+    if (!settings.showLuckyBagBroadcast) {
+      LuckyBagHistoryService.instance.recordCreated(payload);
+      return;
+    }
+    if (!mounted) return;
     final roomId = _string(payload, const [
       'liveStreamingId',
       'roomId',
