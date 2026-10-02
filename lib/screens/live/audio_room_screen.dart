@@ -12815,7 +12815,13 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                                         _familyWarRemainingSeconds,
                                   ),
                                 ),
-                              _buildSeatGrid(),
+                              // While the Ludo table is open the seat grid
+                              // collapses to a compact strip (Yalla-style) so
+                              // the board gets most of the screen.
+                              if (_ludoPanelVisible)
+                                _buildCompactSeatStrip()
+                              else
+                                _buildSeatGrid(),
                               // In-room Ludo table — sits directly under the
                               // seat grid so players stay in the room.
                               _buildLudoPanel(),
@@ -14085,6 +14091,109 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   /// Native GridLayoutManager(spanCount=4/5) — 4 columns by default, 5 when
   /// the grid has 15+ seats (17/21 people rooms) so rows fit the screen.
   /// Smaller avatars are used when there are many seats (17/21).
+  /// Compact single-row seat strip shown while the Ludo panel is open —
+  /// same join/profile actions as the full grid, much less screen space.
+  Widget _buildCompactSeatStrip() {
+    final seatCount = max(_roomUser.seatCount, _seats.length).clamp(9, 21);
+    final targetSeats = (seatCount - 1).clamp(8, 20);
+    final topSeat =
+        _seats.where((s) => s.position == -1).firstOrNull ??
+        SeatItem(position: -1, role: 'host');
+    final hostAtTop =
+        topSeat.isOccupied &&
+        (topSeat.isHost || topSeat.userId == widget.roomUser.liveUserId);
+
+    final seats = <SeatItem>[
+      topSeat,
+      ...List<SeatItem>.generate(
+        targetSeats,
+        (i) =>
+            _seats.where((s) => s.position == i).firstOrNull ??
+            SeatItem(position: i, role: 'user'),
+      ),
+    ];
+
+    void onSeatTap(SeatItem s, BuildContext seatCtx) {
+      if (s.position == -1) {
+        if (s.isOccupied) {
+          _showProfileRoomCard(s);
+        } else if (_amHost && !hostAtTop) {
+          _returnHostToTop();
+        }
+        return;
+      }
+      if (s.isOccupied) {
+        _showProfileRoomCard(s);
+      } else if (_amHost || _iAmAdmin) {
+        _showEmptySeatPopup(s, seatCtx);
+      } else if (!s.lock) {
+        if (_wheatMode || _selfPosition != -1) {
+          _directJoinSeat(s.position);
+        } else if (_myPendingSeatRequest != null) {
+          _showPendingRequestDialog(s.position);
+        } else {
+          _requestSeat(s.position);
+        }
+      }
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateSeatPositions());
+    return SizedBox(
+      height: 54,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        itemCount: seats.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 8),
+        itemBuilder: (ctx, i) {
+          final s = seats[i];
+          final seatKey = _seatKeys.putIfAbsent(
+            'seat_${s.position}',
+            () => GlobalKey(),
+          );
+          return Builder(
+            builder:
+                (seatCtx) => GestureDetector(
+                  key: seatKey,
+                  onTap: () => onSeatTap(s, seatCtx),
+                  child: Container(
+                    width: 42,
+                    height: 42,
+                    margin: const EdgeInsets.only(top: 6),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color:
+                            s.isSpeaking && !s.isMuted
+                                ? const Color(0xFFFFD54F)
+                                : Colors.white.withValues(alpha: 0.25),
+                        width: 1.5,
+                      ),
+                      color: Colors.black.withValues(alpha: 0.25),
+                    ),
+                    child:
+                        s.isOccupied
+                            ? ClipOval(
+                              child: UserAvatar(
+                                imageUrl: s.image,
+                                frameUrl: s.avatarFrame,
+                                size: 40,
+                                isVIP: s.isVIP,
+                              ),
+                            )
+                            : Icon(
+                              s.lock ? Icons.lock_outline : Icons.mic_none,
+                              color: Colors.white38,
+                              size: 20,
+                            ),
+                  ),
+                ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildFanSeats(List<SeatItem> audience) {
     if (audience.isEmpty) return const SizedBox.shrink();
 

@@ -124,8 +124,9 @@ class _LudoRoomPanelState extends State<LudoRoomPanel> {
   Widget build(BuildContext context) {
     final w = MediaQuery.sizeOf(context).width;
     final h = MediaQuery.sizeOf(context).height;
-    // Square board + ~44px top bar inside the page; cap so chat stays usable.
-    final panelH = (w * 1.12).clamp(240.0, h * 0.58);
+    // Square board + slim top bar inside the page; while open the seat grid
+    // collapses to a strip, so the board can take most of the screen.
+    final panelH = (w * 1.07).clamp(280.0, h * 0.68);
 
     return Padding(
       padding: const EdgeInsets.only(top: 6),
