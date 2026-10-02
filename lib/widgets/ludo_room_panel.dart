@@ -1,0 +1,180 @@
+/// In-room Ludo panel — embeds the Ludo web game (ludo.unilive.me) inside the
+/// audio room so seated players can play without leaving the room.
+///
+/// The web page talks to the app through the `GameBridge` JS channel:
+///   - 'close'       → hide the panel locally (game/table keeps running)
+///   - 'recharge'    → push the wallet recharge screen
+///   - 'coin_update' → emit USER_COIN_UPDATE so balances refresh
+///   - 'toast:<msg>' → show a toast
+library ludo_room_panel;
+
+import 'package:flutter/material.dart';
+import 'package:fluttertoast/fluttertoast.dart';
+import 'package:go_router/go_router.dart';
+import 'package:webview_flutter/webview_flutter.dart';
+
+import '../constants/const.dart';
+import '../routes/app_routes.dart';
+import '../services/session_manager.dart';
+import '../services/socket_service.dart';
+import '../utils/log.dart';
+
+/// Fixed base URL of the ludo game server (nginx → node :5012).
+const String kLudoBaseUrl = 'https://ludo.unilive.me/';
+
+class LudoRoomPanel extends StatefulWidget {
+  const LudoRoomPanel({super.key, required this.roomId, this.onClose});
+
+  /// Audio room id — becomes the ludo table id (liveStreamingId).
+  final String roomId;
+
+  /// Local dismiss — the table itself is unaffected.
+  final VoidCallback? onClose;
+
+  @override
+  State<LudoRoomPanel> createState() => _LudoRoomPanelState();
+}
+
+class _LudoRoomPanelState extends State<LudoRoomPanel> {
+  static const String _tag = 'LudoPanel';
+  late final WebViewController _controller;
+  bool _loading = true;
+  String? _loadError;
+
+  String _buildUrl() {
+    final session = SessionManager.instance;
+    final user = session?.getUser();
+    final uri = Uri.parse(kLudoBaseUrl);
+    final params = <String, String>{
+      'roomId': widget.roomId,
+      'userId': user?.id ?? '',
+      'uniqueId': user?.uniqueId ?? '',
+      'name': user?.name ?? '',
+      'image': user?.image ?? '',
+      'token': user?.token ?? '',
+      'diamond': '${user?.coin.toInt() ?? 0}',
+    };
+    return uri.replace(queryParameters: params).toString();
+  }
+
+  void _onGameMessage(String message) {
+    if (message == 'close') {
+      widget.onClose?.call();
+      return;
+    }
+    if (message == 'recharge') {
+      context.pushNamed(AppRoutes.recharge);
+      return;
+    }
+    if (message == 'coin_update') {
+      final uid = SessionManager.instance?.getUser()?.id ?? '';
+      if (uid.isNotEmpty) {
+        SocketService.instance.emit(Const.eventUserCoinUpdate, uid);
+      }
+      return;
+    }
+    if (message.startsWith('toast:')) {
+      final text = message.substring(6);
+      if (text.isNotEmpty) Fluttertoast.showToast(msg: text);
+    }
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _controller =
+        WebViewController()
+          ..setJavaScriptMode(JavaScriptMode.unrestricted)
+          ..setBackgroundColor(Colors.transparent)
+          ..addJavaScriptChannel(
+            'GameBridge',
+            onMessageReceived: (m) => _onGameMessage(m.message),
+          )
+          ..setNavigationDelegate(
+            NavigationDelegate(
+              onPageFinished: (_) {
+                if (mounted) setState(() => _loading = false);
+              },
+              onWebResourceError: (e) {
+                if (e.isForMainFrame == true && mounted) {
+                  setState(() {
+                    _loading = false;
+                    _loadError = e.description;
+                  });
+                }
+              },
+            ),
+          );
+    final url = _buildUrl();
+    Log.d(_tag, 'loading ludo: $url');
+    _controller.loadRequest(Uri.parse(url));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final w = MediaQuery.sizeOf(context).width;
+    final h = MediaQuery.sizeOf(context).height;
+    // Square board + ~44px top bar inside the page; cap so chat stays usable.
+    final panelH = (w * 1.12).clamp(240.0, h * 0.58);
+
+    return Padding(
+      padding: const EdgeInsets.only(top: 6),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(14),
+        child: Container(
+          height: panelH,
+          margin: const EdgeInsets.symmetric(horizontal: 6),
+          decoration: BoxDecoration(
+            color: const Color(0xFF2A1B52).withValues(alpha: 0.92),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+          ),
+          child: Stack(
+            children: [
+              WebViewWidget(controller: _controller),
+              if (_loading)
+                const Center(
+                  child: SizedBox(
+                    width: 30,
+                    height: 30,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2.5,
+                      color: Color(0xFFA55CFF),
+                    ),
+                  ),
+                ),
+              if (_loadError != null && !_loading)
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(
+                        Icons.error_outline,
+                        color: Colors.white54,
+                        size: 30,
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Ludo failed to load',
+                        style: TextStyle(color: Colors.white70, fontSize: 12),
+                      ),
+                      TextButton(
+                        onPressed: () {
+                          setState(() {
+                            _loading = true;
+                            _loadError = null;
+                          });
+                          _controller.reload();
+                        },
+                        child: const Text('Retry'),
+                      ),
+                    ],
+                  ),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}

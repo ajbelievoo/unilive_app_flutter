@@ -63,6 +63,7 @@ import '../../widgets/cheer_animation_widget.dart';
 import '../../widgets/emoji_picker_sheet.dart';
 import '../../widgets/family_battle_overlay.dart';
 import '../../widgets/game_bottom_sheet.dart';
+import '../../widgets/ludo_room_panel.dart';
 import '../../widgets/gift_bottom_sheet.dart';
 import '../../widgets/host_menu_sheet.dart';
 import '../../widgets/gift_fly_overlay.dart';
@@ -677,6 +678,11 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   final _voiceEmojiKey = GlobalKey<VoiceEmojiOverlayState>();
   DrawAndGuessController? _drawAndGuessController;
   bool _showDrawAndGuess = false;
+
+  // In-room Ludo table — panel visibility is room-synced via the `ludoTable`
+  // socket relay (emitted by the ludo game server through the main backend).
+  bool _ludoPanelVisible = false;
+  bool _ludoDismissed = false; // user hid it locally; reopened on a fresh 'open'
   bool _isTranslationEnabled = false;
 
   // ---- CP/Friend pair seat positions for BondLink ----
@@ -4647,6 +4653,34 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         }
         if (message.isNotEmpty) {
           _showNotification(message, userImage: userImage);
+        }
+      } catch (_) {}
+    });
+
+    // In-room Ludo table state — the game server relays ludoTable events
+    // (action: open|update|closed) so every member sees the shared table.
+    _listenExtraSocket('ludoTable', (data) {
+      try {
+        final map = _unwrapSocketData(data);
+        if (map == null) return;
+        final rid = map['liveStreamingId']?.toString() ?? '';
+        if (rid.isNotEmpty && rid != _liveId) return;
+        final action = map['action']?.toString() ?? 'update';
+        if (!mounted) return;
+        if (action == 'closed') {
+          setState(() {
+            _ludoPanelVisible = false;
+            _ludoDismissed = false;
+          });
+        } else if (action == 'open') {
+          if (!_ludoPanelVisible) {
+            setState(() {
+              _ludoPanelVisible = true;
+              _ludoDismissed = false;
+            });
+          }
+        } else if (!_ludoDismissed && !_ludoPanelVisible) {
+          setState(() => _ludoPanelVisible = true);
         }
       } catch (_) {}
     });
@@ -12613,7 +12647,42 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
 
   void _openGames() {
     final session = context.read<SessionManager>();
-    showGameListSheet(context, games: session.getSetting()?.games);
+    showGameListSheet(
+      context,
+      games: session.getSetting()?.games,
+      onLudo: _openLudo,
+    );
+  }
+
+  /// Opens the embedded Ludo table for this room and tells room members.
+  void _openLudo() {
+    if (!_ludoPanelVisible) {
+      setState(() {
+        _ludoPanelVisible = true;
+        _ludoDismissed = false;
+      });
+    }
+    SocketService.instance.emit('ludoTable', {
+      'liveStreamingId': _liveId,
+      'action': 'open',
+      'userId': SessionManager.instance?.getUser()?.id ?? '',
+    });
+  }
+
+  Widget _buildLudoPanel() {
+    if (!_ludoPanelVisible || _liveId.isEmpty) {
+      return const SizedBox.shrink();
+    }
+    return LudoRoomPanel(
+      roomId: _liveId,
+      onClose: () {
+        if (!mounted) return;
+        setState(() {
+          _ludoPanelVisible = false;
+          _ludoDismissed = true;
+        });
+      },
+    );
   }
 
   void _openPkHandRaise() {
@@ -12747,6 +12816,9 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                                   ),
                                 ),
                               _buildSeatGrid(),
+                              // In-room Ludo table — sits directly under the
+                              // seat grid so players stay in the room.
+                              _buildLudoPanel(),
                             ],
                           ),
                         ),

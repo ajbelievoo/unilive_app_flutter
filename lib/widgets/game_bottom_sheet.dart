@@ -24,7 +24,9 @@ class GameItem {
 }
 
 /// Shows the game list bottom sheet.
-void showGameListSheet(BuildContext context, {List<dynamic>? games}) {
+/// [onLudo] — when provided (audio rooms), a built-in "Ludo" tile opens the
+/// embedded in-room table instead of a WebView sheet.
+void showGameListSheet(BuildContext context, {List<dynamic>? games, VoidCallback? onLudo}) {
   Log.d('GameSheet', 'showGameListSheet: games=${games?.length ?? 0} items');
   if (games != null && games.isNotEmpty) {
     Log.d('GameSheet', 'first game: ${games.first}');
@@ -97,7 +99,7 @@ void showGameListSheet(BuildContext context, {List<dynamic>? games}) {
           const SizedBox(height: 16),
           // Game grid
           Expanded(
-            child: items.isEmpty
+            child: items.isEmpty && onLudo == null
                 ? Center(
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
@@ -117,8 +119,57 @@ void showGameListSheet(BuildContext context, {List<dynamic>? games}) {
                       mainAxisSpacing: 12,
                       childAspectRatio: 0.78,
                     ),
-                    itemCount: items.length,
+                    itemCount: items.length + (onLudo != null ? 1 : 0),
                     itemBuilder: (_, i) {
+                      // Built-in Ludo tile — embedded in-room table.
+                      if (onLudo != null) {
+                        if (i == 0) {
+                          return GestureDetector(
+                            onTap: () {
+                              Navigator.pop(context);
+                              onLudo();
+                            },
+                            child: Container(
+                              decoration: BoxDecoration(
+                                color: AppTheme.themed(context, 0x0DFFFFFF, 0xFFF1F1FA),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: AppTheme.hairline(context)),
+                              ),
+                              child: Padding(
+                                padding: const EdgeInsets.fromLTRB(10, 12, 10, 10),
+                                child: Column(
+                                  children: [
+                                    Expanded(
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          gradient: const LinearGradient(
+                                            colors: [Color(0xFF7E3FF2), Color(0xFFE91E63)],
+                                          ),
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                        child: const Center(
+                                          child: Text('🎲', style: TextStyle(fontSize: 34)),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Text(
+                                      'Ludo',
+                                      style: TextStyle(
+                                          color: AppTheme.fg(context),
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }
+                        i -= 1;
+                      }
                       final g = items[i];
                       return GestureDetector(
                         onTap: () {
