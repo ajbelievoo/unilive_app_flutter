@@ -40,42 +40,66 @@ class EffectSettings {
     bool? showFighterBroadcast,
     bool? showPkBroadcast,
     bool? showLuckyBagBroadcast,
-  }) =>
-      EffectSettings(
-        showEnterRoomMessage: showEnterRoomMessage ?? this.showEnterRoomMessage,
-        showEnterRoomEffect: showEnterRoomEffect ?? this.showEnterRoomEffect,
-        showGiftEffect: showGiftEffect ?? this.showGiftEffect,
-        showVehicleEffect: showVehicleEffect ?? this.showVehicleEffect,
-        showGiftBroadcast: showGiftBroadcast ?? this.showGiftBroadcast,
-        showGameBroadcast: showGameBroadcast ?? this.showGameBroadcast,
-        showFighterBroadcast: showFighterBroadcast ?? this.showFighterBroadcast,
-        showPkBroadcast: showPkBroadcast ?? this.showPkBroadcast,
-        showLuckyBagBroadcast: showLuckyBagBroadcast ?? this.showLuckyBagBroadcast,
-      );
+  }) => EffectSettings(
+    showEnterRoomMessage: showEnterRoomMessage ?? this.showEnterRoomMessage,
+    showEnterRoomEffect: showEnterRoomEffect ?? this.showEnterRoomEffect,
+    showGiftEffect: showGiftEffect ?? this.showGiftEffect,
+    showVehicleEffect: showVehicleEffect ?? this.showVehicleEffect,
+    showGiftBroadcast: showGiftBroadcast ?? this.showGiftBroadcast,
+    showGameBroadcast: showGameBroadcast ?? this.showGameBroadcast,
+    showFighterBroadcast: showFighterBroadcast ?? this.showFighterBroadcast,
+    showPkBroadcast: showPkBroadcast ?? this.showPkBroadcast,
+    showLuckyBagBroadcast: showLuckyBagBroadcast ?? this.showLuckyBagBroadcast,
+  );
 
   Map<String, dynamic> toJson() => {
-        'showEnterRoomMessage': showEnterRoomMessage,
-        'showEnterRoomEffect': showEnterRoomEffect,
-        'showGiftEffect': showGiftEffect,
-        'showVehicleEffect': showVehicleEffect,
-        'showGiftBroadcast': showGiftBroadcast,
-        'showGameBroadcast': showGameBroadcast,
-        'showFighterBroadcast': showFighterBroadcast,
-        'showPkBroadcast': showPkBroadcast,
-        'showLuckyBagBroadcast': showLuckyBagBroadcast,
-      };
+    'showEnterRoomMessage': showEnterRoomMessage,
+    'showEnterRoomEffect': showEnterRoomEffect,
+    'showGiftEffect': showGiftEffect,
+    'showVehicleEffect': showVehicleEffect,
+    'showGiftBroadcast': showGiftBroadcast,
+    'showGameBroadcast': showGameBroadcast,
+    'showFighterBroadcast': showFighterBroadcast,
+    'showPkBroadcast': showPkBroadcast,
+    'showLuckyBagBroadcast': showLuckyBagBroadcast,
+  };
 
   factory EffectSettings.fromJson(Map<String, dynamic> json) => EffectSettings(
-        showEnterRoomMessage: json['showEnterRoomMessage'] is bool ? json['showEnterRoomMessage'] as bool : true,
-        showEnterRoomEffect: json['showEnterRoomEffect'] is bool ? json['showEnterRoomEffect'] as bool : true,
-        showGiftEffect: json['showGiftEffect'] is bool ? json['showGiftEffect'] as bool : true,
-        showVehicleEffect: json['showVehicleEffect'] is bool ? json['showVehicleEffect'] as bool : true,
-        showGiftBroadcast: json['showGiftBroadcast'] is bool ? json['showGiftBroadcast'] as bool : true,
-        showGameBroadcast: json['showGameBroadcast'] is bool ? json['showGameBroadcast'] as bool : true,
-        showFighterBroadcast: json['showFighterBroadcast'] is bool ? json['showFighterBroadcast'] as bool : true,
-        showPkBroadcast: json['showPkBroadcast'] is bool ? json['showPkBroadcast'] as bool : true,
-        showLuckyBagBroadcast: json['showLuckyBagBroadcast'] is bool ? json['showLuckyBagBroadcast'] as bool : true,
-      );
+    showEnterRoomMessage:
+        json['showEnterRoomMessage'] is bool
+            ? json['showEnterRoomMessage'] as bool
+            : true,
+    showEnterRoomEffect:
+        json['showEnterRoomEffect'] is bool
+            ? json['showEnterRoomEffect'] as bool
+            : true,
+    showGiftEffect:
+        json['showGiftEffect'] is bool ? json['showGiftEffect'] as bool : true,
+    showVehicleEffect:
+        json['showVehicleEffect'] is bool
+            ? json['showVehicleEffect'] as bool
+            : true,
+    showGiftBroadcast:
+        json['showGiftBroadcast'] is bool
+            ? json['showGiftBroadcast'] as bool
+            : true,
+    showGameBroadcast:
+        json['showGameBroadcast'] is bool
+            ? json['showGameBroadcast'] as bool
+            : true,
+    showFighterBroadcast:
+        json['showFighterBroadcast'] is bool
+            ? json['showFighterBroadcast'] as bool
+            : true,
+    showPkBroadcast:
+        json['showPkBroadcast'] is bool
+            ? json['showPkBroadcast'] as bool
+            : true,
+    showLuckyBagBroadcast:
+        json['showLuckyBagBroadcast'] is bool
+            ? json['showLuckyBagBroadcast'] as bool
+            : true,
+  );
 }
 
 /// Service to load and persist effect settings.
@@ -100,15 +124,18 @@ class EffectSettingsService {
   Future<EffectSettings> _readPrefs() async {
     final prefs = await SharedPreferences.getInstance();
     return EffectSettings(
-      showEnterRoomMessage: prefs.getBool('${_key}_showEnterRoomMessage') ?? true,
+      showEnterRoomMessage:
+          prefs.getBool('${_key}_showEnterRoomMessage') ?? true,
       showEnterRoomEffect: prefs.getBool('${_key}_showEnterRoomEffect') ?? true,
       showGiftEffect: prefs.getBool('${_key}_showGiftEffect') ?? true,
       showVehicleEffect: prefs.getBool('${_key}_showVehicleEffect') ?? true,
       showGiftBroadcast: prefs.getBool('${_key}_showGiftBroadcast') ?? true,
       showGameBroadcast: prefs.getBool('${_key}_showGameBroadcast') ?? true,
-      showFighterBroadcast: prefs.getBool('${_key}_showFighterBroadcast') ?? true,
+      showFighterBroadcast:
+          prefs.getBool('${_key}_showFighterBroadcast') ?? true,
       showPkBroadcast: prefs.getBool('${_key}_showPkBroadcast') ?? true,
-      showLuckyBagBroadcast: prefs.getBool('${_key}_showLuckyBagBroadcast') ?? true,
+      showLuckyBagBroadcast:
+          prefs.getBool('${_key}_showLuckyBagBroadcast') ?? true,
     );
   }
 
@@ -123,6 +150,9 @@ class EffectSettingsService {
     await prefs.setBool('${_key}_showGameBroadcast', s.showGameBroadcast);
     await prefs.setBool('${_key}_showFighterBroadcast', s.showFighterBroadcast);
     await prefs.setBool('${_key}_showPkBroadcast', s.showPkBroadcast);
-    await prefs.setBool('${_key}_showLuckyBagBroadcast', s.showLuckyBagBroadcast);
+    await prefs.setBool(
+      '${_key}_showLuckyBagBroadcast',
+      s.showLuckyBagBroadcast,
+    );
   }
 }

@@ -64,12 +64,15 @@ class _InAppNotificationBannerState extends State<InAppNotificationBanner> {
     final notification = message.notification;
     final rawData = message.data;
     final data =
-        rawData is Map ? Map<String, dynamic>.from(rawData) : const <String, dynamic>{};
+        rawData is Map
+            ? Map<String, dynamic>.from(rawData)
+            : const <String, dynamic>{};
 
     // Compute display title/body the same way the system-tray handler does,
     // so a notification payload and a data-only payload are both covered.
     final title = notification?.title ?? data['title'] as String? ?? '';
-    final body = notification?.body ??
+    final body =
+        notification?.body ??
         data['body'] as String? ??
         data['message'] as String? ??
         '';
@@ -84,8 +87,10 @@ class _InAppNotificationBannerState extends State<InAppNotificationBanner> {
     final signature = '$type|$title|$body';
     if (type != Const.notificationChat && type != Const.notificationCall) {
       if (await PushNotificationService.isDuplicateNotification(signature)) {
-        Log.d('InAppNotificationBanner',
-            'duplicate FCM banner suppressed: $title / $body');
+        Log.d(
+          'InAppNotificationBanner',
+          'duplicate FCM banner suppressed: $title / $body',
+        );
         return;
       }
     }

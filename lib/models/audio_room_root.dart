@@ -775,12 +775,14 @@ class AudioRoomUser {
       musicPermission:
           parseString(json['musicPermission'])?.toLowerCase() ?? 'host',
       chatMode:
-          parseString(json['chatMode'] ?? json['chatPermission'])
-              ?.toLowerCase() ??
+          parseString(
+            json['chatMode'] ?? json['chatPermission'],
+          )?.toLowerCase() ??
           'anyone',
       micMode:
-          parseString(json['micMode'] ?? json['micPermission'])
-              ?.toLowerCase() ??
+          parseString(
+            json['micMode'] ?? json['micPermission'],
+          )?.toLowerCase() ??
           'anyone',
     );
   }

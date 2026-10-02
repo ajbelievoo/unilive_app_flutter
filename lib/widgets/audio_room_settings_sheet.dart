@@ -41,19 +41,20 @@ void showAudioRoomSettingsSheet(
 }) {
   Navigator.of(context).push(
     MaterialPageRoute(
-      builder: (_) => _AudioRoomSettingsPage(
-        roomUser: roomUser,
-        seats: seats,
-        onRoomUserChanged: onRoomUserChanged,
-        isHost: isHost,
-        onAutoEndTimerSet: onAutoEndTimerSet,
-        onTakeBreak: onTakeBreak,
-        onSuperMicChanged: onSuperMicChanged,
-        superMicEnabled: superMicEnabled,
-        autoEndRemainingSeconds: autoEndRemainingSeconds,
-        isOnBreak: isOnBreak,
-        breakRemainingSeconds: breakRemainingSeconds,
-      ),
+      builder:
+          (_) => _AudioRoomSettingsPage(
+            roomUser: roomUser,
+            seats: seats,
+            onRoomUserChanged: onRoomUserChanged,
+            isHost: isHost,
+            onAutoEndTimerSet: onAutoEndTimerSet,
+            onTakeBreak: onTakeBreak,
+            onSuperMicChanged: onSuperMicChanged,
+            superMicEnabled: superMicEnabled,
+            autoEndRemainingSeconds: autoEndRemainingSeconds,
+            isOnBreak: isOnBreak,
+            breakRemainingSeconds: breakRemainingSeconds,
+          ),
     ),
   );
 }
@@ -108,8 +109,12 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
   void initState() {
     super.initState();
     _nameCtrl = TextEditingController(text: widget.roomUser.roomName ?? '');
-    _welcomeCtrl = TextEditingController(text: widget.roomUser.roomWelcome ?? '');
-    _passcodeCtrl = TextEditingController(text: (widget.roomUser.privateCode ?? 0).toString());
+    _welcomeCtrl = TextEditingController(
+      text: widget.roomUser.roomWelcome ?? '',
+    );
+    _passcodeCtrl = TextEditingController(
+      text: (widget.roomUser.privateCode ?? 0).toString(),
+    );
     _rulesCtrl = TextEditingController(text: widget.roomUser.roomRules ?? '');
     _seatCount = widget.roomUser.seatCount.clamp(9, 21);
     _roomRules = widget.roomUser.roomRules ?? '';
@@ -181,8 +186,7 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
   }
 
   void _emitChatPermission(String label) {
-    final mode =
-        label == 'Only Owner/Super Admin/Admin' ? 'admins' : 'anyone';
+    final mode = label == 'Only Owner/Super Admin/Admin' ? 'admins' : 'anyone';
     SocketService.instance.emit('roomChatPermission', {
       'liveStreamingId': widget.roomUser.liveStreamingId,
       'chatMode': mode,
@@ -241,23 +245,30 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
     final session = context.read<SessionManager>();
     final confirmed = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Delete Room?'),
-        content: const Text('Are you sure you want to delete your room?'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text('No')),
-          TextButton(
-            onPressed: () => Navigator.pop(ctx, true),
-            child: const Text('Yes', style: TextStyle(color: Colors.red)),
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('Delete Room?'),
+            content: const Text('Are you sure you want to delete your room?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, false),
+                child: const Text('No'),
+              ),
+              TextButton(
+                onPressed: () => Navigator.pop(ctx, true),
+                child: const Text('Yes', style: TextStyle(color: Colors.red)),
+              ),
+            ],
           ),
-        ],
-      ),
     );
     if (confirmed != true) return;
 
     try {
       await ApiService.deleteAudioRoom(session.userId);
-      await ApiService.userHostLiveEnd(widget.roomUser.id ?? '', widget.roomUser.liveStreamingId ?? '');
+      await ApiService.userHostLiveEnd(
+        widget.roomUser.id ?? '',
+        widget.roomUser.liveStreamingId ?? '',
+      );
       if (mounted) {
         Fluttertoast.showToast(msg: 'Room deleted successfully');
         Navigator.pop(context);
@@ -268,12 +279,15 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
   }
 
   void _showThemePicker() {
-    showThemePickerSheet(context, onSelected: (image) {
-      _emitChangeTheme(image);
-      final updated = widget.roomUser.copyWith(background: image);
-      widget.onRoomUserChanged(updated);
-      Fluttertoast.showToast(msg: 'Theme updated');
-    });
+    showThemePickerSheet(
+      context,
+      onSelected: (image) {
+        _emitChangeTheme(image);
+        final updated = widget.roomUser.copyWith(background: image);
+        widget.onRoomUserChanged(updated);
+        Fluttertoast.showToast(msg: 'Theme updated');
+      },
+    );
   }
 
   void _showChatPermissionDialog() {
@@ -313,123 +327,182 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppTheme.themed(context, 0xFF15152A, 0xFFF8F7FE),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(color: AppTheme.hairline(ctx), borderRadius: BorderRadius.circular(2)),
-                ),
-              ),
-              Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.fg(ctx))),
-              const SizedBox(height: 16),
-              ...options.map((o) {
-                final isSelected = o == selected;
-                return GestureDetector(
-                  onTap: () {
-                    onSelected(o);
-                    Navigator.pop(ctx);
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppTheme.themed(ctx, 0xFF123C33, 0xFFE6FAF5)
-                          : AppTheme.cardBg(ctx),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isSelected ? const Color(0xFF00D6A0) : AppTheme.hairline(ctx),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder:
+          (ctx) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.hairline(ctx),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                o,
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: isSelected ? const Color(0xFF00D6A0) : AppTheme.fg(ctx, 0.87),
-                                ),
-                              ),
-                              if (o == 'Anyone')
-                                Text(
-                                  'Anyone can send room chat',
-                                  style: TextStyle(fontSize: 12, color: AppTheme.fg(ctx, 0.54)),
-                                ),
-                              if (o == 'Only Owner/Super Admin/Admin')
-                                Text(
-                                  'Only admins can send room chat',
-                                  style: TextStyle(fontSize: 12, color: AppTheme.fg(ctx, 0.54)),
-                                ),
-                              if (o == 'Invite-only')
-                                Text(
-                                  'Only the users you invite or the users whose requests you approve can take the mic.',
-                                  style: TextStyle(fontSize: 12, color: AppTheme.fg(ctx, 0.54)),
-                                ),
-                            ],
-                          ),
-                        ),
-                        if (isSelected)
-                          const Icon(Icons.check_circle, color: Color(0xFF00D6A0)),
-                      ],
+                  ),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.fg(ctx),
                     ),
                   ),
-                );
-              }),
-            ],
+                  const SizedBox(height: 16),
+                  ...options.map((o) {
+                    final isSelected = o == selected;
+                    return GestureDetector(
+                      onTap: () {
+                        onSelected(o);
+                        Navigator.pop(ctx);
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              isSelected
+                                  ? AppTheme.themed(ctx, 0xFF123C33, 0xFFE6FAF5)
+                                  : AppTheme.cardBg(ctx),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color:
+                                isSelected
+                                    ? const Color(0xFF00D6A0)
+                                    : AppTheme.hairline(ctx),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    o,
+                                    style: TextStyle(
+                                      fontSize: 15,
+                                      fontWeight: FontWeight.w600,
+                                      color:
+                                          isSelected
+                                              ? const Color(0xFF00D6A0)
+                                              : AppTheme.fg(ctx, 0.87),
+                                    ),
+                                  ),
+                                  if (o == 'Anyone')
+                                    Text(
+                                      'Anyone can send room chat',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppTheme.fg(ctx, 0.54),
+                                      ),
+                                    ),
+                                  if (o == 'Only Owner/Super Admin/Admin')
+                                    Text(
+                                      'Only admins can send room chat',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppTheme.fg(ctx, 0.54),
+                                      ),
+                                    ),
+                                  if (o == 'Invite-only')
+                                    Text(
+                                      'Only the users you invite or the users whose requests you approve can take the mic.',
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: AppTheme.fg(ctx, 0.54),
+                                      ),
+                                    ),
+                                ],
+                              ),
+                            ),
+                            if (isSelected)
+                              const Icon(
+                                Icons.check_circle,
+                                color: Color(0xFF00D6A0),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
     );
   }
 
   void _showRoomTypeDialog() {
-    Navigator.of(context).push<int>(
-      MaterialPageRoute(
-        builder: (_) => ChooseRoomTypeScreen(currentPeople: _seatCount),
-      ),
-    ).then((value) {
-      if (value != null) {
-        setState(() => _seatCount = value);
-      }
-    });
+    Navigator.of(context)
+        .push<int>(
+          MaterialPageRoute(
+            builder: (_) => ChooseRoomTypeScreen(currentPeople: _seatCount),
+          ),
+        )
+        .then((value) {
+          if (value != null) {
+            setState(() => _seatCount = value);
+          }
+        });
   }
 
-  void _showEmptyListScreen(String title, String message, {IconData icon = Icons.inbox}) {
+  void _showEmptyListScreen(
+    String title,
+    String message, {
+    IconData icon = Icons.inbox,
+  }) {
     Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (pageCtx) => Scaffold(
-          backgroundColor: AppTheme.themed(pageCtx, 0xFF121212, 0xFFFAFAFE),
-          appBar: AppBar(
-            backgroundColor: AppTheme.themed(pageCtx, 0xFF121212, 0xFFFAFAFE),
-            elevation: 0,
-            iconTheme: IconThemeData(color: AppTheme.fg(pageCtx)),
-            title: Text(title, style: TextStyle(color: AppTheme.fg(pageCtx), fontSize: 18)),
-          ),
-          body: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(icon, size: 80, color: const Color(0xFF00D6A0).withValues(alpha: 0.5)),
-                const SizedBox(height: 16),
-                Text(message, style: TextStyle(color: AppTheme.fg(pageCtx, 0.54), fontSize: 14)),
-              ],
+        builder:
+            (pageCtx) => Scaffold(
+              backgroundColor: AppTheme.themed(pageCtx, 0xFF121212, 0xFFFAFAFE),
+              appBar: AppBar(
+                backgroundColor: AppTheme.themed(
+                  pageCtx,
+                  0xFF121212,
+                  0xFFFAFAFE,
+                ),
+                elevation: 0,
+                iconTheme: IconThemeData(color: AppTheme.fg(pageCtx)),
+                title: Text(
+                  title,
+                  style: TextStyle(color: AppTheme.fg(pageCtx), fontSize: 18),
+                ),
+              ),
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      icon,
+                      size: 80,
+                      color: const Color(0xFF00D6A0).withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      message,
+                      style: TextStyle(
+                        color: AppTheme.fg(pageCtx, 0.54),
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
       ),
     );
   }
@@ -445,40 +518,70 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
       }
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (pageCtx) => Scaffold(
-            backgroundColor: AppTheme.themed(pageCtx, 0xFF121212, 0xFFFAFAFE),
-            appBar: AppBar(
-              backgroundColor: AppTheme.themed(pageCtx, 0xFF121212, 0xFFFAFAFE),
-              elevation: 0,
-              iconTheme: IconThemeData(color: AppTheme.fg(pageCtx)),
-              title: Text('Blocked List', style: TextStyle(color: AppTheme.fg(pageCtx), fontSize: 18)),
-            ),
-            body: ListView.builder(
-              itemCount: res.users.length,
-              itemBuilder: (tileCtx, i) {
-                final u = res.users[i];
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundImage: (u.image ?? '').isNotEmpty ? NetworkImage(u.image!) : null,
-                    child: (u.image ?? '').isEmpty ? const Icon(Icons.person, color: Colors.white) : null,
+          builder:
+              (pageCtx) => Scaffold(
+                backgroundColor: AppTheme.themed(
+                  pageCtx,
+                  0xFF121212,
+                  0xFFFAFAFE,
+                ),
+                appBar: AppBar(
+                  backgroundColor: AppTheme.themed(
+                    pageCtx,
+                    0xFF121212,
+                    0xFFFAFAFE,
                   ),
-                  title: Text(u.name ?? 'User', style: TextStyle(color: AppTheme.fg(tileCtx, 0.87))),
-                  subtitle: Text(u.uniqueId ?? '', style: TextStyle(color: AppTheme.fg(tileCtx, 0.54), fontSize: 11)),
-                  trailing: TextButton(
-                    onPressed: () async {
-                      await ApiService.banFromRoom(
-                        roomId: roomId,
-                        userId: u.id ?? '',
-                        ban: false,
-                      );
-                      Fluttertoast.showToast(msg: 'User unbanned');
-                    },
-                    child: const Text('Unban', style: TextStyle(color: Colors.green)),
+                  elevation: 0,
+                  iconTheme: IconThemeData(color: AppTheme.fg(pageCtx)),
+                  title: Text(
+                    'Blocked List',
+                    style: TextStyle(color: AppTheme.fg(pageCtx), fontSize: 18),
                   ),
-                );
-              },
-            ),
-          ),
+                ),
+                body: ListView.builder(
+                  itemCount: res.users.length,
+                  itemBuilder: (tileCtx, i) {
+                    final u = res.users[i];
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage:
+                            (u.image ?? '').isNotEmpty
+                                ? NetworkImage(u.image!)
+                                : null,
+                        child:
+                            (u.image ?? '').isEmpty
+                                ? const Icon(Icons.person, color: Colors.white)
+                                : null,
+                      ),
+                      title: Text(
+                        u.name ?? 'User',
+                        style: TextStyle(color: AppTheme.fg(tileCtx, 0.87)),
+                      ),
+                      subtitle: Text(
+                        u.uniqueId ?? '',
+                        style: TextStyle(
+                          color: AppTheme.fg(tileCtx, 0.54),
+                          fontSize: 11,
+                        ),
+                      ),
+                      trailing: TextButton(
+                        onPressed: () async {
+                          await ApiService.banFromRoom(
+                            roomId: roomId,
+                            userId: u.id ?? '',
+                            ban: false,
+                          );
+                          Fluttertoast.showToast(msg: 'User unbanned');
+                        },
+                        child: const Text(
+                          'Unban',
+                          style: TextStyle(color: Colors.green),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
         ),
       );
     } catch (e) {
@@ -498,34 +601,74 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
       }
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (pageCtx) => Scaffold(
-            backgroundColor: AppTheme.themed(pageCtx, 0xFF121212, 0xFFFAFAFE),
-            appBar: AppBar(
-              backgroundColor: AppTheme.themed(pageCtx, 0xFF121212, 0xFFFAFAFE),
-              elevation: 0,
-              iconTheme: IconThemeData(color: AppTheme.fg(pageCtx)),
-              title: Text('Admins', style: TextStyle(color: AppTheme.fg(pageCtx), fontSize: 18)),
-            ),
-            body: ListView.builder(
-              itemCount: admins.length,
-              itemBuilder: (tileCtx, i) {
-                final a = admins[i] is Map ? Map<String, dynamic>.from(admins[i] as Map) : <String, dynamic>{};
-                final name = a['name']?.toString() ?? a['username']?.toString() ?? 'Admin';
-                final image = a['image']?.toString() ?? a['adminImage']?.toString() ?? '';
-                final uniqueId = a['uniqueId']?.toString() ?? a['adminUserId']?.toString() ?? '';
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundImage: image.isNotEmpty ? CachedNetworkImageProvider(image) : null,
-                    child: image.isEmpty ? const Icon(Icons.person, color: Colors.white) : null,
+          builder:
+              (pageCtx) => Scaffold(
+                backgroundColor: AppTheme.themed(
+                  pageCtx,
+                  0xFF121212,
+                  0xFFFAFAFE,
+                ),
+                appBar: AppBar(
+                  backgroundColor: AppTheme.themed(
+                    pageCtx,
+                    0xFF121212,
+                    0xFFFAFAFE,
                   ),
-                  title: Text(name, style: TextStyle(color: AppTheme.fg(tileCtx, 0.87))),
-                  subtitle: uniqueId.isNotEmpty
-                      ? Text(uniqueId, style: TextStyle(color: AppTheme.fg(tileCtx, 0.54), fontSize: 11))
-                      : null,
-                );
-              },
-            ),
-          ),
+                  elevation: 0,
+                  iconTheme: IconThemeData(color: AppTheme.fg(pageCtx)),
+                  title: Text(
+                    'Admins',
+                    style: TextStyle(color: AppTheme.fg(pageCtx), fontSize: 18),
+                  ),
+                ),
+                body: ListView.builder(
+                  itemCount: admins.length,
+                  itemBuilder: (tileCtx, i) {
+                    final a =
+                        admins[i] is Map
+                            ? Map<String, dynamic>.from(admins[i] as Map)
+                            : <String, dynamic>{};
+                    final name =
+                        a['name']?.toString() ??
+                        a['username']?.toString() ??
+                        'Admin';
+                    final image =
+                        a['image']?.toString() ??
+                        a['adminImage']?.toString() ??
+                        '';
+                    final uniqueId =
+                        a['uniqueId']?.toString() ??
+                        a['adminUserId']?.toString() ??
+                        '';
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage:
+                            image.isNotEmpty
+                                ? CachedNetworkImageProvider(image)
+                                : null,
+                        child:
+                            image.isEmpty
+                                ? const Icon(Icons.person, color: Colors.white)
+                                : null,
+                      ),
+                      title: Text(
+                        name,
+                        style: TextStyle(color: AppTheme.fg(tileCtx, 0.87)),
+                      ),
+                      subtitle:
+                          uniqueId.isNotEmpty
+                              ? Text(
+                                uniqueId,
+                                style: TextStyle(
+                                  color: AppTheme.fg(tileCtx, 0.54),
+                                  fontSize: 11,
+                                ),
+                              )
+                              : null,
+                    );
+                  },
+                ),
+              ),
         ),
       );
     } catch (e) {
@@ -545,35 +688,62 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
       }
       Navigator.of(context).push(
         MaterialPageRoute(
-          builder: (pageCtx) => Scaffold(
-            backgroundColor: AppTheme.themed(pageCtx, 0xFF121212, 0xFFFAFAFE),
-            appBar: AppBar(
-              backgroundColor: AppTheme.themed(pageCtx, 0xFF121212, 0xFFFAFAFE),
-              elevation: 0,
-              iconTheme: IconThemeData(color: AppTheme.fg(pageCtx)),
-              title: Text('Kick History', style: TextStyle(color: AppTheme.fg(pageCtx), fontSize: 18)),
-            ),
-            body: ListView.builder(
-              itemCount: history.length,
-              itemBuilder: (tileCtx, i) {
-                final k = history[i] is Map ? Map<String, dynamic>.from(history[i] as Map) : <String, dynamic>{};
-                final name = k['name']?.toString() ?? 'User';
-                final image = k['image']?.toString() ?? '';
-                final by = k['kickedByName']?.toString() ?? '';
-                return ListTile(
-                  leading: CircleAvatar(
-                    backgroundImage: image.isNotEmpty ? CachedNetworkImageProvider(image) : null,
-                    child: image.isEmpty ? const Icon(Icons.person, color: Colors.white) : null,
+          builder:
+              (pageCtx) => Scaffold(
+                backgroundColor: AppTheme.themed(
+                  pageCtx,
+                  0xFF121212,
+                  0xFFFAFAFE,
+                ),
+                appBar: AppBar(
+                  backgroundColor: AppTheme.themed(
+                    pageCtx,
+                    0xFF121212,
+                    0xFFFAFAFE,
                   ),
-                  title: Text(name, style: TextStyle(color: AppTheme.fg(tileCtx, 0.87))),
-                  subtitle: Text(
-                    by.isNotEmpty ? 'Kicked by $by' : 'Kicked from room',
-                    style: TextStyle(color: AppTheme.fg(tileCtx, 0.54), fontSize: 11),
+                  elevation: 0,
+                  iconTheme: IconThemeData(color: AppTheme.fg(pageCtx)),
+                  title: Text(
+                    'Kick History',
+                    style: TextStyle(color: AppTheme.fg(pageCtx), fontSize: 18),
                   ),
-                );
-              },
-            ),
-          ),
+                ),
+                body: ListView.builder(
+                  itemCount: history.length,
+                  itemBuilder: (tileCtx, i) {
+                    final k =
+                        history[i] is Map
+                            ? Map<String, dynamic>.from(history[i] as Map)
+                            : <String, dynamic>{};
+                    final name = k['name']?.toString() ?? 'User';
+                    final image = k['image']?.toString() ?? '';
+                    final by = k['kickedByName']?.toString() ?? '';
+                    return ListTile(
+                      leading: CircleAvatar(
+                        backgroundImage:
+                            image.isNotEmpty
+                                ? CachedNetworkImageProvider(image)
+                                : null,
+                        child:
+                            image.isEmpty
+                                ? const Icon(Icons.person, color: Colors.white)
+                                : null,
+                      ),
+                      title: Text(
+                        name,
+                        style: TextStyle(color: AppTheme.fg(tileCtx, 0.87)),
+                      ),
+                      subtitle: Text(
+                        by.isNotEmpty ? 'Kicked by $by' : 'Kicked from room',
+                        style: TextStyle(
+                          color: AppTheme.fg(tileCtx, 0.54),
+                          fontSize: 11,
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
         ),
       );
     } catch (e) {
@@ -629,7 +799,10 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
           icon: Icon(Icons.arrow_back, color: AppTheme.fg(context)),
           onPressed: () => Navigator.pop(context),
         ),
-        title: Text('Settings', style: TextStyle(color: AppTheme.fg(context), fontSize: 18)),
+        title: Text(
+          'Settings',
+          style: TextStyle(color: AppTheme.fg(context), fontSize: 18),
+        ),
       ),
       body: ListView(
         padding: const EdgeInsets.symmetric(vertical: 8),
@@ -638,11 +811,17 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
           _settingsTile(
             leading: _buildAvatar(user?.image ?? ''),
             title: 'Profile',
-            trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
+            trailing: Icon(
+              Icons.chevron_right,
+              color: AppTheme.fg(context, 0.38),
+            ),
             onTap: () {
               final userId = context.read<SessionManager>().userId;
               if (userId.isNotEmpty) {
-                context.pushNamed(AppRoutes.guestProfile, extra: {'userId': userId});
+                context.pushNamed(
+                  AppRoutes.guestProfile,
+                  extra: {'userId': userId},
+                );
               }
             },
           ),
@@ -652,23 +831,42 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
           _settingsTile(
             title: 'Room Name',
             value: widget.roomUser.roomName ?? 'Room',
-            trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
-            onTap: () => _showEditDialog('Room Name', _nameCtrl, (v) => _nameCtrl.text = v),
+            trailing: Icon(
+              Icons.chevron_right,
+              color: AppTheme.fg(context, 0.38),
+            ),
+            onTap:
+                () => _showEditDialog(
+                  'Room Name',
+                  _nameCtrl,
+                  (v) => _nameCtrl.text = v,
+                ),
           ),
 
           // Announcement
           _settingsTile(
             title: 'Announcement',
             value: widget.roomUser.roomWelcome ?? 'Welcome to my room...',
-            trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
-            onTap: () => _showEditDialog('Announcement', _welcomeCtrl, (v) => _welcomeCtrl.text = v),
+            trailing: Icon(
+              Icons.chevron_right,
+              color: AppTheme.fg(context, 0.38),
+            ),
+            onTap:
+                () => _showEditDialog(
+                  'Announcement',
+                  _welcomeCtrl,
+                  (v) => _welcomeCtrl.text = v,
+                ),
           ),
 
           // Who Can Send Room Chat
           _settingsTile(
             title: 'Who Can Send Room Chat',
             value: _chatPermission,
-            trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
+            trailing: Icon(
+              Icons.chevron_right,
+              color: AppTheme.fg(context, 0.38),
+            ),
             onTap: _showChatPermissionDialog,
           ),
 
@@ -676,7 +874,10 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
           _settingsTile(
             title: 'Who Can Take The Mic',
             value: _micPermission,
-            trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
+            trailing: Icon(
+              Icons.chevron_right,
+              color: AppTheme.fg(context, 0.38),
+            ),
             onTap: _showMicPermissionDialog,
           ),
 
@@ -684,7 +885,10 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
           _settingsTile(
             title: 'Number of Mic',
             value: '$_seatCount people',
-            trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
+            trailing: Icon(
+              Icons.chevron_right,
+              color: AppTheme.fg(context, 0.38),
+            ),
             onTap: _showSeatCountDialog,
           ),
 
@@ -692,26 +896,29 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
           _settingsTile(
             title: 'Room Password',
             value: _passcodeCtrl.text.isEmpty ? 'Not set' : _passcodeCtrl.text,
-            trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
-            onTap: () => _showEditDialog(
-              'Room Password',
-              _passcodeCtrl,
-              (v) {
-                _passcodeCtrl.text = v;
-                final parsed = int.tryParse(v.trim()) ?? 0;
-                if (parsed != (widget.roomUser.privateCode ?? 0)) {
-                  _savePasscode(v.trim());
-                  final updated = widget.roomUser.copyWith(
-                    privateCode: parsed,
-                    isPublic: parsed == 0,
-                  );
-                  widget.onRoomUserChanged(updated);
-                  Fluttertoast.showToast(
-                    msg: parsed == 0 ? 'Room password removed' : 'Room password set',
-                  );
-                }
-              },
+            trailing: Icon(
+              Icons.chevron_right,
+              color: AppTheme.fg(context, 0.38),
             ),
+            onTap:
+                () => _showEditDialog('Room Password', _passcodeCtrl, (v) {
+                  _passcodeCtrl.text = v;
+                  final parsed = int.tryParse(v.trim()) ?? 0;
+                  if (parsed != (widget.roomUser.privateCode ?? 0)) {
+                    _savePasscode(v.trim());
+                    final updated = widget.roomUser.copyWith(
+                      privateCode: parsed,
+                      isPublic: parsed == 0,
+                    );
+                    widget.onRoomUserChanged(updated);
+                    Fluttertoast.showToast(
+                      msg:
+                          parsed == 0
+                              ? 'Room password removed'
+                              : 'Room password set',
+                    );
+                  }
+                }),
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
 
@@ -750,9 +957,14 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
           // Take a Break
           _settingsTileWithIcon(
             iconBackground: const Color(0xFF795548),
-            icon: const Icon(Icons.free_breakfast, color: Colors.white, size: 20),
+            icon: const Icon(
+              Icons.free_breakfast,
+              color: Colors.white,
+              size: 20,
+            ),
             title: 'Take a Break',
-            value: _isOnBreak ? 'On break ($_breakMinutes min)' : 'Not on break',
+            value:
+                _isOnBreak ? 'On break ($_breakMinutes min)' : 'Not on break',
             onTap: widget.isHost ? _showTakeBreakPicker : null,
           ),
 
@@ -763,16 +975,17 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
             title: 'Super Mic',
             trailing: Switch(
               value: _superMic,
-              onChanged: widget.isHost && widget.onSuperMicChanged != null
-                  ? (v) {
-                      setState(() => _superMic = v);
-                      widget.onSuperMicChanged!(v);
-                      Fluttertoast.showToast(
-                        msg: v ? 'Super Mic enabled' : 'Super Mic disabled',
-                      );
-                      if (v) _showSuperMicDialog();
-                    }
-                  : null,
+              onChanged:
+                  widget.isHost && widget.onSuperMicChanged != null
+                      ? (v) {
+                        setState(() => _superMic = v);
+                        widget.onSuperMicChanged!(v);
+                        Fluttertoast.showToast(
+                          msg: v ? 'Super Mic enabled' : 'Super Mic disabled',
+                        );
+                        if (v) _showSuperMicDialog();
+                      }
+                      : null,
               activeColor: const Color(0xFF00D6A0),
             ),
           ),
@@ -780,28 +993,40 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
           // Room Theme
           _settingsTile(
             title: 'Room Theme',
-            trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
+            trailing: Icon(
+              Icons.chevron_right,
+              color: AppTheme.fg(context, 0.38),
+            ),
             onTap: _showThemePicker,
           ),
 
           // Admins
           _settingsTile(
             title: 'Admins',
-            trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
+            trailing: Icon(
+              Icons.chevron_right,
+              color: AppTheme.fg(context, 0.38),
+            ),
             onTap: _showAdmins,
           ),
 
           // Blocked List
           _settingsTile(
             title: 'Blocked List',
-            trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
+            trailing: Icon(
+              Icons.chevron_right,
+              color: AppTheme.fg(context, 0.38),
+            ),
             onTap: _showBannedUsers,
           ),
 
           // Kick History
           _settingsTile(
             title: 'Kick History',
-            trailing: Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38)),
+            trailing: Icon(
+              Icons.chevron_right,
+              color: AppTheme.fg(context, 0.38),
+            ),
             onTap: _showKickHistory,
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
@@ -823,9 +1048,14 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
               style: FilledButton.styleFrom(
                 backgroundColor: const Color(0xFF00D6A0),
                 padding: const EdgeInsets.symmetric(vertical: 14),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(24),
+                ),
               ),
-              child: const Text('Save', style: TextStyle(fontSize: 16, color: Colors.white)),
+              child: const Text(
+                'Save',
+                style: TextStyle(fontSize: 16, color: Colors.white),
+              ),
             ),
           ),
           const SizedBox(height: 24),
@@ -853,8 +1083,23 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
   }) {
     return ListTile(
       leading: leading,
-      title: Text(title, style: TextStyle(color: titleColor ?? AppTheme.fg(context, 0.87), fontSize: 15)),
-      subtitle: value != null ? Text(value, style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 13)) : null,
+      title: Text(
+        title,
+        style: TextStyle(
+          color: titleColor ?? AppTheme.fg(context, 0.87),
+          fontSize: 15,
+        ),
+      ),
+      subtitle:
+          value != null
+              ? Text(
+                value,
+                style: TextStyle(
+                  color: AppTheme.fg(context, 0.54),
+                  fontSize: 13,
+                ),
+              )
+              : null,
       trailing: trailing,
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
@@ -890,7 +1135,8 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
     Widget? trailing,
     VoidCallback? onTap,
   }) {
-    final effectiveTrailing = trailing ??
+    final effectiveTrailing =
+        trailing ??
         (onTap != null
             ? Icon(Icons.chevron_right, color: AppTheme.fg(context, 0.38))
             : null);
@@ -905,15 +1151,26 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
         alignment: Alignment.center,
         child: customIcon ?? icon,
       ),
-      title: Text(title, style: TextStyle(color: AppTheme.fg(context, 0.87), fontSize: 15, fontWeight: FontWeight.w600)),
-      subtitle: value != null
-          ? Text(
-              value,
-              style: TextStyle(color: AppTheme.fg(context, 0.54), fontSize: 13),
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-            )
-          : null,
+      title: Text(
+        title,
+        style: TextStyle(
+          color: AppTheme.fg(context, 0.87),
+          fontSize: 15,
+          fontWeight: FontWeight.w600,
+        ),
+      ),
+      subtitle:
+          value != null
+              ? Text(
+                value,
+                style: TextStyle(
+                  color: AppTheme.fg(context, 0.54),
+                  fontSize: 13,
+                ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              )
+              : null,
       trailing: effectiveTrailing,
       onTap: onTap,
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 2),
@@ -924,32 +1181,38 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
     final temp = TextEditingController(text: _rulesCtrl.text);
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Room Rules'),
-        content: TextField(
-          controller: temp,
-          maxLines: 5,
-          minLines: 3,
-          decoration: const InputDecoration(
-            hintText: 'Enter room rules (visible to all viewers)',
-            border: OutlineInputBorder(),
+      builder:
+          (ctx) => AlertDialog(
+            title: const Text('Room Rules'),
+            content: TextField(
+              controller: temp,
+              maxLines: 5,
+              minLines: 3,
+              decoration: const InputDecoration(
+                hintText: 'Enter room rules (visible to all viewers)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  _rulesCtrl.text = temp.text;
+                  setState(() => _roomRules = temp.text.trim());
+                  _emitRoomRules(_roomRules);
+                  final updated = widget.roomUser.copyWith(
+                    roomRules: _roomRules,
+                  );
+                  widget.onRoomUserChanged(updated);
+                  Navigator.pop(ctx);
+                },
+                child: const Text('Save'),
+              ),
+            ],
           ),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () {
-              _rulesCtrl.text = temp.text;
-              setState(() => _roomRules = temp.text.trim());
-              _emitRoomRules(_roomRules);
-              final updated = widget.roomUser.copyWith(roomRules: _roomRules);
-              widget.onRoomUserChanged(updated);
-              Navigator.pop(ctx);
-            },
-            child: const Text('Save'),
-          ),
-        ],
-      ),
     );
   }
 
@@ -1011,127 +1274,166 @@ class _AudioRoomSettingsPageState extends State<_AudioRoomSettingsPage> {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppTheme.themed(context, 0xFF15152A, 0xFFF8F7FE),
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
-      builder: (ctx) => SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Center(
-                child: Container(
-                  width: 40,
-                  height: 4,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  decoration: BoxDecoration(color: AppTheme.hairline(ctx), borderRadius: BorderRadius.circular(2)),
-                ),
-              ),
-              Text(title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppTheme.fg(ctx))),
-              const SizedBox(height: 16),
-              ...options.map((o) {
-                final (minutes, label) = o;
-                final isSelected = minutes == selected;
-                return GestureDetector(
-                  onTap: () {
-                    onSelected(minutes);
-                    Navigator.pop(ctx);
-                  },
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 10),
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                    decoration: BoxDecoration(
-                      color: isSelected
-                          ? AppTheme.themed(ctx, 0xFF123C33, 0xFFE6FAF5)
-                          : AppTheme.cardBg(ctx),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: isSelected ? const Color(0xFF00D6A0) : AppTheme.hairline(ctx),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder:
+          (ctx) => SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Center(
+                    child: Container(
+                      width: 40,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.hairline(ctx),
+                        borderRadius: BorderRadius.circular(2),
                       ),
                     ),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          child: Text(
-                            label,
-                            style: TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.w600,
-                              color: isSelected ? const Color(0xFF00D6A0) : AppTheme.fg(ctx, 0.87),
-                            ),
-                          ),
-                        ),
-                        if (isSelected)
-                          const Icon(Icons.check_circle, color: Color(0xFF00D6A0)),
-                      ],
+                  ),
+                  Text(
+                    title,
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: AppTheme.fg(ctx),
                     ),
                   ),
-                );
-              }),
-            ],
+                  const SizedBox(height: 16),
+                  ...options.map((o) {
+                    final (minutes, label) = o;
+                    final isSelected = minutes == selected;
+                    return GestureDetector(
+                      onTap: () {
+                        onSelected(minutes);
+                        Navigator.pop(ctx);
+                      },
+                      child: Container(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 14,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              isSelected
+                                  ? AppTheme.themed(ctx, 0xFF123C33, 0xFFE6FAF5)
+                                  : AppTheme.cardBg(ctx),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color:
+                                isSelected
+                                    ? const Color(0xFF00D6A0)
+                                    : AppTheme.hairline(ctx),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                label,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                  color:
+                                      isSelected
+                                          ? const Color(0xFF00D6A0)
+                                          : AppTheme.fg(ctx, 0.87),
+                                ),
+                              ),
+                            ),
+                            if (isSelected)
+                              const Icon(
+                                Icons.check_circle,
+                                color: Color(0xFF00D6A0),
+                              ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }),
+                ],
+              ),
+            ),
           ),
-        ),
-      ),
     );
   }
 
-  void _showEditDialog(String label, TextEditingController controller, ValueChanged<String> onChanged) {
+  void _showEditDialog(
+    String label,
+    TextEditingController controller,
+    ValueChanged<String> onChanged,
+  ) {
     final temp = TextEditingController(text: controller.text);
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(label),
-        content: TextField(
-          controller: temp,
-          decoration: InputDecoration(hintText: 'Enter $label'),
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
-          TextButton(
-            onPressed: () {
-              onChanged(temp.text);
-              setState(() {});
-              Navigator.pop(ctx);
-            },
-            child: const Text('Save'),
+      builder:
+          (ctx) => AlertDialog(
+            title: Text(label),
+            content: TextField(
+              controller: temp,
+              decoration: InputDecoration(hintText: 'Enter $label'),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancel'),
+              ),
+              TextButton(
+                onPressed: () {
+                  onChanged(temp.text);
+                  setState(() {});
+                  Navigator.pop(ctx);
+                },
+                child: const Text('Save'),
+              ),
+            ],
           ),
-        ],
-      ),
     );
   }
 
   void _showSuperMicDialog() {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              'Unlock Super Mic',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+      builder:
+          (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(20),
             ),
-            const SizedBox(height: 16),
-            const Icon(Icons.mic, size: 60, color: Color(0xFF00D6A0)),
-            const SizedBox(height: 12),
-            Text(
-              'Unlock Super Mic on Recharge Event Page.',
-              textAlign: TextAlign.center,
-              style: TextStyle(color: AppTheme.fg(ctx, 0.54)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Unlock Super Mic',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+                const Icon(Icons.mic, size: 60, color: Color(0xFF00D6A0)),
+                const SizedBox(height: 12),
+                Text(
+                  'Unlock Super Mic on Recharge Event Page.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: AppTheme.fg(ctx, 0.54)),
+                ),
+                const SizedBox(height: 20),
+                FilledButton(
+                  onPressed: () {
+                    setState(() => _superMic = false);
+                    Navigator.pop(ctx);
+                  },
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF00D6A0),
+                  ),
+                  child: const Text('Unlock'),
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-            FilledButton(
-              onPressed: () {
-                setState(() => _superMic = false);
-                Navigator.pop(ctx);
-              },
-              style: FilledButton.styleFrom(backgroundColor: const Color(0xFF00D6A0)),
-              child: const Text('Unlock'),
-            ),
-          ],
-        ),
-      ),
+          ),
     );
   }
 }

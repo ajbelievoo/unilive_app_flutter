@@ -682,7 +682,8 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   // In-room Ludo table — panel visibility is room-synced via the `ludoTable`
   // socket relay (emitted by the ludo game server through the main backend).
   bool _ludoPanelVisible = false;
-  bool _ludoDismissed = false; // user hid it locally; reopened on a fresh 'open'
+  bool _ludoDismissed =
+      false; // user hid it locally; reopened on a fresh 'open'
   bool _isTranslationEnabled = false;
 
   // ---- CP/Friend pair seat positions for BondLink ----
@@ -3559,9 +3560,10 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         if (enabled) {
           final name = map['name']?.toString() ?? map['userName']?.toString();
           Fluttertoast.showToast(
-            msg: name?.isNotEmpty == true
-                ? '$name activated Super Mic'
-                : 'Super Mic activated',
+            msg:
+                name?.isNotEmpty == true
+                    ? '$name activated Super Mic'
+                    : 'Super Mic activated',
           );
         }
       });

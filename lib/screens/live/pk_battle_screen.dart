@@ -1575,10 +1575,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       builder:
           (ctx) => AlertDialog(
             backgroundColor: AppTheme.themed(ctx, 0xFF1A1A2E),
-            title: Text(
-              'Leave PK?',
-              style: TextStyle(color: AppTheme.fg(ctx)),
-            ),
+            title: Text('Leave PK?', style: TextStyle(color: AppTheme.fg(ctx))),
             content: Text(
               'Do you want to exit the PK battle?',
               style: TextStyle(color: AppTheme.fg(ctx, 0.7)),
@@ -2349,26 +2346,28 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
         width: 42,
         height: 42,
         decoration: BoxDecoration(
-          color: bg ??
-              color.withValues(alpha: color == Colors.white ? 0.15 : 0.8),
+          color:
+              bg ?? color.withValues(alpha: color == Colors.white ? 0.15 : 0.8),
           shape: BoxShape.circle,
           border: Border.all(color: Colors.white12),
-          boxShadow: imageAsset != null
-              ? [
-                  BoxShadow(
-                    color: (bg ?? const Color(0xFFFFEA00)).withValues(
-                      alpha: 0.6,
+          boxShadow:
+              imageAsset != null
+                  ? [
+                    BoxShadow(
+                      color: (bg ?? const Color(0xFFFFEA00)).withValues(
+                        alpha: 0.6,
+                      ),
+                      blurRadius: 10,
+                      spreadRadius: 2,
+                      offset: const Offset(0, 2),
                     ),
-                    blurRadius: 10,
-                    spreadRadius: 2,
-                    offset: const Offset(0, 2),
-                  ),
-                ]
-              : null,
+                  ]
+                  : null,
         ),
-        child: imageAsset != null
-            ? Image.asset(imageAsset, width: 16, height: 16)
-            : Icon(icon, color: Colors.white, size: 20),
+        child:
+            imageAsset != null
+                ? Image.asset(imageAsset, width: 16, height: 16)
+                : Icon(icon, color: Colors.white, size: 20),
       ),
     );
   }
