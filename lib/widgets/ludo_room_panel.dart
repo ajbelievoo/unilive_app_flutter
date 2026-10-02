@@ -32,10 +32,15 @@ class LudoRoomPanel extends StatefulWidget {
     required this.roomId,
     this.onClose,
     this.onMinimize,
+    this.canHost = false,
   });
 
   /// Audio room id — becomes the ludo table id (liveStreamingId).
   final String roomId;
+
+  /// Whether the local user is the room host or an admin — only they may
+  /// open/start the table (the web client mirrors this in its UI).
+  final bool canHost;
 
   /// Local dismiss — the table itself is unaffected.
   final VoidCallback? onClose;
@@ -67,6 +72,7 @@ class _LudoRoomPanelState extends State<LudoRoomPanel> {
       'image': user?.image ?? '',
       'token': user?.token ?? '',
       'diamond': '${user?.coin.toInt() ?? 0}',
+      if (widget.canHost) 'host': '1',
     };
     return uri.replace(queryParameters: params).toString();
   }

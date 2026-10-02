@@ -12728,7 +12728,13 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   }
 
   /// Opens the embedded Ludo table for this room and tells room members.
+  /// Only the room host or an admin may open/start the game — everyone else
+  /// joins once the table is live (the panel still auto-opens via ludoTable).
   void _openLudo() {
+    if (!(_amHost || _iAmAdmin)) {
+      Fluttertoast.showToast(msg: 'Only the host can open Ludo');
+      return;
+    }
     if (!_ludoPanelVisible) {
       setState(() {
         _ludoPanelVisible = true;
@@ -12810,6 +12816,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
           maintainState: true,
           child: LudoRoomPanel(
             roomId: _liveId,
+            canHost: _amHost || _iAmAdmin,
             onMinimize: () {
               if (!mounted) return;
               setState(() => _ludoMinimized = true);
