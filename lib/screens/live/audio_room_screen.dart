@@ -3541,6 +3541,26 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       _listenExtraSocket(event, _applyRoomPollEvent);
     }
     _listenExtraSocket(Const.eventRoomPollEnded, _applyRoomPollEnded);
+
+    // Super Mic — host/admin broadcasts their boosted-mic state so every
+    // room member sees the badge/toast (backend relays `eventSuperMic` and
+    // `superMicActivated`).
+    for (final event in const ['eventSuperMic', 'superMicActivated']) {
+      _listenExtraSocket(event, (data) {
+        final map = _unwrapSocketData(data);
+        if (map == null || !mounted) return;
+        final enabled = map['enabled'] == true || map['isActive'] == true;
+        if (enabled) {
+          final name = map['name']?.toString() ?? map['userName']?.toString();
+          Fluttertoast.showToast(
+            msg: name?.isNotEmpty == true
+                ? '$name activated Super Mic'
+                : 'Super Mic activated',
+          );
+        }
+      });
+    }
+
     _listenExtraSocket(
       Const.eventFriendMusicRequest,
       _handleFriendMusicRequest,
@@ -14094,8 +14114,9 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   /// Compact single-row seat strip shown while the Ludo panel is open —
   /// same join/profile actions as the full grid, much less screen space.
   Widget _buildCompactSeatStrip() {
-    final seatCount = max(_roomUser.seatCount, _seats.length).clamp(9, 21);
-    final targetSeats = (seatCount - 1).clamp(8, 20);
+    // While Ludo is open the stage collapses to exactly 8 slots
+    // (host + 7 grid seats) like the Yalla-style game mode.
+    const targetSeats = 7;
     final topSeat =
         _seats.where((s) => s.position == -1).firstOrNull ??
         SeatItem(position: -1, role: 'host');
@@ -14171,21 +14192,48 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                       ),
                       color: Colors.black.withValues(alpha: 0.25),
                     ),
-                    child:
-                        s.isOccupied
-                            ? ClipOval(
-                              child: UserAvatar(
-                                imageUrl: s.image,
-                                frameUrl: s.avatarFrame,
-                                size: 40,
-                                isVIP: s.isVIP,
+                    child: Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        Positioned.fill(
+                          child:
+                              s.isOccupied
+                                  ? ClipOval(
+                                    child: UserAvatar(
+                                      imageUrl: s.image,
+                                      frameUrl: s.avatarFrame,
+                                      size: 40,
+                                      isVIP: s.isVIP,
+                                    ),
+                                  )
+                                  : Icon(
+                                    s.lock
+                                        ? Icons.lock_outline
+                                        : Icons.mic_none,
+                                    color: Colors.white38,
+                                    size: 20,
+                                  ),
+                        ),
+                        if (s.isOccupied && s.isMuted)
+                          Positioned(
+                            right: -2,
+                            bottom: -2,
+                            child: Container(
+                              width: 15,
+                              height: 15,
+                              decoration: const BoxDecoration(
+                                shape: BoxShape.circle,
+                                color: Color(0xFF1B1B3A),
                               ),
-                            )
-                            : Icon(
-                              s.lock ? Icons.lock_outline : Icons.mic_none,
-                              color: Colors.white38,
-                              size: 20,
+                              child: const Icon(
+                                Icons.mic_off,
+                                color: Colors.white70,
+                                size: 10,
+                              ),
                             ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
           );
