@@ -116,11 +116,12 @@ class _RandomCallScreenState extends State<RandomCallScreen> {
   Future<List<Map<String, dynamic>>> _loadCandidates(User user) async {
     final candidates = <Map<String, dynamic>>[];
 
-    // 1. Preferred: hosts who opted into video calls.
+    // 1. Preferred: hosts who opted into video calls and are online now.
     try {
       final hosts = await ApiService.getVideoCallHosts(
         userId: user.id,
         limit: 100,
+        status: 'online',
       );
       if (hosts.isNotEmpty) {
         Log.d(_tag, 'videoCallHosts returned ${hosts.length}');
