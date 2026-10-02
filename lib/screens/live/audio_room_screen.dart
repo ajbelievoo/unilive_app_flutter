@@ -5493,13 +5493,28 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       try {
         final map = _unwrapSocketData(data);
         if (map == null || _pkBattle == null) return;
+        // Server scores are session-global (host1 = PK requester) while
+        // `room1` here is always THIS room — swap when the payload's host1
+        // isn't our room's host or the opponent's score renders on our side.
+        final incomingH1Id = map['host1Id']?.toString() ?? '';
+        final incomingH1LiveId = map['host1LiveId']?.toString() ?? '';
+        final localHostId = _roomUser.liveUserId ?? '';
+        final sameSide =
+            (incomingH1Id.isEmpty && incomingH1LiveId.isEmpty) ||
+            incomingH1Id == localHostId ||
+            incomingH1LiveId == _liveId;
+        var h1 = (map['host1Score'] as num?)?.toInt();
+        var h2 = (map['host2Score'] as num?)?.toInt();
+        if (!sameSide) {
+          final t = h1;
+          h1 = h2;
+          h2 = t;
+        }
         if (mounted) {
           setState(() {
             _pkBattle = _pkBattle!.copyWith(
-              host1Score:
-                  (map['host1Score'] as num?)?.toInt() ?? _pkBattle!.host1Score,
-              host2Score:
-                  (map['host2Score'] as num?)?.toInt() ?? _pkBattle!.host2Score,
+              host1Score: h1 ?? _pkBattle!.host1Score,
+              host2Score: h2 ?? _pkBattle!.host2Score,
               round: (map['round'] as num?)?.toInt() ?? _pkBattle!.round,
               remainingSeconds:
                   (map['remainingSeconds'] as num?)?.toInt() ??
