@@ -19,8 +19,10 @@ import '../services/session_manager.dart';
 import '../services/socket_service.dart';
 import '../utils/log.dart';
 
-/// Fixed base URL of the ludo game server (nginx → node :5012).
+/// Game server URLs — the dedicated subdomain is preferred; the path-based
+/// fallback on the main domain keeps working even before its DNS record exists.
 const String kLudoBaseUrl = 'https://ludo.unilive.me/';
+const String kLudoFallbackUrl = 'https://admin.unilive.me/ludo/';
 
 class LudoRoomPanel extends StatefulWidget {
   const LudoRoomPanel({super.key, required this.roomId, this.onClose});
@@ -39,12 +41,13 @@ class _LudoRoomPanelState extends State<LudoRoomPanel> {
   static const String _tag = 'LudoPanel';
   late final WebViewController _controller;
   bool _loading = true;
+  bool _useFallback = false;
   String? _loadError;
 
-  String _buildUrl() {
+  String _buildUrl(String base) {
     final session = SessionManager.instance;
     final user = session?.getUser();
-    final uri = Uri.parse(kLudoBaseUrl);
+    final uri = Uri.parse(base);
     final params = <String, String>{
       'roomId': widget.roomId,
       'userId': user?.id ?? '',
@@ -96,16 +99,23 @@ class _LudoRoomPanelState extends State<LudoRoomPanel> {
                 if (mounted) setState(() => _loading = false);
               },
               onWebResourceError: (e) {
-                if (e.isForMainFrame == true && mounted) {
-                  setState(() {
-                    _loading = false;
-                    _loadError = e.description;
-                  });
+                if (e.isForMainFrame != true || !mounted) return;
+                // Domain not resolving yet? Retry once on the fallback path.
+                if (!_useFallback &&
+                    (e.errorCode == -2 ||
+                        (e.description ?? '').contains('ERR_NAME'))) {
+                  _useFallback = true;
+                  _controller.loadRequest(Uri.parse(_buildUrl(kLudoFallbackUrl)));
+                  return;
                 }
+                setState(() {
+                  _loading = false;
+                  _loadError = e.description;
+                });
               },
             ),
           );
-    final url = _buildUrl();
+    final url = _buildUrl(kLudoBaseUrl);
     Log.d(_tag, 'loading ludo: $url');
     _controller.loadRequest(Uri.parse(url));
   }
