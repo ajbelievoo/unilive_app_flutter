@@ -3,6 +3,8 @@
 ///
 /// The web page talks to the app through the `GameBridge` JS channel:
 ///   - 'close'       → hide the panel locally (game/table keeps running)
+///   - 'minimize'    → collapse to a chip; WebView stays alive so the round
+///                     continues and the seat is not forfeited
 ///   - 'recharge'    → push the wallet recharge screen
 ///   - 'coin_update' → emit USER_COIN_UPDATE so balances refresh
 ///   - 'toast:<msg>' → show a toast
@@ -25,13 +27,22 @@ const String kLudoBaseUrl = 'https://ludo.unilive.me/';
 const String kLudoFallbackUrl = 'https://admin.unilive.me/ludo/';
 
 class LudoRoomPanel extends StatefulWidget {
-  const LudoRoomPanel({super.key, required this.roomId, this.onClose});
+  const LudoRoomPanel({
+    super.key,
+    required this.roomId,
+    this.onClose,
+    this.onMinimize,
+  });
 
   /// Audio room id — becomes the ludo table id (liveStreamingId).
   final String roomId;
 
   /// Local dismiss — the table itself is unaffected.
   final VoidCallback? onClose;
+
+  /// Collapse to a floating chip while keeping the game socket alive
+  /// (mid-round the web client can't fully close).
+  final VoidCallback? onMinimize;
 
   @override
   State<LudoRoomPanel> createState() => _LudoRoomPanelState();
@@ -63,6 +74,10 @@ class _LudoRoomPanelState extends State<LudoRoomPanel> {
   void _onGameMessage(String message) {
     if (message == 'close') {
       widget.onClose?.call();
+      return;
+    }
+    if (message == 'minimize') {
+      widget.onMinimize?.call();
       return;
     }
     if (message == 'recharge') {

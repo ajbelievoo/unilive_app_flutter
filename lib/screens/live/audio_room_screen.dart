@@ -684,6 +684,8 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   bool _ludoPanelVisible = false;
   bool _ludoDismissed =
       false; // user hid it locally; reopened on a fresh 'open'
+  bool _ludoMinimized =
+      false; // mid-round the web view only minimises — socket stays alive
   bool _isTranslationEnabled = false;
 
   // ---- CP/Friend pair seat positions for BondLink ----
@@ -4729,12 +4731,14 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
           setState(() {
             _ludoPanelVisible = false;
             _ludoDismissed = false;
+            _ludoMinimized = false;
           });
         } else if (action == 'open') {
-          if (!_ludoPanelVisible) {
+          if (!_ludoPanelVisible || _ludoMinimized) {
             setState(() {
               _ludoPanelVisible = true;
               _ludoDismissed = false;
+              _ludoMinimized = false;
             });
           }
         } else if (!_ludoDismissed && !_ludoPanelVisible) {
@@ -12742,15 +12746,85 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     if (!_ludoPanelVisible || _liveId.isEmpty) {
       return const SizedBox.shrink();
     }
-    return LudoRoomPanel(
-      roomId: _liveId,
-      onClose: () {
-        if (!mounted) return;
-        setState(() {
-          _ludoPanelVisible = false;
-          _ludoDismissed = true;
-        });
-      },
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (_ludoMinimized)
+          Align(
+            alignment: Alignment.centerRight,
+            child: Padding(
+              padding: const EdgeInsets.only(right: 12, top: 4),
+              child: GestureDetector(
+                onTap: () => setState(() => _ludoMinimized = false),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF6B55AB), Color(0xFF3A2868)],
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.3),
+                    ),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black38, blurRadius: 6),
+                    ],
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.sports_esports,
+                        color: Color(0xFFFFD54F),
+                        size: 16,
+                      ),
+                      SizedBox(width: 5),
+                      Text(
+                        'LUDO',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 0.6,
+                        ),
+                      ),
+                      SizedBox(width: 3),
+                      Icon(
+                        Icons.keyboard_arrow_up,
+                        color: Colors.white70,
+                        size: 15,
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        // Keep the WebView mounted while minimised so the game socket stays
+        // connected and the player's seat is not forfeited.
+        Visibility(
+          visible: !_ludoMinimized,
+          maintainState: true,
+          child: LudoRoomPanel(
+            roomId: _liveId,
+            onMinimize: () {
+              if (!mounted) return;
+              setState(() => _ludoMinimized = true);
+            },
+            onClose: () {
+              if (!mounted) return;
+              setState(() {
+                _ludoPanelVisible = false;
+                _ludoDismissed = true;
+                _ludoMinimized = false;
+              });
+            },
+          ),
+        ),
+      ],
     );
   }
 
