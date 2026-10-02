@@ -154,7 +154,9 @@ class AuthProvider extends ChangeNotifier {
     }
 
     final res = await _doLogin(body);
-    if (res.status) {
+    // Clear the pending code only when the signup actually succeeded —
+    // otherwise keep it so a retry can still redeem it.
+    if (res.status && res.user != null) {
       session.clearPendingReferralCode();
     }
     return res;
@@ -192,6 +194,7 @@ class AuthProvider extends ChangeNotifier {
     final res = await _doLogin(body);
 
     if (res.status && res.user != null) {
+      session.clearPendingReferralCode();
       // Manually update if the backend didn't reflect it immediately (matching native logic)
       final user = res.user!;
       if (user.googleEmail == null || user.googleEmail!.isEmpty) {
@@ -200,7 +203,6 @@ class AuthProvider extends ChangeNotifier {
         _persistUser(updatedUser);
         Log.d(_tag, 'local google override applied: $email');
       }
-      session.clearPendingReferralCode();
     }
 
     return res;
@@ -242,6 +244,7 @@ class AuthProvider extends ChangeNotifier {
     final res = await _doLogin(body);
 
     if (res.status && res.user != null) {
+      session.clearPendingReferralCode();
       // Manually update if the backend didn't reflect it immediately (matching native logic)
       final user = res.user!;
       if (user.mobileNumber == null || user.mobileNumber!.isEmpty) {
@@ -250,7 +253,6 @@ class AuthProvider extends ChangeNotifier {
         _persistUser(updatedUser);
         Log.d(_tag, 'local phone override applied: $mobileNumber');
       }
-      session.clearPendingReferralCode();
     }
 
     return res;
@@ -314,8 +316,37 @@ class AuthProvider extends ChangeNotifier {
     final user = session.getUser();
     if (user?.token != null && user!.token!.isNotEmpty) {
       ApiClient.setAuthToken(user.token);
+    } else {
+      // Legacy session without a user token — heal it in the background so
+      // token-bound endpoints (redeem/gifts/referral) start working.
+      ensureAuthToken();
     }
     notifyListeners();
+  }
+
+  /// Ensures [ApiClient] carries a user auth token. Sessions created before
+  /// the backend started issuing user JWTs have `token == null` — silently
+  /// re-login with the stored identity+email so token-bound endpoints
+  /// (wallet, redeem, gifts, referral) keep working without forcing a logout.
+  Future<void> ensureAuthToken() async {
+    if ((ApiClient.getAuthToken() ?? '').isNotEmpty) return;
+    final u = session.getUser();
+    if (u == null) return;
+    if ((u.identity ?? '').isEmpty || (u.email ?? '').isEmpty) return;
+    try {
+      final res = await ApiService.createUser({
+        'identity': u.identity,
+        'email': u.email,
+        'loginType': u.loginType ?? 0,
+        'fcmToken': u.fcmToken ?? '',
+      });
+      if (res.status && res.user != null) {
+        _persistUser(res.user!);
+        Log.d(_tag, 'ensureAuthToken: token refreshed silently');
+      }
+    } catch (e) {
+      Log.w(_tag, 'ensureAuthToken failed: $e');
+    }
   }
 
   /// Refresh the current user's data from the backend and include the
@@ -324,6 +355,7 @@ class AuthProvider extends ChangeNotifier {
     final id = session.userId;
     if (id.isEmpty) return UserRoot(status: false);
     try {
+      await ensureAuthToken();
       final deviceId = await DeviceIdentityService.getDeviceId(
         session: session,
       );
