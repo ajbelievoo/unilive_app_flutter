@@ -82,7 +82,17 @@ class _CheckInDialog extends StatefulWidget {
 class _CheckInDialogState extends State<_CheckInDialog> {
   late int _nextDay = widget.status.nextDay;
   late bool _canClaim = widget.status.canClaim;
+  late int _claimedDay = widget.status.claimedDay;
+  late final List<CheckInHistoryEntry> _history = List.of(widget.status.history);
+  CheckInReward? _justClaimed;
   bool _claiming = false;
+
+  /// Highest cycle day already claimed in the current streak.
+  int get _claimedThrough {
+    if (_canClaim) return _nextDay - 1;
+    if (_claimedDay > 0) return _claimedDay;
+    return _nextDay <= 1 ? widget.status.rewards.length : _nextDay - 1;
+  }
 
   Future<void> _claim() async {
     if (_claiming || !_canClaim) return;
@@ -91,17 +101,25 @@ class _CheckInDialogState extends State<_CheckInDialog> {
       final res = await ApiService.claimCheckIn(widget.userId);
       if (!mounted) return;
       if (res.status) {
+        final r = res.reward;
         setState(() {
           _canClaim = false;
-          _nextDay = (res.day ?? _nextDay) + 1;
+          _claimedDay = res.day ?? _claimedDay;
+          _nextDay = res.nextDay ?? _nextDay;
+          _justClaimed = r;
           _claiming = false;
+          if (r != null) {
+            _history.insert(
+              0,
+              CheckInHistoryEntry(
+                day: res.day ?? 0,
+                type: r.type,
+                amount: r.amount,
+                date: DailyCheckIn._today(),
+              ),
+            );
+          }
         });
-        final r = res.reward;
-        if (r != null) {
-          Fluttertoast.showToast(
-            msg: '+${r.amount} ${r.type == 'coin' ? 'diamonds' : 'beans'} claimed!',
-          );
-        }
         // Refresh balances in the local session.
         context.read<AuthProvider>().refreshUser().catchError((_) => null);
       } else {
@@ -128,9 +146,10 @@ class _CheckInDialogState extends State<_CheckInDialog> {
           color: AppTheme.themed(context, 0xFF1C1C30, 0xFFFFFFFF),
           borderRadius: BorderRadius.circular(20),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
             // Ribbon title
             Transform.translate(
               offset: const Offset(0, -14),
@@ -172,11 +191,100 @@ class _CheckInDialogState extends State<_CheckInDialog> {
                 itemCount: rewards.length,
                 itemBuilder: (context, i) {
                   final r = rewards[i];
-                  final claimed = r.day < _nextDay || !_canClaim;
+                  final claimed = r.day <= _claimedThrough;
                   return _DayCell(reward: r, claimed: claimed, isNext: r.day == _nextDay && _canClaim);
                 },
               ),
             ),
+            // Claim result banner
+            if (_justClaimed != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 10),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: AppTheme.green.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppTheme.green.withValues(alpha: 0.4)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.celebration, color: AppTheme.green, size: 18),
+                      const SizedBox(width: 8),
+                      Text(
+                        'You received +${_justClaimed!.amount} ${_justClaimed!.type == 'coin' ? 'diamonds' : 'beans'}!',
+                        style: const TextStyle(
+                          color: AppTheme.green,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            // Reward history
+            if (_history.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(14, 0, 14, 6),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Divider(color: AppTheme.hairline(context), height: 1),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Reward history',
+                      style: TextStyle(
+                        color: AppTheme.fg(context, 0.55),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxHeight: 108),
+                      child: ListView.builder(
+                        shrinkWrap: true,
+                        padding: EdgeInsets.zero,
+                        itemCount: _history.length > 6 ? 6 : _history.length,
+                        itemBuilder: (context, i) {
+                          final h = _history[i];
+                          final diamond = h.type == 'coin';
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 3),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  diamond ? Icons.diamond : Icons.star_rounded,
+                                  size: 15,
+                                  color: diamond ? const Color(0xFF54C7FC) : const Color(0xFFFF5C8A),
+                                ),
+                                const SizedBox(width: 7),
+                                Expanded(
+                                  child: Text(
+                                    'Day ${h.day} · +${h.amount} ${diamond ? 'diamond' : 'beans'}',
+                                    style: TextStyle(
+                                      color: AppTheme.fg(context, 0.8),
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  h.date,
+                                  style: TextStyle(color: AppTheme.fg(context, 0.4), fontSize: 11),
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             // Claim button
             Padding(
               padding: const EdgeInsets.only(bottom: 18),
@@ -204,6 +312,7 @@ class _CheckInDialogState extends State<_CheckInDialog> {
                     ),
             ),
           ],
+        ),
         ),
       ),
     );
