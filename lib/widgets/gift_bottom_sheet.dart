@@ -807,7 +807,6 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
             Log.e(_tag, 'live gift emit failed for $receiverId', e);
           }
         }
-
       }
 
       // Play the gift send chime (native SVGA gifts carry their own audio;
@@ -984,7 +983,6 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
         Log.e(_tag, 'rapid gift emit failed', e);
       }
     }
-
 
     // Streak send chime (throttled inside GiftSoundService so rapid sends
     // don't machine-gun the audio).

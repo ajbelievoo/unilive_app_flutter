@@ -1041,7 +1041,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       final roomIds = _pkRoomIds;
       if (roomIds.isNotEmpty) {
         final carried =
-            <String>[
+            <dynamic>[
                   map['liveStreamingId'],
                   map['roomId'],
                   map['liveRoom'],
@@ -1070,14 +1070,12 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
     });
   }
 
-
   /// Sparse config payloads (pkStart/pkRematch often carry only pkId +
   /// duration) must not wipe host ids/liveIds — merge field-wise, preferring
   /// the incoming non-empty value and falling back to the existing one.
   PkConfig _mergePkConfig(PkConfig incoming) {
     final old = _config;
-    String? pick(String? a, String? b) =>
-        (a != null && a.isNotEmpty) ? a : b;
+    String? pick(String? a, String? b) => (a != null && a.isNotEmpty) ? a : b;
     int pickInt(int a, int b) => a != 0 ? a : b;
     return PkConfig(
       pkId: pick(incoming.pkId, old.pkId),
@@ -1097,33 +1095,38 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       host2Token: pick(incoming.host2Token, old.host2Token),
       host1SrcToken: pick(incoming.host1SrcToken, old.host1SrcToken),
       host2SrcToken: pick(incoming.host2SrcToken, old.host2SrcToken),
-      host1RelayDestToken:
-          pick(incoming.host1RelayDestToken, old.host1RelayDestToken),
-      host2RelayDestToken:
-          pick(incoming.host2RelayDestToken, old.host2RelayDestToken),
+      host1RelayDestToken: pick(
+        incoming.host1RelayDestToken,
+        old.host1RelayDestToken,
+      ),
+      host2RelayDestToken: pick(
+        incoming.host2RelayDestToken,
+        old.host2RelayDestToken,
+      ),
       host1Details: incoming.host1Details ?? old.host1Details,
       host2Details: incoming.host2Details ?? old.host2Details,
       localRank: incoming.localRank,
       remoteRank: incoming.remoteRank,
       isWinner: incoming.isWinner,
-      durationSeconds: incoming.durationSeconds > 0
-          ? incoming.durationSeconds
-          : old.durationSeconds,
-      topGifters: incoming.topGifters.isNotEmpty
-          ? incoming.topGifters
-          : old.topGifters,
+      durationSeconds:
+          incoming.durationSeconds > 0
+              ? incoming.durationSeconds
+              : old.durationSeconds,
+      topGifters:
+          incoming.topGifters.isNotEmpty ? incoming.topGifters : old.topGifters,
       punishmentRound: incoming.punishmentRound,
       isPunishmentActive: incoming.isPunishmentActive,
       canRematch: incoming.canRematch,
-      pkRoundCount: incoming.pkRoundCount > 0
-          ? incoming.pkRoundCount
-          : old.pkRoundCount,
-      punishmentDurationSeconds: incoming.punishmentDurationSeconds > 0
-          ? incoming.punishmentDurationSeconds
-          : old.punishmentDurationSeconds,
-      pkPunishmentEndTime: incoming.pkPunishmentEndTime > 0
-          ? incoming.pkPunishmentEndTime
-          : old.pkPunishmentEndTime,
+      pkRoundCount:
+          incoming.pkRoundCount > 0 ? incoming.pkRoundCount : old.pkRoundCount,
+      punishmentDurationSeconds:
+          incoming.punishmentDurationSeconds > 0
+              ? incoming.punishmentDurationSeconds
+              : old.punishmentDurationSeconds,
+      pkPunishmentEndTime:
+          incoming.pkPunishmentEndTime > 0
+              ? incoming.pkPunishmentEndTime
+              : old.pkPunishmentEndTime,
       isDisconnect: incoming.isDisconnect,
       pkAutoStartBlocked: incoming.pkAutoStartBlocked,
       showStartButton: incoming.showStartButton,
