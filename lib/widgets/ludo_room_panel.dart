@@ -3,8 +3,8 @@
 ///
 /// The web page talks to the app through the `GameBridge` JS channel:
 ///   - 'close'       → hide the panel locally (game/table keeps running)
-///   - 'minimize'    → collapse to a chip; WebView stays alive so the round
-///                     continues and the seat is not forfeited
+///   - 'minimize'    → collapse to a chip; the game socket stays alive but the
+///                     server starts a 10s away clock on the player's seat
 ///   - 'recharge'    → push the wallet recharge screen
 ///   - 'coin_update' → emit USER_COIN_UPDATE so balances refresh
 ///   - 'toast:<msg>' → show a toast
@@ -26,6 +26,15 @@ import '../utils/log.dart';
 const String kLudoBaseUrl = 'https://ludo.unilive.me/';
 const String kLudoFallbackUrl = 'https://admin.unilive.me/ludo/';
 
+/// Lets the room screen signal the embedded game page — app lifecycle and
+/// panel minimise/restore live outside the WebView but must reach it so the
+/// server can start/cancel the 10s away-forfeit clock.
+class LudoRoomPanelController {
+  LudoRoomPanelState? _state;
+  void notifyResumed() => _state?.notifyResumed();
+  void notifyAway() => _state?.notifyAway();
+}
+
 class LudoRoomPanel extends StatefulWidget {
   const LudoRoomPanel({
     super.key,
@@ -33,7 +42,11 @@ class LudoRoomPanel extends StatefulWidget {
     this.onClose,
     this.onMinimize,
     this.canHost = false,
+    this.controller,
   });
+
+  /// Optional handle the screen uses to forward minimise/lifecycle signals.
+  final LudoRoomPanelController? controller;
 
   /// Audio room id — becomes the ludo table id (liveStreamingId).
   final String roomId;
@@ -50,10 +63,10 @@ class LudoRoomPanel extends StatefulWidget {
   final VoidCallback? onMinimize;
 
   @override
-  State<LudoRoomPanel> createState() => _LudoRoomPanelState();
+  State<LudoRoomPanel> createState() => LudoRoomPanelState();
 }
 
-class _LudoRoomPanelState extends State<LudoRoomPanel> {
+class LudoRoomPanelState extends State<LudoRoomPanel> {
   static const String _tag = 'LudoPanel';
   late final WebViewController _controller;
   bool _loading = true;
@@ -75,6 +88,18 @@ class _LudoRoomPanelState extends State<LudoRoomPanel> {
       if (widget.canHost) 'host': '1',
     };
     return uri.replace(queryParameters: params).toString();
+  }
+
+  /// The player reopened the panel — cancels the server's 10s away-forfeit
+  /// clock on their seat.
+  void notifyResumed() {
+    _controller.runJavaScript('window.ludoBack && window.ludoBack()');
+  }
+
+  /// The player left the app/panel — starts the server's 10s away-forfeit
+  /// clock (same as a dropped socket).
+  void notifyAway() {
+    _controller.runJavaScript('window.ludoAway && window.ludoAway()');
   }
 
   void _onGameMessage(String message) {
@@ -106,6 +131,7 @@ class _LudoRoomPanelState extends State<LudoRoomPanel> {
   @override
   void initState() {
     super.initState();
+    widget.controller?._state = this;
     _controller =
         WebViewController()
           ..setJavaScriptMode(JavaScriptMode.unrestricted)
@@ -139,6 +165,12 @@ class _LudoRoomPanelState extends State<LudoRoomPanel> {
     final url = _buildUrl(kLudoBaseUrl);
     Log.d(_tag, 'loading ludo: $url');
     _controller.loadRequest(Uri.parse(url));
+  }
+
+  @override
+  void dispose() {
+    if (widget.controller?._state == this) widget.controller?._state = null;
+    super.dispose();
   }
 
   @override

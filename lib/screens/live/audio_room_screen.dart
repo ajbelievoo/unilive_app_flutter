@@ -687,6 +687,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
       false; // user hid it locally; reopened on a fresh 'open'
   bool _ludoMinimized =
       false; // mid-round the web view only minimises — socket stays alive
+  final LudoRoomPanelController _ludoCtrl = LudoRoomPanelController();
   bool _isTranslationEnabled = false;
 
   // ---- CP/Friend pair seat positions for BondLink ----
@@ -1854,8 +1855,11 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                 ? 'You are hosting an audio room'
                 : 'Listening to an audio room',
       );
-    } else if (state == AppLifecycleState.paused ||
-        state == AppLifecycleState.inactive) {
+      if (_ludoPanelVisible) _ludoCtrl.notifyResumed();
+    } else if (state == AppLifecycleState.paused) {
+      // Backgrounded while a Ludo round is live — the 10s forfeit clock
+      // starts on their seat (resumed cancels it via ludoBack above).
+      if (_ludoPanelVisible) _ludoCtrl.notifyAway();
       // Issue #17: Host left app - notify backend to start 2-minute timer
       if (_amHost && mounted) {
         SocketService.instance.emit('hostLeftApp', {
@@ -4742,6 +4746,19 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         if (rid.isNotEmpty && rid != _liveId) return;
         final action = map['action']?.toString() ?? 'update';
         if (!mounted) return;
+        if (action == 'chat') {
+          // Game events (joins, captures, no-moves, quits, results) land in
+          // the room comment feed as Ludo system messages.
+          final c = map['chat']?.toString() ?? '';
+          if (c.isNotEmpty) {
+            setState(
+              () => _pushComment(
+                _LiveComment(name: '🎲 Ludo', text: c, isSystem: true),
+              ),
+            );
+          }
+          return;
+        }
         if (action == 'closed') {
           setState(() {
             _ludoPanelVisible = false;
@@ -4755,6 +4772,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
               _ludoDismissed = false;
               _ludoMinimized = false;
             });
+            _ludoCtrl.notifyResumed();
           }
         } else if (!_ludoDismissed && !_ludoPanelVisible) {
           setState(() => _ludoPanelVisible = true);
@@ -12853,7 +12871,11 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
             child: Padding(
               padding: const EdgeInsets.only(right: 12, top: 4),
               child: GestureDetector(
-                onTap: () => setState(() => _ludoMinimized = false),
+                onTap: () {
+                  setState(() => _ludoMinimized = false);
+                  // Back before the 10s away clock expires — seat is saved.
+                  _ludoCtrl.notifyResumed();
+                },
                 child: Container(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 12,
@@ -12910,6 +12932,7 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
             key: ValueKey('ludo_${_amHost || _iAmAdmin}'),
             roomId: _liveId,
             canHost: _amHost || _iAmAdmin,
+            controller: _ludoCtrl,
             onMinimize: () {
               if (!mounted) return;
               setState(() => _ludoMinimized = true);
