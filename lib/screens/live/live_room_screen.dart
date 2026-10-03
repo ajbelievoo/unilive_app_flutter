@@ -5085,8 +5085,30 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       // was handled, so the roster broadcast was dropped on every device
       // and co-host tiles stayed 'Guest' forever.
       if (data is List) {
+        // The roster is the authoritative accepted-guest set — also drop any
+        // local tile whose user is missing (leave broadcasts can be missed).
+        final rosterIds = <String>{};
         for (final e in data.whereType<Map>()) {
-          _handleCoHostJoinMap(Map<String, dynamic>.from(e));
+          final m = Map<String, dynamic>.from(e);
+          _handleCoHostJoinMap(m);
+          final uid = m['userId']?.toString();
+          if (uid != null && uid.isNotEmpty) rosterIds.add(uid);
+        }
+        final stale =
+            _coHosts
+                .where(
+                  (h) =>
+                      !_isSelfId(h['userId']?.toString()) &&
+                      !rosterIds.contains(h['userId']?.toString()),
+                )
+                .toList();
+        if (stale.isNotEmpty && mounted) {
+          setState(() {
+            for (final h in stale) {
+              _coHosts.remove(h);
+              _removeCoHostController(_coHostAgoraUid(h));
+            }
+          });
         }
         return;
       }
