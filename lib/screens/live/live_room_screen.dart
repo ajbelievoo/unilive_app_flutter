@@ -744,6 +744,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   // Co-host state for multi-guest live.
   final _coHosts = <Map<String, dynamic>>[];
   final _joinRequests = <Map<String, dynamic>>[];
+  bool _callInviteDialogOpen = false;
 
   /// Bumped whenever a co-host video tile is added or removed. Adding or
   /// removing an Android SurfaceView platform-view can freeze or black out
@@ -779,7 +780,6 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   /// Request userIds the host has already been alerted about (toast/popup),
   /// so a refreshed request list doesn't re-alert for the same user.
   final _notifiedRequestIds = <String>{};
-  bool _joinRequestDialogOpen = false;
   bool _isJoined = false;
 
   /// True while the current viewer has a pending call join request or an
@@ -3209,7 +3209,10 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             commentText.toLowerCase().contains('requested a seat') ||
             commentText.toLowerCase().contains('wants to join');
 
-        if (isCallRequest && senderId.isNotEmpty) {
+        if (isCallRequest &&
+            senderId.isNotEmpty &&
+            senderId != widget.liveUser.userId &&
+            senderId != context.read<SessionManager>().userId) {
           final reqAgoraUid = _coHostAgoraUid({
             ...Map<String, dynamic>.from(map),
             'user': userMap,
@@ -3233,7 +3236,6 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             if (!_notifiedRequestIds.contains(senderId)) {
               _notifiedRequestIds.add(senderId);
               Fluttertoast.showToast(msg: '$userName wants to join the call');
-              _showJoinRequestDialog(reqEntry);
             }
           }
           setState(
@@ -5203,8 +5205,12 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           if (!widget.isHost && userId == widget.liveUser.userId) {
             _remoteHostCameraOff = cameraOff;
           }
+          final payloadUid = _coHostAgoraUid(Map<String, dynamic>.from(map));
           for (final h in _coHosts) {
-            if (h['userId'] == userId) h['isCameraOff'] = cameraOff;
+            if (h['userId'] == userId ||
+                (payloadUid > 0 && _coHostAgoraUid(h) == payloadUid)) {
+              h['isCameraOff'] = cameraOff;
+            }
           }
         });
       } catch (e) {
@@ -5219,10 +5225,25 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         final list = data is List ? data : (data is Map ? [data] : null);
         if (list == null) return;
         final parsed =
-            list
-                .whereType<Map>()
-                .map((e) => Map<String, dynamic>.from(e))
-                .toList();
+            list.whereType<Map>().map((e) => Map<String, dynamic>.from(e))
+            // requested[] also carries pending INVITES (isInvited) and
+            // already-joined guests (isAccepted) — only actual pending
+            // join requests belong in the host's request list, otherwise
+            // inviting a viewer makes them appear as a "requester" (and
+            // on a shared test account even shows the host's own name).
+            .where((e) {
+              final rid = e['userId']?.toString();
+              if (rid == null || rid.isEmpty) return false;
+              if (e['isRequested'] == true) return true;
+              final hasFlags =
+                  e.containsKey('isRequested') ||
+                  e.containsKey('isInvited') ||
+                  e.containsKey('isAccepted');
+              if (e['isInvited'] == true || e['isAccepted'] == true) {
+                return false;
+              }
+              return !hasFlags;
+            }).toList();
 
         // Join requests carry userId + agoraUid + name — keep them linked so
         // a guest's tile can be labelled even if addParticipates drops them.
@@ -5274,7 +5295,6 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           }
           final name = fresh.first['name']?.toString() ?? 'Someone';
           Fluttertoast.showToast(msg: '$name wants to join the call');
-          _showJoinRequestDialog(fresh.first);
         }
       } catch (e) {
         Log.e(_tag, 'requestedCallJoin parse', e);
@@ -5293,7 +5313,13 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                     ? Map<String, dynamic>.from(data.first as Map)
                     : null);
         if (map == null) return;
-        final targetUserId = map['userId']?.toString();
+        // The backend room-broadcasts invites — never pop an invite dialog
+        // for an invite WE sent (host inviting themselves on the room echo,
+        // or a shared test account where targetUserId == own userId).
+        final senderId =
+            (map['liveUserId'] ?? map['hostId'] ?? map['senderId'])?.toString();
+        if (_isSelfId(senderId)) return;
+        final targetUserId = (map['targetUserId'] ?? map['userId'])?.toString();
         if (_isSelfId(targetUserId)) {
           final hostName = map['hostName']?.toString() ?? 'Host';
           _showCallInviteDialog(hostName, map);
@@ -6750,6 +6776,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       SocketService.instance.emit(Const.eventCameraOffCallJoin, {
         'liveStreamingId': widget.liveUser.liveRoomId ?? '',
         'userId': session.userId,
+        'agoraUid': _myAgoraUid,
         'isHost': true,
         'isCameraOff': !newState,
       });
@@ -6896,7 +6923,10 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           hit ??= roster.where((r) => parseBool(r['isAccepted'])).firstOrNull;
           if (hit != null) {
             userId = hit['userId']?.toString() ?? '';
-            coHost['name'] ??= hit['name'];
+            final nm = coHost['name']?.toString() ?? '';
+            if (nm.isEmpty || nm.toLowerCase() == 'guest') {
+              coHost['name'] = hit['name'];
+            }
             coHost['image'] ??= hit['image'];
             coHost['country'] ??= hit['country'];
             coHost['isMute'] = parseBool(hit['isMute']);
@@ -6913,19 +6943,24 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     }
     if (userId.isEmpty) return;
 
-    final hasName =
-        (coHost['name'] ??
-                coHost['userName'] ??
-                coHost['username'] ??
-                coHost['nickName'] ??
-                coHost['userNickname'] ??
-                nestedMap['name'] ??
-                nestedMap['userName'] ??
-                nestedMap['username'] ??
-                nestedMap['nickName'])
-            ?.toString()
-            .isNotEmpty ==
-        true;
+    // A literal 'Guest' placeholder doesn't count — some payloads pre-fill
+    // it, and treating it as a real name skipped profile hydration forever.
+    bool realName(dynamic v) {
+      final s = v?.toString().trim() ?? '';
+      return s.isNotEmpty && s.toLowerCase() != 'guest';
+    }
+
+    final hasName = [
+      coHost['name'],
+      coHost['userName'],
+      coHost['username'],
+      coHost['nickName'],
+      coHost['userNickname'],
+      nestedMap['name'],
+      nestedMap['userName'],
+      nestedMap['username'],
+      nestedMap['nickName'],
+    ].any(realName);
     final hasImage =
         (coHost['image'] ??
                 coHost['userImage'] ??
@@ -6944,7 +6979,10 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     for (final r in _joinRequests) {
       final rid = r['userId']?.toString();
       if (rid == userId || (entryUid > 0 && _coHostAgoraUid(r) == entryUid)) {
-        coHost['name'] ??= r['name'] ?? r['userName'] ?? r['username'];
+        final curNm = coHost['name']?.toString() ?? '';
+        if (curNm.isEmpty || curNm.toLowerCase() == 'guest') {
+          coHost['name'] = r['name'] ?? r['userName'] ?? r['username'];
+        }
         coHost['image'] ??= r['image'] ?? r['userImage'] ?? r['avatar'];
         coHost['avatarFrame'] ??= r['avatarFrame'] ?? r['frameUrl'];
         if ((coHost['name']?.toString().isNotEmpty ?? false) &&
@@ -7593,99 +7631,10 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     SocketService.instance.emit(Const.eventCameraOffCallJoin, {
       'liveStreamingId': widget.liveUser.liveRoomId ?? '',
       'userId': session.userId,
+      'agoraUid': _myAgoraUid,
       'isHost': false,
       'isCameraOff': newCameraOff,
     });
-  }
-
-  /// Native-style instant popup when a viewer requests to join the call
-  /// (ports UnilivePro showPkRequestPopup). The host no longer has to dig
-  /// through the menu to find pending requests.
-  void _showJoinRequestDialog(Map<String, dynamic> request) {
-    if (!widget.isHost || _joinRequestDialogOpen || !mounted) return;
-    _joinRequestDialogOpen = true;
-    final name = request['name']?.toString() ?? 'User';
-    final image = request['image']?.toString();
-    final frame =
-        request['avatarFrame']?.toString() ??
-        (request['vipDetails'] is Map
-            ? (request['vipDetails'] as Map)['profileFrameUrl']?.toString()
-            : null);
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder:
-          (dlgCtx) => AlertDialog(
-            backgroundColor: AppTheme.themed(dlgCtx, 0xFF1A1A2E),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            title: Text(
-              'Call Request',
-              style: TextStyle(
-                color: AppTheme.fg(dlgCtx),
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-              textAlign: TextAlign.center,
-            ),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                UserAvatar(imageUrl: image, frameUrl: frame, size: 64),
-                const SizedBox(height: 10),
-                Text(
-                  '$name wants to join the call',
-                  style: TextStyle(
-                    color: AppTheme.fg(dlgCtx, 0.7),
-                    fontSize: 14,
-                  ),
-                  textAlign: TextAlign.center,
-                ),
-                if (_joinRequests.length > 1)
-                  Padding(
-                    padding: const EdgeInsets.only(top: 6),
-                    child: Text(
-                      '+${_joinRequests.length - 1} more request(s)',
-                      style: TextStyle(
-                        color: AppTheme.fg(dlgCtx, 0.38),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ),
-              ],
-            ),
-            actionsAlignment: MainAxisAlignment.spaceEvenly,
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.pop(dlgCtx);
-                  _rejectJoinRequest(request);
-                },
-                child: const Text(
-                  'Decline',
-                  style: TextStyle(color: Colors.redAccent),
-                ),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF4CAF50),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                ),
-                onPressed: () {
-                  Navigator.pop(dlgCtx);
-                  _acceptJoinRequest(request);
-                },
-                child: const Text(
-                  'Accept',
-                  style: TextStyle(color: Colors.white),
-                ),
-              ),
-            ],
-          ),
-    ).then((_) => _joinRequestDialogOpen = false);
   }
 
   /// Floating "call requests" pill shown on the host screen while requests
@@ -8066,6 +8015,11 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   /// emits `eventAddParticipatesCallJoin` with `isInvited: true` to join
   /// the host's call grid as a co-host/guest.
   void _showCallInviteDialog(String hostName, Map<String, dynamic> inviteData) {
+    // The backend delivers invites via BOTH globalRoom (targeted) and the
+    // room broadcast — without a re-entry guard the invitee gets two
+    // stacked dialogs.
+    if (_callInviteDialogOpen || !mounted) return;
+    _callInviteDialogOpen = true;
     showDialog(
       context: context,
       barrierDismissible: false,
@@ -8118,6 +8072,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             ],
           ),
     ).then((accept) async {
+      _callInviteDialogOpen = false;
       if (!mounted) return;
       if (accept == true) await _acceptCallInvite();
     });
@@ -8192,6 +8147,10 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   /// Accept button in chat. No dedup — every invite sends a fresh comment.
   void _inviteViewerToCall(String? userId, [String? name, String? image]) {
     if (userId == null || userId.isEmpty) return;
+    if (_isSelfId(userId) || userId == widget.liveUser.userId) {
+      Fluttertoast.showToast(msg: 'You cannot invite yourself');
+      return;
+    }
     if (_coHosts.length >= 9) {
       Fluttertoast.showToast(msg: 'Room is full (max 9 guests)');
       return;
@@ -12755,15 +12714,20 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     final cachedIdentity =
         _coHostProfileCache[tileUserId] ??
         _coHostProfileCache[_coHostUidToUserId[agoraUid]];
+    String? notGuest(dynamic v) {
+      final s = v?.toString().trim() ?? '';
+      return (s.isEmpty || s.toLowerCase() == 'guest') ? null : s;
+    }
+
     final coHostName =
-        coHost['name']?.toString() ??
-        coHost['userName']?.toString() ??
-        coHost['username']?.toString() ??
-        coHost['nickName']?.toString() ??
-        nestedUser['name']?.toString() ??
-        nestedUser['userName']?.toString() ??
-        nestedUser['username']?.toString() ??
-        cachedIdentity?['name'] ??
+        notGuest(coHost['name']) ??
+        notGuest(coHost['userName']) ??
+        notGuest(coHost['username']) ??
+        notGuest(coHost['nickName']) ??
+        notGuest(nestedUser['name']) ??
+        notGuest(nestedUser['userName']) ??
+        notGuest(nestedUser['username']) ??
+        notGuest(cachedIdentity?['name']) ??
         'Guest';
     final coHostImage =
         coHost['image']?.toString() ??
@@ -12792,21 +12756,21 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         coHost['guestUserId']?.toString() ??
         nestedUser['_id']?.toString() ??
         nestedUser['userId']?.toString() ??
+        _coHostUidToUserId[agoraUid] ??
         '';
     if (coHostUserId.isNotEmpty) {
       _coHostBoxKeys[coHostUserId] ??= GlobalKey();
     }
+    void openCard() => _openCoHostProfileCard(
+      coHost,
+      fallbackUserId: coHostUserId,
+      name: coHostName,
+      image: coHostImage,
+      avatarFrame: coHostFrame,
+      isVip: isVip,
+    );
     return GestureDetector(
-      onTap:
-          () => _showLiveProfileCard(
-            userId: coHostUserId,
-            name: coHostName,
-            image: coHostImage,
-            avatarFrame: coHostFrame,
-            isVIP: isVip,
-            vipBadgeUrl: coHost['vipBadgeUrl']?.toString(),
-            country: coHost['country']?.toString(),
-          ),
+      onTap: openCard,
       onLongPress: widget.isHost ? () => _openCoHostOptions(coHost) : null,
       child: Container(
         key: coHostUserId.isNotEmpty ? _coHostBoxKeys[coHostUserId] : null,
@@ -12939,6 +12903,19 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                   ),
                 ),
               ),
+            // Topmost transparent tap layer — the Agora platform view claims
+            // gestures inside its bounds on Android, so taps on the video
+            // never reached the outer GestureDetector and the profile card
+            // stayed closed.
+            Positioned.fill(
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: openCard,
+                onLongPress:
+                    widget.isHost ? () => _openCoHostOptions(coHost) : null,
+                child: const SizedBox.shrink(),
+              ),
+            ),
           ],
         ),
       ),
@@ -15101,6 +15078,58 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                   },
                 ),
       ),
+    );
+  }
+
+  /// Opens a co-host tile's profile card. When the roster broadcast hadn't
+  /// carried the guest's userId yet (orphan tile keyed only by agoraUid),
+  /// the first tap kicks off identity hydration and retries once instead of
+  /// silently doing nothing.
+  void _openCoHostProfileCard(
+    Map<String, dynamic> coHost, {
+    required String fallbackUserId,
+    required String name,
+    String? image,
+    String? avatarFrame,
+    bool isVip = false,
+    int attempt = 0,
+  }) {
+    var userId = fallbackUserId;
+    if (userId.isEmpty) {
+      _ensureCoHostIdentity(coHost);
+      final uid = _coHostAgoraUid(coHost);
+      userId =
+          (coHost['userId'] ?? coHost['guestUserId'])?.toString() ??
+          _coHostUidToUserId[uid] ??
+          '';
+    }
+    if (userId.isEmpty) {
+      if (attempt == 0) {
+        Fluttertoast.showToast(msg: 'Loading guest info…');
+        Future.delayed(const Duration(milliseconds: 700), () {
+          if (mounted) {
+            _openCoHostProfileCard(
+              coHost,
+              fallbackUserId: '',
+              name: name,
+              image: image,
+              avatarFrame: avatarFrame,
+              isVip: isVip,
+              attempt: 1,
+            );
+          }
+        });
+      }
+      return;
+    }
+    _showLiveProfileCard(
+      userId: userId,
+      name: name,
+      image: image,
+      avatarFrame: avatarFrame,
+      isVIP: isVip,
+      vipBadgeUrl: coHost['vipBadgeUrl']?.toString(),
+      country: coHost['country']?.toString(),
     );
   }
 
