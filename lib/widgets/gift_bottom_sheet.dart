@@ -568,6 +568,10 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
   }
 
   Future<void> _sendGift() async {
+    // Re-entry guard — `enabled` on the send button is captured at build
+    // time, so a fast double-tap slips a second call in before the rebuild
+    // disables it and charges the wallet twice.
+    if (_sending) return;
     if (_selectedGift == null) {
       Fluttertoast.showToast(msg: 'Select a gift first');
       return;
@@ -791,12 +795,6 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
                 'message': _messageCtrl.text.trim(),
             };
             SocketService.instance.emit(eventName, giftData);
-            if (eventName != Const.eventGift) {
-              SocketService.instance.emit(Const.eventGift, {
-                ...giftData,
-                'sourceEvent': eventName,
-              });
-            }
             if (isLuckyGift) {
               // Keep the last payload so the room can offer the native
               // combo re-send button (showComboButton) for this gift.
@@ -810,70 +808,6 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
           }
         }
 
-        // Room-wide comment broadcast carrying the gift payload — mirrors
-        // the audio room's commentAudio emit. Some backends do not fan out
-        // liveUserGift/normalUserGift/gift to every socket, but `comment`
-        // events DO reach all viewers — this guarantees the animation +
-        // gift comment play on every screen, not just the receiver's.
-        if (widget.type == 'live' && receiverIds.isNotEmpty) {
-          try {
-            final firstSeat =
-                widget.seats
-                    .where((s) => s.userId == receiverIds.first)
-                    .firstOrNull;
-            SocketService.instance.emit(Const.eventComment, {
-              'comment': '',
-              'type': 'gift',
-              'isGift': true,
-              'liveStreamingId': widget.liveStreamingId ?? '',
-              'liveUserId': roomHostId,
-              'userId': session.userId,
-              'name': session.userName,
-              'image': senderImage,
-              'userName': session.userName,
-              'userImage': senderImage,
-              'senderUserId': session.userId,
-              'senderId': session.userId,
-              'senderName': session.userName,
-              'senderImage': senderImage,
-              'giftId': _selectedGift!.id ?? '',
-              'giftName': _selectedGift!.name ?? 'Gift',
-              'giftImage': _selectedGift!.image ?? '',
-              'svgaImage': _selectedGift!.svgaImage ?? '',
-              'giftType': giftType,
-              'gift': giftJsonString,
-              'count': _count,
-              'giftCount': _count,
-              'coin': _selectedGift!.coin * _count,
-              'totalCoins': totalCost.toInt(),
-              'receiverUserId': receiverIds.first,
-              'receiverUserName': firstSeat?.name ?? 'Host',
-              'receiverImage': VideoUtil.getFullImageUrl(
-                firstSeat?.image ?? '',
-              ),
-              'receiverUserIds': receiverIds,
-              'timeStamp': timeStamp,
-              'isVIP': senderUser?.isVIP ?? false,
-              'avatarFrame':
-                  senderUser?.avatarFrameImage ??
-                  senderUser?.vipDetails?.profileFrameUrl ??
-                  '',
-              if (senderUser?.vipDetails != null)
-                'vipDetails': senderUser!.vipDetails!.toJson(),
-              'user': {
-                'userId': session.userId,
-                'name': session.userName,
-                'image': session.userImage,
-                'isVIP': senderUser?.isVIP ?? false,
-                'isVip': senderUser?.isVIP ?? false,
-              },
-              if (giftCategoryId != null) 'category': giftCategoryId,
-              if (giftCategoryName != null) 'categoryName': giftCategoryName,
-            });
-          } catch (e) {
-            Log.e(_tag, 'gift comment broadcast failed', e);
-          }
-        }
       }
 
       // Play the gift send chime (native SVGA gifts carry their own audio;
@@ -1038,12 +972,6 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
           if (isExpBoostEnabled) 'isExpBoostEnabled': true,
         };
         SocketService.instance.emit(eventName, giftData);
-        if (eventName != Const.eventGift) {
-          SocketService.instance.emit(Const.eventGift, {
-            ...giftData,
-            'sourceEvent': eventName,
-          });
-        }
         if (isLuckyGift) {
           // Keep the last payload so the room can offer the native combo
           // re-send button (showComboButton) for this gift.
@@ -1057,64 +985,6 @@ class _GiftBottomSheetState extends State<GiftBottomSheet> {
       }
     }
 
-    // Room-wide comment broadcast carrying the gift payload (see _sendGift —
-    // `comment` reaches every socket even when gift events are not fanned out).
-    if (widget.type == 'live' && recipients.isNotEmpty) {
-      try {
-        final ridList = recipients.toList();
-        final firstSeat =
-            widget.seats.where((s) => s.userId == ridList.first).firstOrNull;
-        SocketService.instance.emit(Const.eventComment, {
-          'comment': '',
-          'type': 'gift',
-          'isGift': true,
-          'liveStreamingId': widget.liveStreamingId ?? '',
-          'liveUserId': roomHostId,
-          'userId': session.userId,
-          'name': session.userName,
-          'image': senderImage,
-          'userName': session.userName,
-          'userImage': senderImage,
-          'senderUserId': session.userId,
-          'senderId': session.userId,
-          'senderName': session.userName,
-          'senderImage': senderImage,
-          'giftId': _selectedGift!.id ?? '',
-          'giftName': _selectedGift!.name ?? 'Gift',
-          'giftImage': _selectedGift!.image ?? '',
-          'svgaImage': _selectedGift!.svgaImage ?? '',
-          'giftType': giftType,
-          'gift': giftJsonString,
-          'count': 1,
-          'giftCount': 1,
-          'coin': _selectedGift!.coin,
-          'totalCoins': totalCost.toInt(),
-          'receiverUserId': ridList.first,
-          'receiverUserName': firstSeat?.name ?? 'Host',
-          'receiverImage': VideoUtil.getFullImageUrl(firstSeat?.image ?? ''),
-          'receiverUserIds': ridList,
-          'timeStamp': timeStamp,
-          'isVIP': session.getUser()?.isVIP ?? false,
-          'avatarFrame':
-              session.getUser()?.avatarFrameImage ??
-              session.getUser()?.vipDetails?.profileFrameUrl ??
-              '',
-          if (session.getUser()?.vipDetails != null)
-            'vipDetails': session.getUser()!.vipDetails!.toJson(),
-          'user': {
-            'userId': session.userId,
-            'name': session.userName,
-            'image': session.userImage,
-            'isVIP': session.getUser()?.isVIP ?? false,
-            'isVip': session.getUser()?.isVIP ?? false,
-          },
-          if (giftCategoryId != null) 'category': giftCategoryId,
-          if (giftCategoryName != null) 'categoryName': giftCategoryName,
-        });
-      } catch (e) {
-        Log.e(_tag, 'rapid gift comment broadcast failed', e);
-      }
-    }
 
     // Streak send chime (throttled inside GiftSoundService so rapid sends
     // don't machine-gun the audio).

@@ -85,12 +85,6 @@ class _MyStoreScreenState extends State<MyStoreScreen>
       _warmOwnedMedia(items);
       if (provider.myItemsError != null) {
         setState(() => _loadError = provider.myItemsError);
-      } else if (items.isEmpty) {
-        setState(
-          () =>
-              _loadError =
-                  'No items yet. Buy from Store or earn via CP/Friend/VIP/Levels.',
-        );
       }
     } catch (e, s) {
       Log.e(_tag, 'load failed', e, s);

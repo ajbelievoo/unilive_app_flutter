@@ -701,7 +701,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       if (config.pkId?.isNotEmpty != true || config.durationSeconds <= 0) {
         return;
       }
-      _config = config;
+      _config = _mergePkConfig(config);
       _pkRoundCount = config.pkRoundCount;
       _battleDuration = config.durationSeconds;
       _isPunishmentRound = false;
@@ -733,11 +733,27 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
         return;
       }
 
-      // Normal PK end
-      final winner =
+      // Normal PK end — `winner` in the payload is the winner's details
+      // OBJECT (not a number), so resolve the int result from isWinner /
+      // winnerHostId / the embedded doc's pkConfig.
+      var winner =
           (map['isWinner'] as num?)?.toInt() ??
           (map['winner'] as num?)?.toInt() ??
-          0;
+          -1;
+      final winnerHostId = map['winnerHostId']?.toString() ?? '';
+      if (winner < 0 && winnerHostId.isNotEmpty) {
+        if (winnerHostId == _config.host1Id) {
+          winner = 2;
+        } else if (winnerHostId == _config.host2Id) {
+          winner = 1;
+        }
+      }
+      if (winner < 0) {
+        final doc = map['data'] is Map ? map['data'] as Map : const {};
+        final docWinner = (doc['pkConfig'] as Map?)?['isWinner'];
+        if (docWinner is num) winner = docWinner.toInt();
+      }
+      if (winner < 0) winner = 0;
       final canRematch = map['canRematch'] == true;
       final h1Score = _resolvePkScores(map, local: false).host1;
       final h2Score = _resolvePkScores(map, local: false).host2;
@@ -841,7 +857,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       if (configMap is Map<String, dynamic> && mounted) {
         // Full state reset
         _resetPkState();
-        _config = PkConfig.fromJson(configMap);
+        _config = _mergePkConfig(PkConfig.fromJson(configMap));
         _pkRoundCount = _config.pkRoundCount;
         _battleDuration = _config.durationSeconds;
         setState(() {
@@ -864,7 +880,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       final configMap = map?['data'] ?? map?['pkConfig'];
       if (configMap is Map<String, dynamic> && mounted) {
         _resetPkState();
-        _config = PkConfig.fromJson(configMap);
+        _config = _mergePkConfig(PkConfig.fromJson(configMap));
         _pkRoundCount = _config.pkRoundCount;
         _battleDuration = _config.durationSeconds;
         setState(() {
@@ -1010,11 +1026,31 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
     _cancelCommentSub = SocketService.instance.on(Const.eventComment, (data) {
       final map = data is Map ? Map<String, dynamic>.from(data) : null;
       if (map == null) return;
-      final commentRoomId = map['liveStreamingId']?.toString() ?? '';
-      if (commentRoomId.isNotEmpty &&
-          commentRoomId != _config.host1LiveId &&
-          commentRoomId != _config.host2LiveId) {
+      // Only real chat messages render here — gift relays, pkScore sync
+      // comments and join/leave/system notices ride this same channel with an
+      // empty `comment` and used to surface as ghost bubbles.
+      final mapType = map['type']?.toString() ?? '';
+      if (mapType.isNotEmpty && mapType != 'comment' && mapType != 'text') {
         return;
+      }
+      final comment = PkComment.fromJson(map);
+      if ((comment.message ?? '').trim().isEmpty) return;
+      // Room ids arrive in several conventions (LiveUser._id vs
+      // liveStreamingId vs liveUserMongoId) — accept the event when any
+      // carried room field matches a known PK room id.
+      final roomIds = _pkRoomIds;
+      if (roomIds.isNotEmpty) {
+        final carried =
+            <String>[
+                  map['liveStreamingId'],
+                  map['roomId'],
+                  map['liveRoom'],
+                  map['liveUserMongoId'],
+                ]
+                .map((v) => v?.toString() ?? '')
+                .where((v) => v.isNotEmpty)
+                .toList();
+        if (carried.isNotEmpty && !carried.any(roomIds.contains)) return;
       }
       // Skip our own echo — _sendComment already rendered it locally.
       final senderId =
@@ -1026,13 +1062,94 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
           senderId == (SessionManager.instance?.userId ?? '')) {
         return;
       }
-      final comment = PkComment.fromJson(map);
       _comments.add(comment);
       while (_comments.length > _maxComments) {
         _comments.removeFirst();
       }
       setState(() {});
     });
+  }
+
+
+  /// Sparse config payloads (pkStart/pkRematch often carry only pkId +
+  /// duration) must not wipe host ids/liveIds — merge field-wise, preferring
+  /// the incoming non-empty value and falling back to the existing one.
+  PkConfig _mergePkConfig(PkConfig incoming) {
+    final old = _config;
+    String? pick(String? a, String? b) =>
+        (a != null && a.isNotEmpty) ? a : b;
+    int pickInt(int a, int b) => a != 0 ? a : b;
+    return PkConfig(
+      pkId: pick(incoming.pkId, old.pkId),
+      host1Id: pick(incoming.host1Id, old.host1Id),
+      host2Id: pick(incoming.host2Id, old.host2Id),
+      host1LiveId: pick(incoming.host1LiveId, old.host1LiveId),
+      host2LiveId: pick(incoming.host2LiveId, old.host2LiveId),
+      host1Name: pick(incoming.host1Name, old.host1Name),
+      host2Name: pick(incoming.host2Name, old.host2Name),
+      host1Image: pick(incoming.host1Image, old.host1Image),
+      host2Image: pick(incoming.host2Image, old.host2Image),
+      host1Channel: pick(incoming.host1Channel, old.host1Channel),
+      host2Channel: pick(incoming.host2Channel, old.host2Channel),
+      host1AgoraUID: pickInt(incoming.host1AgoraUID, old.host1AgoraUID),
+      host2AgoraUID: pickInt(incoming.host2AgoraUID, old.host2AgoraUID),
+      host1Token: pick(incoming.host1Token, old.host1Token),
+      host2Token: pick(incoming.host2Token, old.host2Token),
+      host1SrcToken: pick(incoming.host1SrcToken, old.host1SrcToken),
+      host2SrcToken: pick(incoming.host2SrcToken, old.host2SrcToken),
+      host1RelayDestToken:
+          pick(incoming.host1RelayDestToken, old.host1RelayDestToken),
+      host2RelayDestToken:
+          pick(incoming.host2RelayDestToken, old.host2RelayDestToken),
+      host1Details: incoming.host1Details ?? old.host1Details,
+      host2Details: incoming.host2Details ?? old.host2Details,
+      localRank: incoming.localRank,
+      remoteRank: incoming.remoteRank,
+      isWinner: incoming.isWinner,
+      durationSeconds: incoming.durationSeconds > 0
+          ? incoming.durationSeconds
+          : old.durationSeconds,
+      topGifters: incoming.topGifters.isNotEmpty
+          ? incoming.topGifters
+          : old.topGifters,
+      punishmentRound: incoming.punishmentRound,
+      isPunishmentActive: incoming.isPunishmentActive,
+      canRematch: incoming.canRematch,
+      pkRoundCount: incoming.pkRoundCount > 0
+          ? incoming.pkRoundCount
+          : old.pkRoundCount,
+      punishmentDurationSeconds: incoming.punishmentDurationSeconds > 0
+          ? incoming.punishmentDurationSeconds
+          : old.punishmentDurationSeconds,
+      pkPunishmentEndTime: incoming.pkPunishmentEndTime > 0
+          ? incoming.pkPunishmentEndTime
+          : old.pkPunishmentEndTime,
+      isDisconnect: incoming.isDisconnect,
+      pkAutoStartBlocked: incoming.pkAutoStartBlocked,
+      showStartButton: incoming.showStartButton,
+      punishmentTask: pick(incoming.punishmentTask, old.punishmentTask),
+    );
+  }
+
+  /// Every room key this battle may be addressed by — the two PK liveIds plus
+  /// all id variants of the watched room. Socket emits reach the socket under
+  /// whichever convention the sender used; the comment filter accepts any of
+  /// them instead of dropping everything when the conventions disagree.
+  Set<String> get _pkRoomIds {
+    final ids = <String>{};
+    void add(String? v) {
+      if (v != null && v.isNotEmpty) ids.add(v);
+    }
+
+    add(_config.host1LiveId);
+    add(_config.host2LiveId);
+    add(widget.room?.liveStreamingId);
+    add(widget.room?.id);
+    add(widget.room?.liveRoomId);
+    add(widget.room?.channel);
+    add(_config.host1Channel);
+    add(_config.host2Channel);
+    return ids;
   }
 
   /// Resolves server host1/host2 scores. Payloads are session-canonical
@@ -1111,7 +1228,15 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
             myLiveId.isNotEmpty &&
             giftRoomId != myLiveId);
 
-    if (!isPartnerRoomGift) {
+    final myUserId = SessionManager.instance?.userId ?? '';
+    final echoSenderId =
+        map['senderId']?.toString() ??
+        map['senderUserId']?.toString() ??
+        map['userId']?.toString() ??
+        '';
+    // Sender's own echo — onGiftSent already played the animation locally.
+    final isOwnEcho = echoSenderId.isNotEmpty && echoSenderId == myUserId;
+    if (!isPartnerRoomGift && !isOwnEcho) {
       final event = GiftQueueController.fromSocketData(data);
       if (event != null) {
         // Full-screen big overlay for SVGA / video / high-coin gifts, small
@@ -1160,11 +1285,9 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
               ? (isPartnerRoomGift ? _host2Gifters : _host1Gifters)
               : (isPartnerRoomGift ? _host1Gifters : _host2Gifters);
       _updateGifterMap(gifters, senderId, senderName, senderImage, giftAmount);
-      // Optimistic score — only for LOCAL gifts (pkScoreUpdate carries the
-      // partner room's authoritative total; adding the relay here doubled it).
-      if (!isPartnerRoomGift) {
-        _host1Score += giftAmount; // _host1Score = local-left side
-      }
+      // No optimistic score add — pkScoreUpdate is the single authoritative
+      // source and the backend emits it BEFORE this room's gift broadcast, so
+      // adding here displayed every gift twice (+10 SET, then +10 add).
       setState(() {});
     } catch (e) {
       Log.e(_tag, 'processGift error', e);

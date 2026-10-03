@@ -3758,9 +3758,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
               _tag,
               'PK_GIFT eventGift receiverId=$receiverId myLiveId=${widget.liveUser.liveRoomId} myUserId=${widget.liveUser.userId} isHost1=$_pkIsHost1 host1Id=${_pkConfig?.host1Id} host2Id=${_pkConfig?.host2Id} roomId=${map['liveStreamingId']} receiverIdField=${map['receiverId']} receiverNameField=${map['receiverName']}',
             );
-            if (receiverId != null && receiverId.isNotEmpty) {
-              _applyOptimisticPkGiftScore(receiverId, event.coin * event.count);
-            }
+            // No optimistic score add — the backend emits pkScoreUpdate
+            // BEFORE the room's gift broadcast, so adding here showed every
+            // gift's score twice. The SET is the single source of truth.
           }
           {
             final isBig = _bigGiftController.isBigGift(event);
@@ -3912,9 +3912,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             _tag,
             'PK_GIFT eventLiveUserGift receiverId=$receiverId myLiveId=${widget.liveUser.liveRoomId} myUserId=${widget.liveUser.userId} isHost1=$_pkIsHost1 host1Id=${_pkConfig?.host1Id} host2Id=${_pkConfig?.host2Id} roomId=${map?['liveStreamingId']} receiverIdField=${map?['receiverId']} receiverNameField=${map?['receiverName']}',
           );
-          if (receiverId != null && receiverId.isNotEmpty) {
-            _applyOptimisticPkGiftScore(receiverId, event.coin * event.count);
-          }
+          // No optimistic score add — the backend emits pkScoreUpdate
+          // BEFORE the room's gift broadcast, so adding here showed every
+          // gift's score twice. The SET is the single source of truth.
         }
         // Fly gift to co-host box if receiver is a co-host (not host).
         if (map != null) _maybeFlyGiftToCoHost(map, event);
@@ -4054,9 +4054,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
               _tag,
               'PK_GIFT eventGift receiverId=$receiverId myLiveId=${widget.liveUser.liveRoomId} myUserId=${widget.liveUser.userId} isHost1=$_pkIsHost1 host1Id=${_pkConfig?.host1Id} host2Id=${_pkConfig?.host2Id} roomId=${map['liveStreamingId']} receiverIdField=${map['receiverId']} receiverNameField=${map['receiverName']}',
             );
-            if (receiverId != null && receiverId.isNotEmpty) {
-              _applyOptimisticPkGiftScore(receiverId, event.coin * event.count);
-            }
+            // No optimistic score add — the backend emits pkScoreUpdate
+            // BEFORE the room's gift broadcast, so adding here showed every
+            // gift's score twice. The SET is the single source of truth.
           }
           // Fly gift to co-host box if receiver is a co-host (not host).
           _maybeFlyGiftToCoHost(map, event);
@@ -9551,21 +9551,6 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     final resend = Map<String, dynamic>.from(payload);
     resend['timeStamp'] = DateTime.now().millisecondsSinceEpoch;
     SocketService.instance.emit(event, resend);
-    if (event != Const.eventGift) {
-      SocketService.instance.emit(Const.eventGift, {
-        ...resend,
-        'sourceEvent': event,
-      });
-    }
-    // Room-wide fallback: the backend does not reliably fan the original
-    // gift event out to every room socket, but `comment` IS broadcast.
-    // Every client renders the re-sent gift from this event.
-    SocketService.instance.emit(Const.eventComment, {
-      ...resend,
-      'comment': '',
-      'type': 'gift',
-      'isGift': true,
-    });
     // Deduct locally — matches the sheet's send-path bookkeeping; the
     // backend pushes the authoritative balance via userCoinUpdate.
     if (coin > 0 && user != null) {
