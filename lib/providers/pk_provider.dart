@@ -65,106 +65,126 @@ class PkProvider extends ChangeNotifier {
   String? _guestId;
 
   void subscribePkEvents() {
-    _unsubscribers.add(_socket.on(Const.eventPkScoreUpdate, (data) {
-      final d = data is Map ? Map<String, dynamic>.from(data) : null;
-      if (d == null) return;
-      final h1Score = (d['host1Score'] as num?)?.toInt();
-      final h2Score = (d['host2Score'] as num?)?.toInt();
-      if (h1Score != null) _host1Score = h1Score;
-      if (h2Score != null) _host2Score = h2Score;
-      notifyListeners();
-    }));
-
-    _unsubscribers.add(_socket.on(Const.eventPkPunishmentRound, (data) {
-      final d = data is Map ? Map<String, dynamic>.from(data) : null;
-      if (d == null) return;
-      final showStartButton = d['showStartButton'] == true;
-      if (showStartButton) {
-        _isPunishmentRound = false;
-        _punishmentTask = null;
+    _unsubscribers.add(
+      _socket.on(Const.eventPkScoreUpdate, (data) {
+        final d = data is Map ? Map<String, dynamic>.from(data) : null;
+        if (d == null) return;
+        final h1Score = (d['host1Score'] as num?)?.toInt();
+        final h2Score = (d['host2Score'] as num?)?.toInt();
+        if (h1Score != null) _host1Score = h1Score;
+        if (h2Score != null) _host2Score = h2Score;
         notifyListeners();
-        return;
-      }
-      final isPunishment = d['isPKPunishment'] == true || d['isPunishmentActive'] == true;
-      final punishmentDuration = (d['pkPunishmentDuration'] as num?)?.toInt() ?? 0;
-      if (isPunishment && punishmentDuration > 0) {
-        _isPunishmentRound = true;
-        _punishmentDuration = punishmentDuration;
-        _punishmentTask = PkPunishmentTasks.getTaskForRound(_pkRoundCount);
-        _secondsRemaining = punishmentDuration;
-        _startCountdown();
-      } else {
-        _isPunishmentRound = false;
-      }
-      notifyListeners();
-    }));
+      }),
+    );
 
-    _unsubscribers.add(_socket.on(Const.eventPkEnd, (data) {
-      _countdownTimer?.cancel();
-      final d = data is Map ? Map<String, dynamic>.from(data) : null;
-      if (d == null) return;
+    _unsubscribers.add(
+      _socket.on(Const.eventPkPunishmentRound, (data) {
+        final d = data is Map ? Map<String, dynamic>.from(data) : null;
+        if (d == null) return;
+        final showStartButton = d['showStartButton'] == true;
+        if (showStartButton) {
+          _isPunishmentRound = false;
+          _punishmentTask = null;
+          notifyListeners();
+          return;
+        }
+        final isPunishment =
+            d['isPKPunishment'] == true || d['isPunishmentActive'] == true;
+        final punishmentDuration =
+            (d['pkPunishmentDuration'] as num?)?.toInt() ?? 0;
+        if (isPunishment && punishmentDuration > 0) {
+          _isPunishmentRound = true;
+          _punishmentDuration = punishmentDuration;
+          _punishmentTask = PkPunishmentTasks.getTaskForRound(_pkRoundCount);
+          _secondsRemaining = punishmentDuration;
+          _startCountdown();
+        } else {
+          _isPunishmentRound = false;
+        }
+        notifyListeners();
+      }),
+    );
 
-      // Check disconnect
-      final isDisconnect = d['isDisconnect'] == true || d['disconnect'] == true;
-      if (isDisconnect) {
+    _unsubscribers.add(
+      _socket.on(Const.eventPkEnd, (data) {
+        _countdownTimer?.cancel();
+        final d = data is Map ? Map<String, dynamic>.from(data) : null;
+        if (d == null) return;
+
+        // Check disconnect
+        final isDisconnect =
+            d['isDisconnect'] == true || d['disconnect'] == true;
+        if (isDisconnect) {
+          _pkAutoStartBlocked = true;
+          _isPunishmentRound = false;
+          _host1Score = 0;
+          _host2Score = 0;
+          _pkRoundCount = 0;
+          notifyListeners();
+          return;
+        }
+
+        final winner =
+            (d['isWinner'] as num?)?.toInt() ??
+            (d['winner'] as num?)?.toInt() ??
+            0;
+        final canRematch = d['canRematch'] == true;
+        final h1Score = (d['host1Score'] as num?)?.toInt() ?? _host1Score;
+        final h2Score = (d['host2Score'] as num?)?.toInt() ?? _host2Score;
+
+        // Record round result
+        _roundHistory.add(
+          PkRoundResult(
+            roundNumber: _pkRoundCount,
+            host1Score: h1Score,
+            host2Score: h2Score,
+            winner: winner,
+          ),
+        );
+
+        _host1Score = h1Score;
+        _host2Score = h2Score;
+        _canRematch = canRematch;
         _pkAutoStartBlocked = true;
         _isPunishmentRound = false;
-        _host1Score = 0;
-        _host2Score = 0;
-        _pkRoundCount = 0;
         notifyListeners();
-        return;
-      }
+      }),
+    );
 
-      final winner = (d['isWinner'] as num?)?.toInt() ??
-          (d['winner'] as num?)?.toInt() ?? 0;
-      final canRematch = d['canRematch'] == true;
-      final h1Score = (d['host1Score'] as num?)?.toInt() ?? _host1Score;
-      final h2Score = (d['host2Score'] as num?)?.toInt() ?? _host2Score;
+    _unsubscribers.add(
+      _socket.on(Const.eventPkStart, (data) {
+        final d = data is Map ? Map<String, dynamic>.from(data) : null;
+        final duration =
+            (d?['durationSeconds'] as num?)?.toInt() ??
+            (d?['duration'] as num?)?.toInt();
+        if (duration != null && duration > 0) {
+          _battleDuration = duration;
+          _secondsRemaining = duration;
+          _isPunishmentRound = false;
+          _startCountdown();
+        }
+        notifyListeners();
+      }),
+    );
 
-      // Record round result
-      _roundHistory.add(PkRoundResult(
-        roundNumber: _pkRoundCount,
-        host1Score: h1Score,
-        host2Score: h2Score,
-        winner: winner,
-      ));
+    _unsubscribers.add(
+      _socket.on(Const.eventPkRematch, (data) {
+        _reset();
+        notifyListeners();
+      }),
+    );
 
-      _host1Score = h1Score;
-      _host2Score = h2Score;
-      _canRematch = canRematch;
-      _pkAutoStartBlocked = true;
-      _isPunishmentRound = false;
-      notifyListeners();
-    }));
-
-    _unsubscribers.add(_socket.on(Const.eventPkStart, (data) {
-      final d = data is Map ? Map<String, dynamic>.from(data) : null;
-      final duration = (d?['durationSeconds'] as num?)?.toInt() ??
-          (d?['duration'] as num?)?.toInt();
-      if (duration != null && duration > 0) {
-        _battleDuration = duration;
-        _secondsRemaining = duration;
-        _isPunishmentRound = false;
-        _startCountdown();
-      }
-      notifyListeners();
-    }));
-
-    _unsubscribers.add(_socket.on(Const.eventPkRematch, (data) {
-      _reset();
-      notifyListeners();
-    }));
-
-    _unsubscribers.add(_socket.on(Const.eventPkVote, (data) {
-      final d = data is Map ? Map<String, dynamic>.from(data) : null;
-      if (d == null) return;
-      final v1 = (d['pkVoteHost1'] as num?)?.toInt();
-      final v2 = (d['pkVoteHost2'] as num?)?.toInt();
-      if (v1 != null) _pkVoteHost1 = v1;
-      if (v2 != null) _pkVoteHost2 = v2;
-      notifyListeners();
-    }));
+    _unsubscribers.add(
+      _socket.on(Const.eventPkVote, (data) {
+        final d = data is Map ? Map<String, dynamic>.from(data) : null;
+        if (d == null) return;
+        final v1 = (d['pkVoteHost1'] as num?)?.toInt();
+        final v2 = (d['pkVoteHost2'] as num?)?.toInt();
+        if (v1 != null) _pkVoteHost1 = v1;
+        if (v2 != null) _pkVoteHost2 = v2;
+        notifyListeners();
+      }),
+    );
   }
 
   void initPk({
@@ -227,13 +247,14 @@ class PkProvider extends ChangeNotifier {
     return _host2Score;
   }
 
-  Future<void> updateScore({
-    required String userId,
-    required int score,
-  }) async {
+  Future<void> updateScore({required String userId, required int score}) async {
     if (_pkId == null) return;
     try {
-      await ApiService.updatePkScore(pkId: _pkId!, userId: userId, score: score);
+      await ApiService.updatePkScore(
+        pkId: _pkId!,
+        userId: userId,
+        score: score,
+      );
     } catch (e, s) {
       Log.e(_tag, 'updateScore failed', e, s);
     }
@@ -254,7 +275,16 @@ class PkProvider extends ChangeNotifier {
 
   void requestRematch() {
     if (_canRematch) {
-      _socket.emit(Const.eventPkRematch, {'pkId': _pkId});
+      // Server needs the host pair — it forwards a pkRequest (accept/
+      // decline) to the OPPONENT. A bare pkId early-returns server-side.
+      _socket.emit(Const.eventPkRematch, {
+        'pkId': _pkId,
+        'host1Id': _hostId,
+        'host2Id': _guestId,
+        'initiator': _hostId,
+        'userId': _hostId,
+        'isRematch': true,
+      });
       _reset();
       notifyListeners();
     }
