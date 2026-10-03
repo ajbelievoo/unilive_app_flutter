@@ -892,6 +892,10 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   VideoViewController? _pkRemoteController;
   Timer? _pkTimer;
   Timer? _pkScoreBroadcastTimer;
+  // Marks a pending PK score nudge — the periodic emitter only fires the
+  // (DB-touching) server emit when a local gift actually changed our view of
+  // the score, instead of every 2s unconditionally.
+  bool _pkScoreDirty = false;
   int _pkSecondsLeft = 0;
   int _pkWinner = -1;
   int _pkRoundCount = 0;
@@ -3624,8 +3628,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         // Update the PK score only; never render the comment/animation/banner
         // or pollute this room's gift wall/stats with another room's gift.
         if (map['pkPartnerRoom'] == true) {
+          // `coin` is already the TOTAL for this send — never multiply by
+          // count again (the broadcast's count is a display field).
           final pCoin = (map['coin'] as num?)?.toInt() ?? 0;
-          final pCount = (map['count'] as num?)?.toInt() ?? 1;
           // Opponent's top-gifter circles — the relay carries the real sender.
           _upsertPkGifter(
             _pkIsHost1 ? _pkGiftersHost2 : _pkGiftersHost1,
@@ -3636,14 +3641,11 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                   map['userImage']?.toString() ??
                   '',
             ),
-            pCoin * pCount,
+            pCoin,
           );
-          if (widget.isHost) {
-            final receiverId = _resolvePkGiftReceiver(map);
-            if (receiverId != null && receiverId.isNotEmpty && pCoin > 0) {
-              _applyOptimisticPkGiftScore(receiverId, pCoin * pCount);
-            }
-          }
+          // NO local score add — the server's pkScoreUpdate SETs the
+          // authoritative total; adding the relayed gift on top showed the
+          // opponent's score doubled on this screen.
           return;
         }
         final giftImage =
@@ -5453,15 +5455,18 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         }
         final myId =
             widget.liveUser.userId ?? context.read<SessionManager>().userId;
+        // Explicit target fields first — in a host2-initiated rematch the
+        // canonical host2Id/host2LiveId identify the INITIATOR, not the
+        // recipient, so checking them first drops the request.
         final targetId =
-            (map['host2Id'] ?? map['targetHostId'] ?? map['toUserId'])
+            (map['toUserId'] ?? map['targetHostId'] ?? map['host2Id'])
                 ?.toString() ??
             '';
         final targetRoomId =
-            (map['host2LiveId'] ??
-                    map['host2LiveStreamingId'] ??
+            (map['toRoomId'] ??
                     map['targetRoomId'] ??
-                    map['toRoomId'])
+                    map['host2LiveId'] ??
+                    map['host2LiveStreamingId'])
                 ?.toString();
         final myKnownIds = <String>{
           myId,
@@ -9672,8 +9677,20 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                             final res = await ApiService.getRandomPkMatch(
                               myUserId,
                             );
+                            final candidates =
+                                res.users
+                                    .where(
+                                      (u) =>
+                                          u.liveUserId != myUserId &&
+                                          (u.liveUserId ?? '').isNotEmpty,
+                                    )
+                                    .toList();
                             final match =
-                                res.users.isNotEmpty ? res.users.first : null;
+                                candidates.isNotEmpty
+                                    ? candidates[Random().nextInt(
+                                      candidates.length,
+                                    )]
+                                    : null;
                             if (match == null) {
                               Fluttertoast.showToast(
                                 msg: 'No random match found',
@@ -10520,6 +10537,12 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           timer.cancel();
           return;
         }
+        // Only emit when a local gift actually changed the score — the
+        // server handler does a DB find + broadcast on every emit, so an
+        // unconditional 2s heartbeat per host was a steady DB/load storm
+        // (and visibly slowed rooms during PK).
+        if (!_pkScoreDirty) return;
+        _pkScoreDirty = false;
         _emitPkScoreUpdate();
       });
     }
@@ -10816,6 +10839,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       } else {
         _pkScoreHost2 += coins;
       }
+      _pkScoreDirty = true;
     });
     // Nudge the backend to rebroadcast the authoritative score — the socket
     // handler recomputes from LiveUser docs, so client-sent values are

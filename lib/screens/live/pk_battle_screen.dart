@@ -27,10 +27,13 @@ import '../../services/socket_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/format_utils.dart';
 import '../../utils/log.dart';
+import '../../utils/media_utils.dart';
 import '../../utils/vip_privilege_helper.dart';
 import '../../widgets/big_gift_overlay.dart';
 import '../../widgets/gift_bottom_sheet.dart';
 import '../../widgets/gift_overlay.dart';
+import '../../widgets/live_moderation_sheet.dart' show showInboxChatListSheet;
+import 'package:share_plus/share_plus.dart';
 import '../../widgets/pk_battle_sheets.dart';
 import '../../widgets/pk_hand_raise_sheet.dart';
 import '../../widgets/user_avatar.dart';
@@ -137,6 +140,14 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
   Function? _cancelNormalGiftSub;
   Function? _cancelLiveUserGiftSub;
   Function? _cancelCommentSub;
+  Function? _cancelViewSub;
+
+  // Host-style top bar state — viewer roster for the avatar strip + count,
+  // and the local user's follow state for the watched host.
+  final List<({String userId, String image, String? frame})> _viewerStrips = [];
+  int _pkViewerCount = 0;
+  bool _isFollowingHost = false;
+  bool _followChecked = false;
 
   // --- Audience video binding ---
   /// Channel this device actually joined (resolved from the room payload for
@@ -194,6 +205,18 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
     _initAgora();
     _listenSocketEvents();
     _startCountdown();
+    _loadFollowState();
+  }
+
+  void _loadFollowState() {
+    if (widget.isHost || _followChecked) return;
+    _followChecked = true;
+    final myId = SessionManager.instance?.userId ?? '';
+    final hostId = _leftHostId ?? '';
+    if (myId.isEmpty || hostId.isEmpty) return;
+    ApiService.checkFollowStatus(myId, hostId).then((isFollowing) {
+      if (mounted) setState(() => _isFollowingHost = isFollowing);
+    });
   }
 
   @override
@@ -213,6 +236,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
     _cancelNormalGiftSub?.call();
     _cancelLiveUserGiftSub?.call();
     _cancelCommentSub?.call();
+    _cancelViewSub?.call();
     _emitViewerRoomLeave();
     _leaveAndRelease();
     super.dispose();
@@ -899,6 +923,47 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       },
     );
 
+    // Viewer roster for the host-style top bar — the `view` event carries an
+    // authoritative roster as arg0 List when requestFullList was emitted.
+    _cancelViewSub = SocketService.instance.on(Const.eventView, (data) {
+      if (!mounted) return;
+      try {
+        if (data is! List || data.isEmpty) return;
+        final first = data.first;
+        if (first is! List) return; // single-object join/leave payload
+        final localHostId = widget.isHost1 ? _config.host1Id : _config.host2Id;
+        final strips = <({String userId, String image, String? frame})>[];
+        final seen = <String>{};
+        for (final item in first) {
+          if (item is! Map) continue;
+          final m = Map<String, dynamic>.from(item);
+          final uid =
+              m['userId']?.toString() ??
+              m['_id']?.toString() ??
+              m['id']?.toString() ??
+              '';
+          if (uid.isEmpty || uid == localHostId || seen.contains(uid)) continue;
+          seen.add(uid);
+          strips.add((
+            userId: uid,
+            image: VideoUtil.getFullImageUrl(
+              m['image']?.toString() ?? m['userImage']?.toString() ?? '',
+            ),
+            frame:
+                m['avatarFrameImage']?.toString() ?? m['frameUrl']?.toString(),
+          ));
+        }
+        setState(() {
+          _viewerStrips
+            ..clear()
+            ..addAll(strips);
+          _pkViewerCount = strips.length;
+        });
+      } catch (e) {
+        Log.e(_tag, 'view roster parse failed', e);
+      }
+    });
+
     // PK Vote — _pkVoteHost1/2 are CANONICAL counters (the display side
     // mirrors by isHost1) so session-global counts map straight through.
     _cancelPkVote = SocketService.instance.on(Const.eventPkVote, (data) {
@@ -949,6 +1014,16 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       if (commentRoomId.isNotEmpty &&
           commentRoomId != _config.host1LiveId &&
           commentRoomId != _config.host2LiveId) {
+        return;
+      }
+      // Skip our own echo — _sendComment already rendered it locally.
+      final senderId =
+          map['userId']?.toString() ??
+          map['user']?['userId']?.toString() ??
+          map['user']?['_id']?.toString() ??
+          '';
+      if (senderId.isNotEmpty &&
+          senderId == (SessionManager.instance?.userId ?? '')) {
         return;
       }
       final comment = PkComment.fromJson(map);
@@ -1378,16 +1453,24 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
   Future<void> _requestRematch() async {
     try {
       // Emit rematch via socket
+      final myId = context.read<SessionManager>().userId;
       final payload = <String, dynamic>{
         Const.pkHost1Id: _config.host1Id,
         Const.pkHost2Id: _config.host2Id,
+        'host1LiveId': _config.host1LiveId,
+        'host2LiveId': _config.host2LiveId,
+        // The server routes the rematch request to the OTHER host — without
+        // this it defaulted to host1 and sent the request back to the
+        // initiator whenever host2 asked for the rematch.
+        'initiator': myId,
+        'userId': myId,
+        'isRematch': true,
+        'durationSeconds': _config.durationSeconds,
       };
       SocketService.instance.emit(Const.eventPkRematch, payload);
-      // Also call API to create new PK
-      await ApiService.createPkCall(
-        hostId: _config.host1Id ?? '',
-        guestId: _config.host2Id ?? '',
-      );
+      // The session is created only when the opponent accepts (their
+      // pkAnswer runs the normal create/start pipeline) — creating it here
+      // started a battle the other host never agreed to.
       Fluttertoast.showToast(msg: 'Rematch request sent');
     } catch (e) {
       Log.e(_tag, 'rematch failed', e);
@@ -1719,143 +1802,495 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
             ? room!.name!.trim()
             : _leftHostName;
     final hostImage = room?.image ?? _leftHostImage;
+    final hostFrame = room?.avatarFrameImage;
     final hostPublicId =
         (room?.uniqueId?.trim().isNotEmpty ?? false)
             ? room!.uniqueId!
             : (room?.userId ?? '');
-    final viewers = room?.view ?? 0;
-    final beans = room?.rCoin ?? 0;
     // Live elapsed timer — `time` is the unix seconds the stream started.
-    String elapsed = '';
+    String elapsed = '00:00';
     final startSec = room?.time ?? 0;
     if (startSec > 0) {
       final diffMs = DateTime.now().millisecondsSinceEpoch - startSec * 1000;
       if (diffMs > 0) {
         final d = Duration(milliseconds: diffMs);
         elapsed =
-            '${d.inMinutes.toString().padLeft(2, '0')}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
+            '${d.inHours.toString().padLeft(2, '0')}:${(d.inMinutes % 60).toString().padLeft(2, '0')}:${(d.inSeconds % 60).toString().padLeft(2, '0')}';
       }
     }
+    final beans = room?.rCoin ?? 0;
+    final viewerCount = _pkViewerCount > 0 ? _pkViewerCount : (room?.view ?? 0);
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 4, 4, 2),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            icon: const Icon(
-              Icons.arrow_back_ios_new,
-              color: Colors.white,
-              size: 20,
-            ),
-            onPressed: () => _showExitDialog(),
-          ),
-          UserAvatar(imageUrl: hostImage, size: 34),
-          const SizedBox(width: 7),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
             children: [
-              SizedBox(
-                width: 96,
-                child: Text(
-                  hostName,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
-                  ),
+              IconButton(
+                visualDensity: VisualDensity.compact,
+                icon: const Icon(
+                  Icons.arrow_back_ios_new,
+                  color: Colors.white,
+                  size: 18,
+                ),
+                onPressed: () => _showExitDialog(),
+              ),
+              // Host info pill — identical layout to the live-room top bar
+              // (avatar + name + ID + follow/subscribe for viewers).
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.3),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    GestureDetector(
+                      onTap:
+                          () => _showProfileSheet(
+                            userId: widget.room?.liveUserId ?? '',
+                            name: hostName,
+                            image: hostImage,
+                          ),
+                      child: UserAvatar(
+                        imageUrl: hostImage,
+                        frameUrl: hostFrame,
+                        size: 34,
+                        isVIP: room?.isVIP ?? false,
+                      ),
+                    ),
+                    const SizedBox(width: 7),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            ConstrainedBox(
+                              constraints: const BoxConstraints(maxWidth: 92),
+                              child: Text(
+                                hostName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                            if (!widget.isHost) ...[
+                              const SizedBox(width: 4),
+                              if (!_isFollowingHost)
+                                GestureDetector(
+                                  onTap: _followHost,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF7E3FF2),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.add,
+                                      color: Colors.white,
+                                      size: 10,
+                                    ),
+                                  ),
+                                ),
+                              Padding(
+                                padding: const EdgeInsets.only(left: 4),
+                                child: GestureDetector(
+                                  onTap: _openSubscriptionSheet,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(2),
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFFFFD700),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.subscriptions,
+                                      color: Colors.white,
+                                      size: 10,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'ID: $hostPublicId',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: Colors.white70,
+                            fontSize: 10,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
-              if (hostPublicId.isNotEmpty)
-                Text(
-                  'ID: $hostPublicId',
-                  style: const TextStyle(color: Colors.white70, fontSize: 11),
+              const Spacer(),
+              // Viewer avatar strip — last joiners, like the live room.
+              if (_viewerStrips.isNotEmpty)
+                SizedBox(
+                  width: (_viewerStrips.length.clamp(0, 4) * 24.0).clamp(
+                    24.0,
+                    96.0,
+                  ),
+                  height: 24,
+                  child: ListView.builder(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: _viewerStrips.length.clamp(0, 20),
+                    itemBuilder:
+                        (_, i) => Padding(
+                          padding: const EdgeInsets.only(right: 2),
+                          child: UserAvatar(
+                            imageUrl: _viewerStrips[i].image,
+                            frameUrl: _viewerStrips[i].frame,
+                            size: 24,
+                          ),
+                        ),
+                  ),
                 ),
+              const SizedBox(width: 4),
+              // Eye counter.
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.45),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.visibility,
+                      color: Colors.white70,
+                      size: 12,
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      formatCount(viewerCount),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 4),
+              _topAction(Icons.share, _openShareSheet),
+              const SizedBox(width: 4),
+              _topAction(Icons.more_vert, _showRoomOptionsMenu),
             ],
           ),
-          const SizedBox(width: 8),
-          if (elapsed.isNotEmpty)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-              decoration: BoxDecoration(
-                color: const Color(0xFF0E7A3D),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.timer, color: Colors.white, size: 12),
-                  const SizedBox(width: 3),
-                  Text(
-                    elapsed,
-                    style: const TextStyle(color: Colors.white, fontSize: 11),
-                  ),
-                ],
-              ),
-            ),
-          const SizedBox(width: 6),
-          if (beans > 0)
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
-              decoration: BoxDecoration(
-                color: const Color(0xFFB8860B).withValues(alpha: 0.85),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.diamond, color: Colors.white, size: 12),
-                  const SizedBox(width: 3),
-                  Text(
-                    formatCount(beans),
-                    style: const TextStyle(color: Colors.white, fontSize: 11),
-                  ),
-                ],
-              ),
-            ),
-          const Spacer(),
-          const Icon(
-            Icons.visibility_outlined,
-            color: Colors.white70,
-            size: 15,
-          ),
-          const SizedBox(width: 3),
-          Text(
-            formatCount(viewers),
-            style: const TextStyle(color: Colors.white70, fontSize: 12),
-          ),
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.history, color: Colors.white, size: 20),
-            tooltip: 'Round History',
-            onPressed:
-                () => showPkRoundHistorySheet(
-                  context,
-                  history: _roundHistory,
-                  host1Name: _config.host1Name ?? 'Host 1',
-                  host2Name: _config.host2Name ?? 'Host 2',
+          const SizedBox(height: 6),
+          // Second row — live timer + host beans, same pills as the live room.
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(10),
                 ),
-          ),
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.emoji_events, color: Colors.amber, size: 20),
-            tooltip: 'Fans Ranking',
-            onPressed: () {
-              final hostId = widget.isHost1 ? _config.host1Id : _config.host2Id;
-              if (hostId != null && hostId.isNotEmpty) {
-                showFansRankingSheet(context, hostUserId: hostId);
-              }
-            },
-          ),
-          IconButton(
-            visualDensity: VisualDensity.compact,
-            icon: const Icon(Icons.more_vert, color: Colors.white, size: 20),
-            onPressed: () => _showExitDialog(),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.signal_cellular_4_bar,
+                      size: 12,
+                      color: Colors.green,
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      elapsed,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 5),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.4),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.diamond,
+                      size: 13,
+                      color: Color(0xFFFFD54F),
+                    ),
+                    const SizedBox(width: 3),
+                    Text(
+                      formatCount(beans),
+                      style: const TextStyle(
+                        color: Color(0xFFFFD54F),
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
+    );
+  }
+
+  Widget _topAction(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        width: 30,
+        height: 30,
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.45),
+          shape: BoxShape.circle,
+        ),
+        child: Icon(icon, color: Colors.white, size: 16),
+      ),
+    );
+  }
+
+  void _followHost() {
+    if (widget.isHost) return;
+    final session = context.read<SessionManager>();
+    final targetId = widget.room?.liveUserId ?? _leftHostId;
+    if (targetId == null || targetId.isEmpty) return;
+    setState(() => _isFollowingHost = !_isFollowingHost);
+    ApiService.followUnfollow({
+          'userId': session.userId,
+          'followingUserId': targetId,
+        })
+        .then((_) {
+          if (mounted) {
+            Fluttertoast.showToast(
+              msg: _isFollowingHost ? 'Following $hostNameNow' : 'Unfollowed',
+            );
+          }
+        })
+        .catchError((e) {
+          if (mounted) setState(() => _isFollowingHost = !_isFollowingHost);
+          Log.e(_tag, 'followHost failed', e);
+        });
+  }
+
+  String get hostNameNow =>
+      (widget.room?.name?.trim().isNotEmpty ?? false)
+          ? widget.room!.name!.trim()
+          : _leftHostName;
+
+  void _openSubscriptionSheet() {
+    // Reuse the room subscription sheet where available — falls back to the
+    // profile sheet which carries the subscribe CTA.
+    _showProfileSheet(
+      userId: widget.room?.liveUserId ?? '',
+      name: hostNameNow,
+      image: widget.room?.image ?? _leftHostImage,
+    );
+  }
+
+  void _openShareSheet() {
+    final liveId =
+        widget.room?.liveRoomId ??
+        (widget.isHost1 ? _config.host1LiveId : _config.host2LiveId) ??
+        '';
+    final shareLink = '${Const.baseUrl}live/$liveId';
+    showInboxChatListSheet(
+      context,
+      shareLink: shareLink,
+      onSelected: (chatUser) {
+        Fluttertoast.showToast(msg: 'Shared with ${chatUser.name ?? 'user'}');
+      },
+    );
+  }
+
+  void _openNativeSharePk() {
+    final liveId =
+        widget.room?.liveRoomId ??
+        (widget.isHost1 ? _config.host1LiveId : _config.host2LiveId) ??
+        '';
+    Share.share(
+      'Come join $hostNameNow\'s PK battle! ${Const.baseUrl}live/$liveId',
+    );
+  }
+
+  void _showRoomOptionsMenu() {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder:
+          (ctx) => Container(
+            decoration: BoxDecoration(
+              color: AppTheme.themed(ctx, 0xFF1A1A2E),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    'Room Options',
+                    style: TextStyle(
+                      color: AppTheme.fg(ctx),
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                Divider(color: AppTheme.hairline(ctx)),
+                if (!widget.isHost)
+                  ListTile(
+                    leading: const Icon(Icons.pan_tool_alt, color: Colors.blue),
+                    title: Text(
+                      'Raise Hand',
+                      style: TextStyle(color: AppTheme.fg(ctx)),
+                    ),
+                    onTap: () {
+                      Navigator.pop(ctx);
+                      _showHandRaise();
+                    },
+                  ),
+                ListTile(
+                  leading: const Icon(Icons.share, color: Colors.green),
+                  title: Text(
+                    'Share to other apps',
+                    style: TextStyle(color: AppTheme.fg(ctx)),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _openNativeSharePk();
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.flag, color: Colors.orange),
+                  title: Text(
+                    'Report',
+                    style: TextStyle(color: AppTheme.fg(ctx)),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    Fluttertoast.showToast(msg: 'Report submitted');
+                  },
+                ),
+                ListTile(
+                  leading: const Icon(Icons.logout, color: Colors.red),
+                  title: Text(
+                    widget.isHost ? 'Leave PK' : 'Leave Room',
+                    style: TextStyle(color: AppTheme.fg(ctx)),
+                  ),
+                  onTap: () {
+                    Navigator.pop(ctx);
+                    _showExitDialog();
+                  },
+                ),
+                SizedBox(height: MediaQuery.of(ctx).viewPadding.bottom + 8),
+              ],
+            ),
+          ),
+    );
+  }
+
+  /// Watched host's userId — used for follow/profile lookups.
+  String? get _leftHostId =>
+      widget.room?.liveUserId ??
+      (widget.isHost1 ? _config.host1Id : _config.host2Id);
+
+  /// Light profile sheet — if a full viewer-profile card exists in the app
+  /// we can swap this for it; for now it keeps the tap working.
+  void _showProfileSheet({
+    required String? userId,
+    required String name,
+    required String? image,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder:
+          (ctx) => Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: AppTheme.themed(ctx, 0xFF1A1A2E),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(20),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                UserAvatar(
+                  imageUrl: image,
+                  size: 72,
+                  isVIP: widget.room?.isVIP ?? false,
+                ),
+                const SizedBox(height: 10),
+                Text(
+                  name,
+                  style: TextStyle(
+                    color: AppTheme.fg(ctx),
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'ID: ${widget.room?.uniqueId ?? userId ?? ''}',
+                  style: TextStyle(color: AppTheme.fg(ctx, 0.6), fontSize: 12),
+                ),
+                const SizedBox(height: 16),
+                if (!widget.isHost)
+                  ElevatedButton.icon(
+                    onPressed: () {
+                      Navigator.pop(ctx);
+                      _followHost();
+                    },
+                    icon: Icon(
+                      _isFollowingHost ? Icons.check : Icons.add,
+                      size: 16,
+                    ),
+                    label: Text(_isFollowingHost ? 'Following' : 'Follow'),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF7E3FF2),
+                      foregroundColor: Colors.white,
+                    ),
+                  ),
+                SizedBox(height: MediaQuery.of(ctx).viewPadding.bottom + 4),
+              ],
+            ),
+          ),
     );
   }
 
@@ -2109,80 +2544,230 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
   // --- Score bars (Host1 perspective: left=Host1, right=Host2) ---
   Widget _buildScoreBars() {
     final total = (_host1Score + _host2Score).clamp(1, 999999999);
-    final host1Percent = (_host1Score / total * 100).clamp(0.0, 100.0);
-    // For Host2 perspective, mirror the bars
+    final host1Percent = (_host1Score / total);
+    // Local perspective — left is always the watched/local host.
     final leftScore = widget.isHost1 ? _host1Score : _host2Score;
     final rightScore = widget.isHost1 ? _host2Score : _host1Score;
-    final leftPercent = widget.isHost1 ? host1Percent : (100.0 - host1Percent);
+    final leftVotes = widget.isHost1 ? _pkVoteHost1 : _pkVoteHost2;
+    final rightVotes = widget.isHost1 ? _pkVoteHost2 : _pkVoteHost1;
+    final leftPct = widget.isHost1 ? host1Percent : (1.0 - host1Percent);
+    final mins = (_secondsRemaining ~/ 60).toString().padLeft(2, '0');
+    final secs = (_secondsRemaining % 60).toString().padLeft(2, '0');
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(12, 8, 12, 4),
-      padding: const EdgeInsets.fromLTRB(10, 7, 10, 8),
-      decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.4),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.white12),
-      ),
+    // Identical to the host live-room PK bar (gradient fill, gold VS badge,
+    // score·vote counts and center timer pill) — audiences see the same.
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
       child: Column(
         children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '$leftScore',
-                  style: const TextStyle(
-                    color: Color(0xFF35A7FF),
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
-                  ),
-                ),
-              ),
-              Image.asset(
-                'assets/images/live_pk_blue.webp',
-                width: 38,
-                height: 24,
-              ),
-              Expanded(
-                child: Text(
-                  '$rightScore',
-                  textAlign: TextAlign.end,
-                  style: const TextStyle(
-                    color: Color(0xFFFF4F87),
-                    fontWeight: FontWeight.w900,
-                    fontSize: 18,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 5),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(8),
-            child: LinearProgressIndicator(
-              value: leftPercent / 100,
-              minHeight: 9,
-              backgroundColor: const Color(0xFFFF2D75),
-              valueColor: const AlwaysStoppedAnimation<Color>(
-                Color(0xFF168CFF),
-              ),
-            ),
-          ),
-          if (_pkVoteHost1 > 0 || _pkVoteHost2 > 0) ...[
-            const SizedBox(height: 4),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          SizedBox(
+            height: 18,
+            child: Stack(
+              alignment: Alignment.center,
               children: [
-                Text(
-                  '${widget.isHost1 ? _pkVoteHost1 : _pkVoteHost2} votes',
-                  style: const TextStyle(color: Colors.white54, fontSize: 11),
+                Container(
+                  height: 14,
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(7),
+                    border: Border.all(color: Colors.white54, width: 1),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF7E3FF2).withValues(alpha: 0.6),
+                        blurRadius: 12,
+                        spreadRadius: -4,
+                        offset: const Offset(-6, 0),
+                      ),
+                      BoxShadow(
+                        color: const Color(0xFFFF2D55).withValues(alpha: 0.6),
+                        blurRadius: 12,
+                        spreadRadius: -4,
+                        offset: const Offset(6, 0),
+                      ),
+                      const BoxShadow(color: Colors.black38, blurRadius: 6),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: LayoutBuilder(
+                      builder: (context, constraints) {
+                        final leftWidth =
+                            (constraints.maxWidth * leftPct)
+                                .clamp(2.0, constraints.maxWidth - 2.0)
+                                .toDouble();
+                        return Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            const DecoratedBox(
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                  colors: [
+                                    Color(0xFFFF2D55),
+                                    Color(0xFFFF6B6B),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            AnimatedPositioned(
+                              duration: const Duration(milliseconds: 400),
+                              curve: Curves.easeOutCubic,
+                              left: 0,
+                              top: 0,
+                              bottom: 0,
+                              width: leftWidth,
+                              child: const DecoratedBox(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                    colors: [
+                                      Color(0xFF9B5FF5),
+                                      Color(0xFF7E3FF2),
+                                      Color(0xFF5A74FF),
+                                      Color(0xFF9B5FF5),
+                                    ],
+                                    stops: [0.0, 0.35, 0.7, 1.0],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            AnimatedPositioned(
+                              duration: const Duration(milliseconds: 400),
+                              curve: Curves.easeOutCubic,
+                              left: leftWidth - 2,
+                              top: 0,
+                              bottom: 0,
+                              child: Container(
+                                width: 5,
+                                decoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    colors: [
+                                      Colors.white,
+                                      Color(0xFFFFD700),
+                                      Colors.white,
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(2.5),
+                                  boxShadow: const [
+                                    BoxShadow(
+                                      color: Colors.white,
+                                      blurRadius: 8,
+                                      spreadRadius: 1,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
+                  ),
                 ),
-                Text(
-                  '${widget.isHost1 ? _pkVoteHost2 : _pkVoteHost1} votes',
-                  style: const TextStyle(color: Colors.white54, fontSize: 11),
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFFFFD700), Color(0xFFFF8C00)],
+                    ),
+                    border: Border.all(color: Colors.white, width: 2.5),
+                    boxShadow: const [
+                      BoxShadow(color: Colors.black45, blurRadius: 8),
+                      BoxShadow(
+                        color: Colors.orange,
+                        blurRadius: 10,
+                        spreadRadius: 1,
+                      ),
+                    ],
+                  ),
+                  child: const Center(
+                    child: Text(
+                      'VS',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        shadows: [Shadow(color: Colors.black45, blurRadius: 2)],
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
-          ],
+          ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.how_to_vote,
+                    color: Color(0xFF7E3FF2),
+                    size: 12,
+                  ),
+                  const SizedBox(width: 2),
+                  Text(
+                    '$leftScore · $leftVotes',
+                    style: const TextStyle(
+                      color: Color(0xFF7E3FF2),
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 2,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.black.withValues(alpha: 0.6),
+                  borderRadius: BorderRadius.circular(10),
+                  border: Border.all(color: Colors.white24, width: 1),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(Icons.timer, color: Colors.white70, size: 12),
+                    const SizedBox(width: 3),
+                    Text(
+                      '$mins:$secs',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$rightScore · $rightVotes',
+                    style: const TextStyle(
+                      color: Color(0xFFE94057),
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  const SizedBox(width: 2),
+                  const Icon(
+                    Icons.how_to_vote,
+                    color: Color(0xFFE94057),
+                    size: 12,
+                  ),
+                ],
+              ),
+            ],
+          ),
         ],
       ),
     );
@@ -2438,82 +3023,75 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
 
   // --- Bottom controls ---
   Widget _buildBottomControls() {
+    // Same single-pill action bar as the live room — the mic slot is replaced
+    // by the PK vote button for audiences (host bottom bar keeps its mic).
     return Container(
-      padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+      margin: const EdgeInsets.fromLTRB(8, 6, 8, 8),
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 6),
       decoration: BoxDecoration(
-        color: Colors.black.withValues(alpha: 0.45),
-        border: const Border(top: BorderSide(color: Colors.white12)),
+        color: Colors.black.withValues(alpha: 0.4),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.35),
+            blurRadius: 10,
+            offset: const Offset(0, -2),
+          ),
+        ],
       ),
       child: Row(
         children: [
           Expanded(
-            child: InkWell(
+            child: GestureDetector(
               onTap: _showCommentInput,
-              borderRadius: BorderRadius.circular(22),
               child: Container(
-                height: 42,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(22),
-                ),
-                child: const Row(
-                  children: [
-                    Icon(
-                      Icons.chat_bubble_outline,
-                      color: Colors.white70,
-                      size: 18,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Say hi...',
-                      style: TextStyle(color: Colors.white60, fontSize: 13),
-                    ),
-                  ],
+                height: 40,
+                margin: const EdgeInsets.symmetric(horizontal: 6),
+                alignment: Alignment.centerLeft,
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: Text(
+                  'Send a message...',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.5),
+                    fontSize: 13,
+                  ),
                 ),
               ),
             ),
           ),
-          const SizedBox(width: 7),
-          _pkActionButton(Icons.how_to_vote, _showVoteSidePicker),
-          const SizedBox(width: 7),
-          _pkActionButton(Icons.celebration, _sendCheer),
-          const SizedBox(width: 7),
-          _pkActionButton(
+          _pkBottomAction(Icons.message, Colors.white, _showCommentInput),
+          _pkBottomAction(Icons.how_to_vote, Colors.white, _showVoteSidePicker),
+          _pkBottomAction(
             null,
+            Colors.white,
             _showGiftSheet,
             imageAsset: 'assets/gift/icon_gift.png',
             bg: const Color(0xFFFFEA00),
           ),
-          const SizedBox(width: 7),
-          _pkActionButton(Icons.pan_tool_alt, _showHandRaise),
-          if (widget.isHost) ...[
-            const SizedBox(width: 7),
-            _pkActionButton(Icons.close, _showExitDialog, color: Colors.red),
-          ],
+          _pkBottomAction(Icons.favorite, const Color(0xFFFF4081), _sendCheer),
+          _pkBottomAction(Icons.menu, Colors.white, _showRoomOptionsMenu),
         ],
       ),
     );
   }
 
-  Widget _pkActionButton(
+  Widget _pkBottomAction(
     IconData? icon,
+    Color color,
     VoidCallback onTap, {
-    Color color = Colors.white,
-    String? imageAsset,
     Color? bg,
+    String? imageAsset,
   }) {
-    return InkWell(
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTap: onTap,
-      customBorder: const CircleBorder(),
       child: Container(
-        width: 42,
-        height: 42,
+        width: 40,
+        height: 40,
+        margin: const EdgeInsets.symmetric(horizontal: 2),
         decoration: BoxDecoration(
-          color:
-              bg ?? color.withValues(alpha: color == Colors.white ? 0.15 : 0.8),
+          color: bg ?? Colors.white.withValues(alpha: 0.12),
           shape: BoxShape.circle,
-          border: Border.all(color: Colors.white12),
           boxShadow:
               imageAsset != null
                   ? [
@@ -2526,12 +3104,18 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
                       offset: const Offset(0, 2),
                     ),
                   ]
-                  : null,
+                  : [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.25),
+                      blurRadius: 6,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
         ),
         child:
             imageAsset != null
-                ? Image.asset(imageAsset, width: 16, height: 16)
-                : Icon(icon, color: Colors.white, size: 20),
+                ? Image.asset(imageAsset, width: 20, height: 20)
+                : Icon(icon, color: color, size: 22),
       ),
     );
   }
@@ -2603,54 +3187,132 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
   }
 
   // --- Comment input ---
+  void _sendComment(String text) {
+    if (text.trim().isEmpty) return;
+    final session = context.read<SessionManager>();
+    final user = session.getUser();
+    // Comment goes to THIS room — the old code hardcoded host1's
+    // liveStreamingId, so a host2-side viewer's messages landed in the
+    // opponent's room and the bare payload rendered as a ghost comment.
+    final liveId =
+        widget.room?.liveRoomId ??
+        (widget.isHost1 ? _config.host1LiveId : _config.host2LiveId) ??
+        '';
+    if (liveId.isEmpty) return;
+    final hostUserId =
+        widget.room?.liveUserId ??
+        (widget.isHost1 ? _config.host1Id : _config.host2Id) ??
+        '';
+    SocketService.instance.emit(Const.eventComment, {
+      'comment': text,
+      'liveStreamingId': liveId,
+      'liveUserId': hostUserId,
+      'liveUserMongoId': widget.room?.id ?? '',
+      'userId': session.userId,
+      'name': user?.name ?? session.userName,
+      'image': user?.image ?? session.userImage,
+      'country': user?.country ?? '',
+      'isVIP': user?.isVIP ?? false,
+      'isVip': user?.isVIP ?? false,
+      'vipLevel': user?.vipStatus?.currentLevel ?? 0,
+      'familyName': user?.familyName ?? user?.family,
+      'familyBadgeUrl': user?.familyBadgeUrl,
+      'avatarFrame':
+          user?.avatarFrameImage ?? user?.vipDetails?.profileFrameUrl ?? '',
+      if (user?.vipDetails != null) 'vipDetails': user!.vipDetails!.toJson(),
+      'user': {
+        'userId': session.userId,
+        'name': user?.name ?? session.userName,
+        'image': user?.image ?? session.userImage,
+        'isVIP': user?.isVIP ?? false,
+      },
+      'type': 'comment',
+    });
+    // Render locally right away — socket echo is not guaranteed.
+    setState(
+      () => _comments.add(
+        PkComment(
+          userId: session.userId,
+          name: user?.name ?? session.userName,
+          message: text,
+          image: VideoUtil.getFullImageUrl(user?.image ?? session.userImage),
+        ),
+      ),
+    );
+    while (_comments.length > _maxComments) {
+      _comments.removeFirst();
+    }
+  }
+
   void _showCommentInput() {
     final controller = TextEditingController();
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      backgroundColor: Colors.transparent,
       builder:
           (ctx) => Padding(
             padding: EdgeInsets.only(
               bottom: MediaQuery.of(ctx).viewInsets.bottom,
             ),
             child: Container(
+              decoration: BoxDecoration(
+                color: AppTheme.themed(ctx, 0xFF1A1A2E),
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(20),
+                ),
+              ),
               padding: const EdgeInsets.all(16),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: controller,
-                      decoration: const InputDecoration(
-                        hintText: 'Send a comment...',
-                        border: OutlineInputBorder(),
+              child: SafeArea(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: TextField(
+                        controller: controller,
+                        autofocus: true,
+                        style: TextStyle(color: AppTheme.fg(ctx)),
+                        decoration: InputDecoration(
+                          hintText: 'Send a message...',
+                          hintStyle: TextStyle(color: AppTheme.fg(ctx, 0.5)),
+                          filled: true,
+                          fillColor: Colors.white.withValues(alpha: 0.08),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(22),
+                            borderSide: BorderSide.none,
+                          ),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 10,
+                          ),
+                        ),
+                        onSubmitted: (value) {
+                          _sendComment(value);
+                          Navigator.pop(ctx);
+                        },
                       ),
-                      onSubmitted: (value) {
-                        if (value.isNotEmpty) {
-                          SocketService.instance.emit(Const.eventComment, {
-                            'liveStreamingId': _config.host1LiveId,
-                            'message': value,
-                            'type': 'comment',
-                          });
-                        }
+                    ),
+                    const SizedBox(width: 8),
+                    GestureDetector(
+                      onTap: () {
+                        _sendComment(controller.text);
                         Navigator.pop(ctx);
                       },
+                      child: Container(
+                        width: 42,
+                        height: 42,
+                        decoration: const BoxDecoration(
+                          color: Color(0xFF7E3FF2),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(
+                          Icons.send,
+                          color: Colors.white,
+                          size: 20,
+                        ),
+                      ),
                     ),
-                  ),
-                  const SizedBox(width: 8),
-                  IconButton(
-                    icon: const Icon(Icons.send, color: Colors.purple),
-                    onPressed: () {
-                      if (controller.text.isNotEmpty) {
-                        SocketService.instance.emit(Const.eventComment, {
-                          'liveStreamingId': _config.host1LiveId,
-                          'message': controller.text,
-                          'type': 'comment',
-                        });
-                      }
-                      Navigator.pop(ctx);
-                    },
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ),

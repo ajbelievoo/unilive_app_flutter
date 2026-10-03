@@ -5509,9 +5509,42 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
             onDone: () => Navigator.pop(context),
             onRematch: () {
               Navigator.pop(context);
-              SocketService.instance.emit(Const.eventPkContinuePk, {
-                'liveStreamingId': _liveId,
+              // Route through pkRematch so the OPPONENT gets an
+              // accept/decline request (pkContinuePk restarted both rooms
+              // instantly without consent). Ids are captured eagerly —
+              // _pkBattle is cleared below.
+              final h1 =
+                  map['host1Id']?.toString() ?? _pkBattle?.room1?.hostId ?? '';
+              final h2 =
+                  map['host2Id']?.toString() ??
+                  _pkBattle?.room2?.hostId ??
+                  widget.roomUser.liveUserId ??
+                  context.read<SessionManager>().userId;
+              final h1Live =
+                  map['host1LiveId']?.toString() ??
+                  map['host1LiveStreamingId']?.toString() ??
+                  _pkBattle?.room1?.roomId ??
+                  '';
+              final h2Live =
+                  map['host2LiveId']?.toString() ??
+                  map['host2LiveStreamingId']?.toString() ??
+                  _pkBattle?.room2?.roomId ??
+                  _liveId;
+              final myId =
+                  widget.roomUser.liveUserId ??
+                  context.read<SessionManager>().userId;
+              SocketService.instance.emit(Const.eventPkRematch, {
+                'host1Id': h1,
+                'host2Id': h2,
+                'host1LiveId': h1Live,
+                'host2LiveId': h2Live,
+                'initiator': myId,
+                'userId': myId,
+                'isRematch': true,
+                'audio': true,
+                'durationSeconds': _pkBattle?.remainingSeconds ?? 300,
               });
+              Fluttertoast.showToast(msg: 'Rematch request sent');
             },
           );
         }
@@ -5566,12 +5599,14 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         if (map == null || !mounted || !_amHost) return;
         final myId =
             widget.roomUser.liveUserId ?? context.read<SessionManager>().userId;
+        // Explicit target fields first — a host2-initiated rematch keeps
+        // host2Id = initiator, so it must not be read as the recipient.
         final targetId =
-            (map['host2Id'] ?? map['targetHostId'] ?? map['toUserId'])
+            (map['toUserId'] ?? map['targetHostId'] ?? map['host2Id'])
                 ?.toString() ??
             '';
         final targetRoomId =
-            (map['host2LiveId'] ?? map['targetRoomId'] ?? map['toRoomId'])
+            (map['toRoomId'] ?? map['targetRoomId'] ?? map['host2LiveId'])
                 ?.toString();
         if (targetId.isNotEmpty && targetId != myId) return;
         final myRoomIds = <String>{

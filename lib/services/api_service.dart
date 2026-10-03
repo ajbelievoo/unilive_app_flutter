@@ -778,9 +778,11 @@ class ApiService {
   static Future<LiveUserRoot> getRandomPkMatch(String userId) async {
     final r = await _dio.get(
       '/liveUser',
+      // 'PkRequest' = video hosts currently live and NOT already in a PK —
+      // 'PK' is not a valid list type on this endpoint and always failed.
       queryParameters: {
         'userId': userId,
-        'type': 'PK',
+        'type': 'PkRequest',
         'start': 0,
         'limit': 20,
       },

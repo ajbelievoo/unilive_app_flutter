@@ -754,8 +754,22 @@ class GiftQueueController {
         'animationUrl=$animationAssetUrl',
       );
 
-      final coin = toInt(value('coin') ?? map['giftCoin']);
+      // `coin` in the payload is the send TOTAL on the main/multi-count
+      // paths (emitters send `unit × count` at top level) while quick/emoji
+      // paths send the unit with `count: 1`. Normalizing to the UNIT price
+      // here keeps every downstream `coin * count` consumer correct:
+      //   total-path: (unit×count)/count = unit → unit×count = total
+      //   unit-path : unit/1 = unit          → unit×1     = total
+      // No emit path sends unit-with-count>1, so the division is lossless.
+      final rawCoin = toInt(value('coin') ?? map['giftCoin']);
       final count = toInt(value('count') ?? map['giftCount'], 1);
+      // Only divide when the number came from the TOP-LEVEL `coin` (which is
+      // a send total on multi-count emits). A nested `gift.coin` is already
+      // the unit price and must not be divided again.
+      final coin =
+          (map['coin'] != null && count > 0)
+              ? (rawCoin / count).round()
+              : rawCoin;
 
       // Sender/receiver fields may sit at top level or inside nested
       // user/sender/receiver objects depending on the broadcast channel.
