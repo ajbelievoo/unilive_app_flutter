@@ -960,7 +960,7 @@ class _PkWaitingSheetState extends State<_PkWaitingSheet>
 // ---------------------------------------------------------------------------
 // PK Result sheet — ported from native `PkResultBottomSheet`
 // ---------------------------------------------------------------------------
-void showPkResultSheet(
+Future<void> showPkResultSheet(
   BuildContext context, {
   required int winner,
   required bool isHost1,
@@ -971,6 +971,10 @@ void showPkResultSheet(
   required bool canRematch,
   required VoidCallback onDone,
   required VoidCallback onRematch,
+  // Optional — when set, the plain "Close" button also runs it after
+  // dismissing the sheet (audience leaves the dead PK screen instead of
+  // sitting on a frozen battle view).
+  VoidCallback? onClose,
 }) {
   String title;
   String emoji;
@@ -987,7 +991,7 @@ void showPkResultSheet(
     emoji = '\u{1F91D}';
   }
 
-  showModalBottomSheet(
+  return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     isDismissible: false,
@@ -1058,7 +1062,10 @@ void showPkResultSheet(
                 children: [
                   Expanded(
                     child: OutlinedButton(
-                      onPressed: () => Navigator.pop(ctx),
+                      onPressed: () {
+                        Navigator.pop(ctx);
+                        onClose?.call();
+                      },
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppTheme.fg(ctx, 0.7),
                       ),

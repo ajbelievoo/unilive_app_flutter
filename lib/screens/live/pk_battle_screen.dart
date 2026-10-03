@@ -19,7 +19,9 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:provider/provider.dart';
 
 import '../../constants/const.dart';
+import '../../models/live_stream_root.dart' as live_stream;
 import '../../models/live_user_root.dart' as live_user;
+import '../../routes/app_routes.dart';
 import '../../models/pk_call_models.dart';
 import '../../services/api_service.dart';
 import '../../services/session_manager.dart';
@@ -701,6 +703,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       if (config.pkId?.isNotEmpty != true || config.durationSeconds <= 0) {
         return;
       }
+      _dismissResultSheet();
       _config = _mergePkConfig(config);
       _pkRoundCount = config.pkRoundCount;
       _battleDuration = config.durationSeconds;
@@ -856,6 +859,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       final configMap = map?['pkConfig'] ?? map?['data'];
       if (configMap is Map<String, dynamic> && mounted) {
         // Full state reset
+        _dismissResultSheet();
         _resetPkState();
         _config = _mergePkConfig(PkConfig.fromJson(configMap));
         _pkRoundCount = _config.pkRoundCount;
@@ -879,6 +883,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       final map = data is Map ? Map<String, dynamic>.from(data) : null;
       final configMap = map?['data'] ?? map?['pkConfig'];
       if (configMap is Map<String, dynamic> && mounted) {
+        _dismissResultSheet();
         _resetPkState();
         _config = _mergePkConfig(PkConfig.fromJson(configMap));
         _pkRoundCount = _config.pkRoundCount;
@@ -1756,10 +1761,60 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
   // ===========================================================================
   // Result sheet
   // ===========================================================================
+  /// Tracks the result sheet route so a new round (pkStart/rematch) can
+  /// dismiss it — otherwise the stale result sits on top of the restarted
+  /// battle and the audience thinks nothing updated.
+  bool _resultSheetShowing = false;
+
+  void _dismissResultSheet() {
+    if (!_resultSheetShowing) return;
+    _resultSheetShowing = false;
+    Navigator.of(context, rootNavigator: false).pop();
+  }
+
+  /// Audience leaves the dead PK screen for the watched host's normal live
+  /// room (hosts' overlay disappears on its own — the audience screen must
+  /// navigate away or it shows the frozen battle view forever).
+  void _leaveToHostLive() {
+    if (!mounted) return;
+    final room = widget.room;
+    if (room == null) {
+      if (Navigator.of(context).canPop()) Navigator.pop(context);
+      return;
+    }
+    final liveUser = live_stream.LiveUser(
+      id: room.id,
+      liveStreamingId: room.liveStreamingId ?? room.id,
+      userId: room.liveUserId,
+      name: room.name,
+      image: room.image,
+      userImage: room.image,
+      roomName: room.roomName,
+      roomImage: room.roomImage,
+      roomWelcome: room.roomWelcome,
+      channel: room.channel,
+      agoraUID: room.agoraUID,
+      token: room.token,
+      livekitToken: room.livekitToken,
+      livekitUrl: room.livekitUrl,
+      service: room.service,
+      isAudio: false,
+      liveType: 'video',
+      view: room.view,
+      uniqueId: room.uniqueId,
+      createdAt: room.createdAt,
+    );
+    context.pushReplacementNamed(
+      AppRoutes.liveRoom,
+      extra: {'liveUser': liveUser, 'isHost': false},
+    );
+  }
+
   void _showResultSheet(int winner, bool canRematch) {
     _isPkWinner =
         (winner == 2 && widget.isHost1) || (winner == 1 && !widget.isHost1);
     Log.d(_tag, 'showResultSheet: winner=$winner isPkWinner=$_isPkWinner');
+    _resultSheetShowing = true;
     showPkResultSheet(
       context,
       winner: winner,
@@ -1769,9 +1824,13 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       host1Name: _config.host1Name,
       host2Name: _config.host2Name,
       canRematch: canRematch && widget.isHost,
-      onDone: () => Navigator.pop(context),
+      // Audience: "Done" and "Close" both exit the PK screen to the watched
+      // host's normal live room — previously Close only dismissed the sheet
+      // and left the viewer on a dead battle screen.
+      onDone: widget.isHost ? () => Navigator.pop(context) : _leaveToHostLive,
+      onClose: widget.isHost ? null : _leaveToHostLive,
       onRematch: widget.isHost ? _requestRematch : () {},
-    );
+    ).whenComplete(() => _resultSheetShowing = false);
   }
 
   // ===========================================================================
