@@ -770,6 +770,12 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   /// can still resolve the seat occupant's name.
   final _coHostUidToUserId = <int, String>{};
 
+  /// One-shot cache of the room's `requested[]` roster (accepted call
+  /// guests) fetched via REST — lets a late-joining viewer resolve an orphan
+  /// co-host tile's name/image from the guest's agora uid.
+  List<Map<String, dynamic>>? _roomRequested;
+  bool _roomRequestedFetching = false;
+
   /// Request userIds the host has already been alerted about (toast/popup),
   /// so a refreshed request list doesn't re-alert for the same user.
   final _notifiedRequestIds = <String>{};
@@ -5073,112 +5079,19 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     _cancelCoHostJoinSub = socket.on(Const.eventAddParticipatesCallJoin, (
       data,
     ) {
-      try {
-        final map = data is Map ? Map<String, dynamic>.from(data) : null;
-        if (map == null) return;
-        final nestedUser = map['user'];
-        final userId =
-            (map['userId'] ??
-                    map['guestUserId'] ??
-                    (nestedUser is Map
-                        ? nestedUser['_id'] ?? nestedUser['userId']
-                        : null))
-                ?.toString();
-        if (userId == null || userId.isEmpty) return;
-        final isAccepted =
-            parseBool(map['isAccept']) || parseBool(map['isAccepted']);
-        if (!isAccepted) {
-          Log.d(_tag, 'Co-host join ignored (not accepted): userId=$userId');
-          return;
+      // The backend relays this event BOTH ways: the guest's original single
+      // map AND the roster broadcast (`participants` array — emitted after
+      // every join/leave/mute/camera change). Previously only the Map shape
+      // was handled, so the roster broadcast was dropped on every device
+      // and co-host tiles stayed 'Guest' forever.
+      if (data is List) {
+        for (final e in data.whereType<Map>()) {
+          _handleCoHostJoinMap(Map<String, dynamic>.from(e));
         }
-        final isSelfJoin = _isSelfId(userId);
-        final parsedAgoraUid = _coHostAgoraUid(map);
-        final agoraUid = isSelfJoin ? _myAgoraUid : parsedAgoraUid;
-        if (userId == widget.liveUser.userId ||
-            (agoraUid > 0 && agoraUid == _expectedHostAgoraUid)) {
-          Log.w(
-            _tag,
-            'Ignoring host/colliding UID in co-host event: userId=$userId uid=$agoraUid',
-          );
-          return;
-        }
-        map['agoraUid'] = agoraUid;
-        map['userId'] = userId;
-        map['name'] ??=
-            nestedUser is Map
-                ? (nestedUser['name'] ?? nestedUser['userName'])
-                : null;
-        map['image'] ??=
-            map['userImage'] ??
-            map['avatar'] ??
-            (nestedUser is Map
-                ? (nestedUser['image'] ??
-                    nestedUser['userImage'] ??
-                    nestedUser['avatar'])
-                : null);
-        map['isCameraOff'] = parseBool(
-          map['isCameraOff'] ??
-              map['cameraOff'] ??
-              map['isVideoMute'] ??
-              map['videoMuted'],
-        );
-        _linkCoHostUid(map, agoraUid);
-        // Cache whatever identity fields the payload did carry so orphan
-        // tiles and later re-joins can reuse them (merged — a payload
-        // carrying only one field must not erase the other).
-        final cachedBase = _coHostProfileCache[userId];
-        final nm = map['name']?.toString();
-        final im = map['image']?.toString();
-        if ((nm?.isNotEmpty ?? false) || (im?.isNotEmpty ?? false)) {
-          _coHostProfileCache[userId] = {
-            'name': (nm?.isNotEmpty ?? false) ? nm : cachedBase?['name'],
-            'image': (im?.isNotEmpty ?? false) ? im : cachedBase?['image'],
-          };
-        }
-        _ensureCoHostIdentity(map);
-
-        Log.d(
-          _tag,
-          'Co-host join event: userId=$userId agoraUid=$agoraUid isAccepted=$isAccepted',
-        );
-
-        // Prevent auto-join: only add the current user to the call grid if
-        // they explicitly sent a join request or accepted a host invite.
-        final isSelf = isSelfJoin;
-        if (isSelf && !_myJoinRequestSent && !_myCallInviteAccepted) {
-          Log.w(
-            _tag,
-            'Ignoring auto co-host join for $userId — no pending request/invite',
-          );
-          return;
-        }
-
-        setState(() {
-          _coHosts.removeWhere((h) => h['userId'] == userId);
-          _coHosts.add(map);
-        });
-
-        // Create remote controller for OTHER co-hosts only. The local user
-        // already gets their own controller from _startBroadcast. Skip if
-        // one exists — re-creating the platform view causes needless
-        // surface churn (the freeze this screen recovers from elsewhere).
-        if (agoraUid > 0 &&
-            !isSelf &&
-            !_coHostControllers.containsKey(agoraUid)) {
-          _createCoHostController(agoraUid);
-        }
-        // A co-host entry may confirm that the uid on the main view was
-        // never the host — let reconciliation swap them if needed.
-        _reconcileHostVideo();
-
-        // If this is the current user being accepted, switch to broadcaster.
-        if (isSelf && !_isJoined) {
-          _isJoined = true;
-          _startBroadcast();
-        }
-      } catch (e) {
-        Log.e(_tag, 'coHost join parse', e);
+        return;
       }
+      final map = data is Map ? Map<String, dynamic>.from(data) : null;
+      if (map != null) _handleCoHostJoinMap(map);
     });
     _cancelCoHostLeaveSub = socket.on(Const.eventLessParticipatesCallJoin, (
       data,
@@ -6944,6 +6857,33 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           }
         }
       }
+      // Room roster (requested[]) — a viewer who joined AFTER the guest sat
+      // never received the join broadcast, so the uid→userId link is missing.
+      // The roster is persisted server-side with the guest's agoraUid, so it
+      // resolves the orphan tile's identity (and camera/mute flags).
+      if (userId.isEmpty) {
+        final roster = _roomRequested;
+        if (roster != null) {
+          Map<String, dynamic>? hit;
+          for (final r in roster) {
+            if (_coHostAgoraUid(r) == entryUid) {
+              hit = r;
+              break;
+            }
+          }
+          hit ??= roster.where((r) => parseBool(r['isAccepted'])).firstOrNull;
+          if (hit != null) {
+            userId = hit['userId']?.toString() ?? '';
+            coHost['name'] ??= hit['name'];
+            coHost['image'] ??= hit['image'];
+            coHost['country'] ??= hit['country'];
+            coHost['isMute'] = parseBool(hit['isMute']);
+            coHost['isCameraOff'] = parseBool(hit['isCameraOff']);
+          }
+        } else {
+          _fetchRoomRequested();
+        }
+      }
       if (userId.isNotEmpty) {
         coHost['userId'] = userId;
         _coHostUidToUserId[entryUid] = userId;
@@ -7041,6 +6981,26 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           _coHostProfileCache[userId] = const {};
         })
         .whenComplete(() => _coHostProfileFetching.remove(userId));
+  }
+
+  /// Fetches the room's accepted call-join roster once — backs the orphan
+  /// co-host tile identity/camera/mute resolution for late joiners.
+  void _fetchRoomRequested() {
+    if (_roomRequestedFetching || _roomRequested != null) return;
+    final liveId = widget.liveUser.liveRoomId ?? widget.liveUser.id ?? '';
+    if (liveId.isEmpty) return;
+    _roomRequestedFetching = true;
+    ApiService.getLiveRoomRequested(liveId)
+        .then((roster) {
+          _roomRequested = roster;
+          if (mounted && _coHosts.isNotEmpty) {
+            setState(() {});
+          }
+        })
+        .catchError((_) {
+          _roomRequested = const [];
+        })
+        .whenComplete(() => _roomRequestedFetching = false);
   }
 
   /// Remembers the agoraUid ↔ userId pairing whenever a payload carries
@@ -7536,7 +7496,12 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   }
 
   Future<void> _toggleCoHostMute() async {
-    final newMuted = !_micEnabled;
+    // _micEnabled is the ENABLED flag — the new muted value is the current
+    // enabled value (mic on → mute, mic off → unmute). The previous
+    // `newMuted = !_micEnabled` combined with `_micEnabled = !newMuted`
+    // cancelled itself out, so the guest's mic button never did anything.
+    final newEnabled = !_micEnabled;
+    final newMuted = !newEnabled;
     final session = context.read<SessionManager>();
     try {
       await _setLocalMicMuted(newMuted);
@@ -7551,7 +7516,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     }
     if (!mounted) return;
     setState(() {
-      _micEnabled = !newMuted;
+      _micEnabled = newEnabled;
       // Keep our own tile's mute badge in sync without waiting for the
       // socket echo.
       for (final coHost in _coHosts) {
@@ -7867,6 +7832,116 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   }
 
   // ---- Host co-host management ----
+
+  /// Applies one co-host join/roster entry (from `addParticipantsOfcalljoin`,
+  /// which arrives as either a single map or the participants array).
+  void _handleCoHostJoinMap(Map<String, dynamic> map) {
+    try {
+      final nestedUser = map['user'];
+      final userId =
+          (map['userId'] ??
+                  map['guestUserId'] ??
+                  (nestedUser is Map
+                      ? nestedUser['_id'] ?? nestedUser['userId']
+                      : null))
+              ?.toString();
+      if (userId == null || userId.isEmpty) return;
+      // Roster entries use `isAccepted`; the guest's own emit uses `isAccept`.
+      final isAccepted =
+          parseBool(map['isAccept']) || parseBool(map['isAccepted']);
+      if (!isAccepted) {
+        Log.d(_tag, 'Co-host join ignored (not accepted): userId=$userId');
+        return;
+      }
+      final isSelfJoin = _isSelfId(userId);
+      final parsedAgoraUid = _coHostAgoraUid(map);
+      final agoraUid = isSelfJoin ? _myAgoraUid : parsedAgoraUid;
+      if (userId == widget.liveUser.userId ||
+          (agoraUid > 0 && agoraUid == _expectedHostAgoraUid)) {
+        Log.w(
+          _tag,
+          'Ignoring host/colliding UID in co-host event: userId=$userId uid=$agoraUid',
+        );
+        return;
+      }
+      map['agoraUid'] = agoraUid;
+      map['userId'] = userId;
+      map['name'] ??=
+          nestedUser is Map
+              ? (nestedUser['name'] ?? nestedUser['userName'])
+              : null;
+      map['image'] ??=
+          map['userImage'] ??
+          map['avatar'] ??
+          (nestedUser is Map
+              ? (nestedUser['image'] ??
+                  nestedUser['userImage'] ??
+                  nestedUser['avatar'])
+              : null);
+      map['isCameraOff'] = parseBool(
+        map['isCameraOff'] ??
+            map['cameraOff'] ??
+            map['isVideoMute'] ??
+            map['videoMuted'],
+      );
+      _linkCoHostUid(map, agoraUid);
+      // Cache whatever identity fields the payload did carry so orphan
+      // tiles and later re-joins can reuse them (merged — a payload
+      // carrying only one field must not erase the other).
+      final cachedBase = _coHostProfileCache[userId];
+      final nm = map['name']?.toString();
+      final im = map['image']?.toString();
+      if ((nm?.isNotEmpty ?? false) || (im?.isNotEmpty ?? false)) {
+        _coHostProfileCache[userId] = {
+          'name': (nm?.isNotEmpty ?? false) ? nm : cachedBase?['name'],
+          'image': (im?.isNotEmpty ?? false) ? im : cachedBase?['image'],
+        };
+      }
+      _ensureCoHostIdentity(map);
+
+      Log.d(
+        _tag,
+        'Co-host join event: userId=$userId agoraUid=$agoraUid isAccepted=$isAccepted',
+      );
+
+      // Prevent auto-join: only add the current user to the call grid if
+      // they explicitly sent a join request or accepted a host invite.
+      final isSelf = isSelfJoin;
+      if (isSelf && !_myJoinRequestSent && !_myCallInviteAccepted) {
+        Log.w(
+          _tag,
+          'Ignoring auto co-host join for $userId — no pending request/invite',
+        );
+        return;
+      }
+
+      setState(() {
+        _coHosts.removeWhere((h) => h['userId'] == userId);
+        _coHosts.add(map);
+      });
+
+      // Create remote controller for OTHER co-hosts only. The local user
+      // already gets their own controller from _startBroadcast. Skip if
+      // one exists — re-creating the platform view causes needless
+      // surface churn (the freeze this screen recovers from elsewhere).
+      if (agoraUid > 0 &&
+          !isSelf &&
+          !_coHostControllers.containsKey(agoraUid)) {
+        _createCoHostController(agoraUid);
+      }
+      // A co-host entry may confirm that the uid on the main view was
+      // never the host — let reconciliation swap them if needed.
+      _reconcileHostVideo();
+
+      // If this is the current user being accepted, switch to broadcaster.
+      if (isSelf && !_isJoined) {
+        _isJoined = true;
+        _startBroadcast();
+      }
+    } catch (e) {
+      Log.e(_tag, 'coHost join parse', e);
+    }
+  }
 
   void _openCoHostOptions(Map<String, dynamic> coHost) {
     final userId = coHost['userId']?.toString();
@@ -15075,6 +15150,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       inviteLabel: 'Invite Call',
       removeLabel: 'Remove',
       emitSeatSocketOnRemove: false,
+      // Guest's own card → "Leave Seat" so they can drop off the call
+      // themselves (host sees "Remove" for the same tile instead).
+      onLeaveSeat: isCoHost && userId == myId ? _leaveCall : null,
       onInviteToSeat:
           canModerateTarget && !isCoHost
               ? () => _inviteViewerToCall(userId, name, image)
@@ -15136,6 +15214,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       inviteLabel: 'Invite Call',
       removeLabel: 'Remove',
       emitSeatSocketOnRemove: false,
+      onLeaveSeat: isCoHost && userId == myId ? _leaveCall : null,
       onInviteToSeat:
           canModerateTarget && !isCoHost
               ? () => _inviteViewerToCall(userId, c.name, c.userImage)

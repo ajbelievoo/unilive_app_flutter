@@ -1852,6 +1852,32 @@ class ApiService {
   }
 
   // ---- Live streaming -----------------------------------------------------
+  /// Raw `requested[]` roster of a live room (call-join guests) — the typed
+  /// LiveUser model drops it. Used by late-joining viewers to resolve a
+  /// co-host tile's identity (userId/name/image) from their agora uid.
+  static Future<List<Map<String, dynamic>>> getLiveRoomRequested(
+    String liveId,
+  ) async {
+    try {
+      final r = await _dio.get(
+        '/liveStream',
+        queryParameters: {'liveId': liveId},
+      );
+      final m = _asMap(r.data);
+      final u = m['liveUser'] ?? m['user'] ?? m['users'];
+      if (u is! Map) return const [];
+      final req = u['requested'];
+      if (req is! List) return const [];
+      return req
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    } catch (e) {
+      Log.e('ApiService', 'getLiveRoomRequested failed', e);
+      return const [];
+    }
+  }
+
   static Future<LiveStreamRoot> getLiveStream(String liveId) async {
     final r = await _dio.get(
       '/liveStream',
