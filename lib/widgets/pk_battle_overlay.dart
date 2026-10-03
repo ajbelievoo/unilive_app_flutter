@@ -4,8 +4,11 @@
 /// Displays both hosts' avatars, names, scores, and a progress bar showing
 /// who's winning. Also shows PK timer and round info.
 library pk_battle_overlay;
+
 import 'package:flutter/material.dart';
 
+import '../models/pk_call_models.dart';
+import '../utils/format_utils.dart';
 import 'user_avatar.dart';
 
 /// Audio PK battle participant seat — a lightweight seat representation for
@@ -41,10 +44,12 @@ class PkBattleSeat {
       userId: json['userId']?.toString(),
       name: json['name']?.toString(),
       image: json['image']?.toString(),
-      position: (json['position'] as num?)?.toInt() ??
+      position:
+          (json['position'] as num?)?.toInt() ??
           int.tryParse(json['position']?.toString() ?? '') ??
           0,
-      mute: (json['mute'] as num?)?.toInt() ??
+      mute:
+          (json['mute'] as num?)?.toInt() ??
           int.tryParse(json['mute']?.toString() ?? '') ??
           0,
       isHost: role == 'host' || json['isHost'] == true,
@@ -79,15 +84,14 @@ class PkBattleRoom {
     String? roomId,
     int? score,
     List<PkBattleSeat>? seats,
-  }) =>
-      PkBattleRoom(
-        hostName: hostName ?? this.hostName,
-        hostImage: hostImage ?? this.hostImage,
-        hostId: hostId ?? this.hostId,
-        roomId: roomId ?? this.roomId,
-        score: score ?? this.score,
-        seats: seats ?? this.seats,
-      );
+  }) => PkBattleRoom(
+    hostName: hostName ?? this.hostName,
+    hostImage: hostImage ?? this.hostImage,
+    hostId: hostId ?? this.hostId,
+    roomId: roomId ?? this.roomId,
+    score: score ?? this.score,
+    seats: seats ?? this.seats,
+  );
 }
 
 /// State data for an active PK battle.
@@ -135,32 +139,37 @@ class PkBattleState {
     bool? isPunishment,
     PkBattleRoom? room1,
     PkBattleRoom? room2,
-  }) =>
-      PkBattleState(
-        host1Name: host1Name ?? this.host1Name,
-        host1Image: host1Image ?? this.host1Image,
-        host2Name: host2Name ?? this.host2Name,
-        host2Image: host2Image ?? this.host2Image,
-        host1Score: host1Score ?? this.host1Score,
-        host2Score: host2Score ?? this.host2Score,
-        round: round ?? this.round,
-        totalRounds: totalRounds ?? this.totalRounds,
-        remainingSeconds: remainingSeconds ?? this.remainingSeconds,
-        isPunishment: isPunishment ?? this.isPunishment,
-        room1: room1 ?? this.room1,
-        room2: room2 ?? this.room2,
-      );
+  }) => PkBattleState(
+    host1Name: host1Name ?? this.host1Name,
+    host1Image: host1Image ?? this.host1Image,
+    host2Name: host2Name ?? this.host2Name,
+    host2Image: host2Image ?? this.host2Image,
+    host1Score: host1Score ?? this.host1Score,
+    host2Score: host2Score ?? this.host2Score,
+    round: round ?? this.round,
+    totalRounds: totalRounds ?? this.totalRounds,
+    remainingSeconds: remainingSeconds ?? this.remainingSeconds,
+    isPunishment: isPunishment ?? this.isPunishment,
+    room1: room1 ?? this.room1,
+    room2: room2 ?? this.room2,
+  );
 
   factory PkBattleState.fromSocketJson(Map<String, dynamic> json) {
-    final host1 = json['host1'] is Map
-        ? Map<String, dynamic>.from(json['host1'] as Map)
-        : <String, dynamic>{};
-    final host2 = json['host2'] is Map
-        ? Map<String, dynamic>.from(json['host2'] as Map)
-        : <String, dynamic>{};
+    final host1 =
+        json['host1'] is Map
+            ? Map<String, dynamic>.from(json['host1'] as Map)
+            : <String, dynamic>{};
+    final host2 =
+        json['host2'] is Map
+            ? Map<String, dynamic>.from(json['host2'] as Map)
+            : <String, dynamic>{};
 
     // Parse room1 / room2 extended data if present.
-    PkBattleRoom? parseRoom(Map<String, dynamic>? m, String fallbackName, String? fallbackImage) {
+    PkBattleRoom? parseRoom(
+      Map<String, dynamic>? m,
+      String fallbackName,
+      String? fallbackImage,
+    ) {
       if (m == null) return null;
       final seatsRaw = m['seats'] ?? m['seat'];
       final seats = <PkBattleSeat>[];
@@ -172,9 +181,16 @@ class PkBattleState {
         }
       }
       return PkBattleRoom(
-        hostName: m['name']?.toString() ?? m['hostName']?.toString() ?? fallbackName,
-        hostImage: m['image']?.toString() ?? m['hostImage']?.toString() ?? fallbackImage,
-        hostId: m['hostId']?.toString() ?? m['userId']?.toString() ?? m['liveUserId']?.toString(),
+        hostName:
+            m['name']?.toString() ?? m['hostName']?.toString() ?? fallbackName,
+        hostImage:
+            m['image']?.toString() ??
+            m['hostImage']?.toString() ??
+            fallbackImage,
+        hostId:
+            m['hostId']?.toString() ??
+            m['userId']?.toString() ??
+            m['liveUserId']?.toString(),
         roomId: m['roomId']?.toString() ?? m['liveStreamingId']?.toString(),
         score: (m['score'] as num?)?.toInt() ?? 0,
         seats: seats,
@@ -182,20 +198,30 @@ class PkBattleState {
     }
 
     final room1 = parseRoom(
-      json['room1'] is Map ? Map<String, dynamic>.from(json['room1'] as Map) : null,
+      json['room1'] is Map
+          ? Map<String, dynamic>.from(json['room1'] as Map)
+          : null,
       host1['name']?.toString() ?? json['host1Name']?.toString() ?? 'Host 1',
       host1['image']?.toString() ?? json['host1Image']?.toString(),
     );
     final room2 = parseRoom(
-      json['room2'] is Map ? Map<String, dynamic>.from(json['room2'] as Map) : null,
+      json['room2'] is Map
+          ? Map<String, dynamic>.from(json['room2'] as Map)
+          : null,
       host2['name']?.toString() ?? json['host2Name']?.toString() ?? 'Host 2',
       host2['image']?.toString() ?? json['host2Image']?.toString(),
     );
 
     return PkBattleState(
-      host1Name: host1['name']?.toString() ?? json['host1Name']?.toString() ?? 'Host 1',
+      host1Name:
+          host1['name']?.toString() ??
+          json['host1Name']?.toString() ??
+          'Host 1',
       host1Image: host1['image']?.toString() ?? json['host1Image']?.toString(),
-      host2Name: host2['name']?.toString() ?? json['host2Name']?.toString() ?? 'Host 2',
+      host2Name:
+          host2['name']?.toString() ??
+          json['host2Name']?.toString() ??
+          'Host 2',
       host2Image: host2['image']?.toString() ?? json['host2Image']?.toString(),
       host1Score: (json['host1Score'] as num?)?.toInt() ?? room1?.score ?? 0,
       host2Score: (json['host2Score'] as num?)?.toInt() ?? room2?.score ?? 0,
@@ -285,244 +311,419 @@ class _PkBattleOverlayState extends State<PkBattleOverlay>
       child: AnimatedBuilder(
         animation: _glowCtrl,
         builder: (ctx, child) {
-          final glowAlpha = state.isPunishment ? 0.3 + (_glowCtrl.value * 0.4) : 0.0;
+          final glowAlpha =
+              state.isPunishment ? 0.3 + (_glowCtrl.value * 0.4) : 0.0;
           return Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
             decoration: BoxDecoration(
               color: Colors.black.withValues(alpha: 0.65),
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: state.isPunishment
-                    ? Colors.red.withValues(alpha: glowAlpha)
-                    : const Color(0xFF7E3FF2).withValues(alpha: 0.5),
+                color:
+                    state.isPunishment
+                        ? Colors.red.withValues(alpha: glowAlpha)
+                        : const Color(0xFF7E3FF2).withValues(alpha: 0.5),
                 width: state.isPunishment ? 2 : 1,
               ),
-              boxShadow: state.isPunishment
-                  ? [BoxShadow(color: Colors.red.withValues(alpha: glowAlpha * 0.5), blurRadius: 16)]
-                  : [BoxShadow(color: const Color(0xFF7E3FF2).withValues(alpha: 0.2), blurRadius: 8)],
+              boxShadow:
+                  state.isPunishment
+                      ? [
+                        BoxShadow(
+                          color: Colors.red.withValues(alpha: glowAlpha * 0.5),
+                          blurRadius: 16,
+                        ),
+                      ]
+                      : [
+                        BoxShadow(
+                          color: const Color(0xFF7E3FF2).withValues(alpha: 0.2),
+                          blurRadius: 8,
+                        ),
+                      ],
             ),
             child: child,
           );
         },
-        child: Column(mainAxisSize: MainAxisSize.min, children: [
-          // Top row: avatars + VS + timer
-          Row(children: [
-            // Host 1 (left)
-            Expanded(child: Row(children: [
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: host1Winning ? const Color(0xFFFFD700) : Colors.transparent,
-                    width: 2,
-                  ),
-                  boxShadow: host1Winning
-                      ? [const BoxShadow(color: Color(0x66FFD700), blurRadius: 8)]
-                      : null,
-                ),
-                child: UserAvatar(imageUrl: state.host1Image, size: 34),
-              ),
-              const SizedBox(width: 6),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(state.host1Name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      shadows: host1Winning
-                          ? [const Shadow(color: Color(0xFFFFD700), blurRadius: 4)]
-                          : null,
-                    )),
-                Row(children: [
-                  const Icon(Icons.diamond, color: Color(0xFF00E5FF), size: 10),
-                  const SizedBox(width: 2),
-                  Text('${state.host1Score}',
-                      style: const TextStyle(color: Color(0xFFFFD700), fontSize: 13, fontWeight: FontWeight.bold)),
-                ]),
-                if (widget.host1Votes != null && widget.host1Votes! > 0)
-                  Text('${widget.host1Votes} votes',
-                      style: const TextStyle(color: Colors.white54, fontSize: 8)),
-              ])),
-            ])),
-            // Center: VS badge with glow + timer
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: state.isPunishment
-                      ? [Colors.red, Colors.orange]
-                      : [const Color(0xFF7E3FF2), const Color(0xFFE91E63)],
-                ),
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: (state.isPunishment ? Colors.red : const Color(0xFFE91E63))
-                        .withValues(alpha: 0.4),
-                    blurRadius: 10,
-                  ),
-                ],
-              ),
-              child: Column(children: [
-                Text(
-                  state.isPunishment ? 'PUNISH' : 'VS',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: state.isPunishment ? 10 : 13,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(_formatTime(state.remainingSeconds),
-                    style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold)),
-              ]),
-            ),
-            // Host 2 (right)
-            Expanded(child: Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-                Text(state.host2Name, maxLines: 1, overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      shadows: host2Winning
-                          ? [const Shadow(color: Color(0xFFFFD700), blurRadius: 4)]
-                          : null,
-                    )),
-                Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-                  Text('${state.host2Score}',
-                      style: const TextStyle(color: Color(0xFFFFD700), fontSize: 13, fontWeight: FontWeight.bold)),
-                  const SizedBox(width: 2),
-                  const Icon(Icons.diamond, color: Color(0xFF00E5FF), size: 10),
-                ]),
-                if (widget.host2Votes != null && widget.host2Votes! > 0)
-                  Text('${widget.host2Votes} votes',
-                      style: const TextStyle(color: Colors.white54, fontSize: 8)),
-              ])),
-              const SizedBox(width: 6),
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(18),
-                  border: Border.all(
-                    color: host2Winning ? const Color(0xFFFFD700) : Colors.transparent,
-                    width: 2,
-                  ),
-                  boxShadow: host2Winning
-                      ? [const BoxShadow(color: Color(0x66FFD700), blurRadius: 8)]
-                      : null,
-                ),
-                child: UserAvatar(imageUrl: state.host2Image, size: 34),
-              ),
-            ])),
-          ]),
-          const SizedBox(height: 6),
-          // Animated score progress bar with gradient
-          ClipRRect(
-            borderRadius: BorderRadius.circular(6),
-            child: SizedBox(
-              height: 8,
-              child: Row(children: [
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Top row: avatars + VS + timer
+            Row(
+              children: [
+                // Host 1 (left)
                 Expanded(
-                  flex: (host1Ratio * 100).round().clamp(1, 99),
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF7E3FF2), Color(0xFF9C27B0)],
+                  child: Row(
+                    children: [
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color:
+                                host1Winning
+                                    ? const Color(0xFFFFD700)
+                                    : Colors.transparent,
+                            width: 2,
+                          ),
+                          boxShadow:
+                              host1Winning
+                                  ? [
+                                    const BoxShadow(
+                                      color: Color(0x66FFD700),
+                                      blurRadius: 8,
+                                    ),
+                                  ]
+                                  : null,
+                        ),
+                        child: UserAvatar(imageUrl: state.host1Image, size: 34),
                       ),
-                    ),
-                    child: const SizedBox.expand(),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              state.host1Name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                shadows:
+                                    host1Winning
+                                        ? [
+                                          const Shadow(
+                                            color: Color(0xFFFFD700),
+                                            blurRadius: 4,
+                                          ),
+                                        ]
+                                        : null,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                const Icon(
+                                  Icons.diamond,
+                                  color: Color(0xFF00E5FF),
+                                  size: 10,
+                                ),
+                                const SizedBox(width: 2),
+                                Text(
+                                  '${state.host1Score}',
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFD700),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            if (widget.host1Votes != null &&
+                                widget.host1Votes! > 0)
+                              Text(
+                                '${widget.host1Votes} votes',
+                                style: const TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 8,
+                                ),
+                              ),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                Container(width: 2, color: Colors.white),
+                // Center: VS badge with glow + timer
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors:
+                          state.isPunishment
+                              ? [Colors.red, Colors.orange]
+                              : [
+                                const Color(0xFF7E3FF2),
+                                const Color(0xFFE91E63),
+                              ],
+                    ),
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: (state.isPunishment
+                                ? Colors.red
+                                : const Color(0xFFE91E63))
+                            .withValues(alpha: 0.4),
+                        blurRadius: 10,
+                      ),
+                    ],
+                  ),
+                  child: Column(
+                    children: [
+                      Text(
+                        state.isPunishment ? 'PUNISH' : 'VS',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: state.isPunishment ? 10 : 13,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        _formatTime(state.remainingSeconds),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                // Host 2 (right)
                 Expanded(
-                  flex: ((1 - host1Ratio) * 100).round().clamp(1, 99),
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFFE91E63), Color(0xFFFF5722)],
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.end,
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.end,
+                          children: [
+                            Text(
+                              state.host2Name,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                shadows:
+                                    host2Winning
+                                        ? [
+                                          const Shadow(
+                                            color: Color(0xFFFFD700),
+                                            blurRadius: 4,
+                                          ),
+                                        ]
+                                        : null,
+                              ),
+                            ),
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.end,
+                              children: [
+                                Text(
+                                  '${state.host2Score}',
+                                  style: const TextStyle(
+                                    color: Color(0xFFFFD700),
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                const SizedBox(width: 2),
+                                const Icon(
+                                  Icons.diamond,
+                                  color: Color(0xFF00E5FF),
+                                  size: 10,
+                                ),
+                              ],
+                            ),
+                            if (widget.host2Votes != null &&
+                                widget.host2Votes! > 0)
+                              Text(
+                                '${widget.host2Votes} votes',
+                                style: const TextStyle(
+                                  color: Colors.white54,
+                                  fontSize: 8,
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
-                    ),
-                    child: const SizedBox.expand(),
+                      const SizedBox(width: 6),
+                      Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(18),
+                          border: Border.all(
+                            color:
+                                host2Winning
+                                    ? const Color(0xFFFFD700)
+                                    : Colors.transparent,
+                            width: 2,
+                          ),
+                          boxShadow:
+                              host2Winning
+                                  ? [
+                                    const BoxShadow(
+                                      color: Color(0x66FFD700),
+                                      blurRadius: 8,
+                                    ),
+                                  ]
+                                  : null,
+                        ),
+                        child: UserAvatar(imageUrl: state.host2Image, size: 34),
+                      ),
+                    ],
                   ),
                 ),
-              ]),
+              ],
             ),
-          ),
-          const SizedBox(height: 4),
-          // Round pills + action buttons
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            // Round indicator pills
-            Row(children: List.generate(state.totalRounds, (i) {
-              final roundNum = i + 1;
-              final isCurrent = roundNum == state.round;
-              final isPast = roundNum < state.round;
-              return Container(
-                width: 18,
-                height: 4,
-                margin: const EdgeInsets.only(right: 3),
-                decoration: BoxDecoration(
-                  color: isCurrent
-                      ? const Color(0xFF7E3FF2)
-                      : isPast
-                          ? Colors.white30
-                          : Colors.white12,
-                  borderRadius: BorderRadius.circular(2),
-                ),
-              );
-            })),
-            Row(children: [
-              if (widget.onVote != null)
-                GestureDetector(
-                  onTap: widget.onVote,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF7E3FF2), Color(0xFF9C27B0)],
-                      ),
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF7E3FF2).withValues(alpha: 0.3),
-                          blurRadius: 6,
+            const SizedBox(height: 6),
+            // Animated score progress bar with gradient
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: SizedBox(
+                height: 8,
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: (host1Ratio * 100).round().clamp(1, 99),
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF7E3FF2), Color(0xFF9C27B0)],
+                          ),
                         ),
-                      ],
-                    ),
-                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.how_to_vote, color: Colors.white, size: 11),
-                      SizedBox(width: 3),
-                      Text('Vote', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                    ]),
-                  ),
-                ),
-              const SizedBox(width: 6),
-              if (widget.onCheer != null)
-                GestureDetector(
-                  onTap: widget.onCheer,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFFE91E63), Color(0xFFFF5722)],
+                        child: const SizedBox.expand(),
                       ),
-                      borderRadius: BorderRadius.circular(10),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.red.withValues(alpha: 0.3),
-                          blurRadius: 6,
-                        ),
-                      ],
                     ),
-                    child: const Row(mainAxisSize: MainAxisSize.min, children: [
-                      Icon(Icons.favorite, color: Colors.white, size: 11),
-                      SizedBox(width: 3),
-                      Text('Cheer', style: TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                    ]),
-                  ),
+                    Container(width: 2, color: Colors.white),
+                    Expanded(
+                      flex: ((1 - host1Ratio) * 100).round().clamp(1, 99),
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFFE91E63), Color(0xFFFF5722)],
+                          ),
+                        ),
+                        child: const SizedBox.expand(),
+                      ),
+                    ),
+                  ],
                 ),
-            ]),
-          ]),
-        ]),
+              ),
+            ),
+            const SizedBox(height: 4),
+            // Round pills + action buttons
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Round indicator pills
+                Row(
+                  children: List.generate(state.totalRounds, (i) {
+                    final roundNum = i + 1;
+                    final isCurrent = roundNum == state.round;
+                    final isPast = roundNum < state.round;
+                    return Container(
+                      width: 18,
+                      height: 4,
+                      margin: const EdgeInsets.only(right: 3),
+                      decoration: BoxDecoration(
+                        color:
+                            isCurrent
+                                ? const Color(0xFF7E3FF2)
+                                : isPast
+                                ? Colors.white30
+                                : Colors.white12,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    );
+                  }),
+                ),
+                Row(
+                  children: [
+                    if (widget.onVote != null)
+                      GestureDetector(
+                        onTap: widget.onVote,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFF7E3FF2), Color(0xFF9C27B0)],
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFF7E3FF2,
+                                ).withValues(alpha: 0.3),
+                                blurRadius: 6,
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.how_to_vote,
+                                color: Colors.white,
+                                size: 11,
+                              ),
+                              SizedBox(width: 3),
+                              Text(
+                                'Vote',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    const SizedBox(width: 6),
+                    if (widget.onCheer != null)
+                      GestureDetector(
+                        onTap: widget.onCheer,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFE91E63), Color(0xFFFF5722)],
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.red.withValues(alpha: 0.3),
+                                blurRadius: 6,
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.favorite,
+                                color: Colors.white,
+                                size: 11,
+                              ),
+                              SizedBox(width: 3),
+                              Text(
+                                'Cheer',
+                                style: TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -543,6 +744,11 @@ class AudioPkSplitRoomOverlay extends StatefulWidget {
   final VoidCallback? onVote;
   final VoidCallback? onCheer;
 
+  /// Per-round top-3 gifters — LOCAL perspective: `leftGifters` gifted to
+  /// this room's host, `rightGifters` to the opponent.
+  final List<PkGifter>? leftGifters;
+  final List<PkGifter>? rightGifters;
+
   const AudioPkSplitRoomOverlay({
     super.key,
     required this.state,
@@ -551,6 +757,8 @@ class AudioPkSplitRoomOverlay extends StatefulWidget {
     this.host2Votes,
     this.onVote,
     this.onCheer,
+    this.leftGifters,
+    this.rightGifters,
   });
 
   @override
@@ -615,25 +823,26 @@ class _AudioPkSplitRoomOverlayState extends State<AudioPkSplitRoomOverlay>
             decoration: BoxDecoration(
               borderRadius: BorderRadius.circular(16),
               border: Border.all(
-                color: state.isPunishment
-                    ? Colors.red.withValues(alpha: glowAlpha)
-                    : const Color(0xFF7E3FF2).withValues(alpha: 0.5),
+                color:
+                    state.isPunishment
+                        ? Colors.red.withValues(alpha: glowAlpha)
+                        : const Color(0xFF7E3FF2).withValues(alpha: 0.5),
                 width: state.isPunishment ? 2 : 1,
               ),
-              boxShadow: state.isPunishment
-                  ? [
-                      BoxShadow(
-                        color: Colors.red.withValues(alpha: glowAlpha * 0.5),
-                        blurRadius: 16,
-                      ),
-                    ]
-                  : [
-                      BoxShadow(
-                        color: const Color(0xFF7E3FF2)
-                            .withValues(alpha: 0.2),
-                        blurRadius: 8,
-                      ),
-                    ],
+              boxShadow:
+                  state.isPunishment
+                      ? [
+                        BoxShadow(
+                          color: Colors.red.withValues(alpha: glowAlpha * 0.5),
+                          blurRadius: 16,
+                        ),
+                      ]
+                      : [
+                        BoxShadow(
+                          color: const Color(0xFF7E3FF2).withValues(alpha: 0.2),
+                          blurRadius: 8,
+                        ),
+                      ],
             ),
             child: child,
           );
@@ -656,12 +865,11 @@ class _AudioPkSplitRoomOverlayState extends State<AudioPkSplitRoomOverlay>
               mainAxisSize: MainAxisSize.min,
               children: [
                 // Top: score bar + VS center
-                _buildTopBar(
-                  state,
-                  host1Ratio,
-                  host1Winning,
-                  host2Winning,
-                ),
+                _buildTopBar(state, host1Ratio, host1Winning, host2Winning),
+                // Per-round top-3 gifter circles under each host — empty
+                // slots show a dimmed gift placeholder.
+                if (widget.leftGifters != null || widget.rightGifters != null)
+                  _buildGifterStrip(),
                 // Middle: two-room split seats
                 _buildSplitRooms(state),
                 // Bottom: round pills + action buttons
@@ -671,6 +879,117 @@ class _AudioPkSplitRoomOverlayState extends State<AudioPkSplitRoomOverlay>
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildGifterStrip() {
+    const rankColors = [
+      Color(0xFFFFD54A), // 1st — gold
+      Color(0xFFB0BEC5), // 2nd — silver
+      Color(0xFFCD8B52), // 3rd — bronze
+    ];
+    const sizes = [32.0, 28.0, 28.0];
+    List<Widget> side(List<PkGifter>? gifters, Color color) => [
+      for (var i = 0; i < 3; i++)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 3),
+          child: _buildGifterCircle(
+            gifters != null && i < gifters.length ? gifters[i] : null,
+            i,
+            rankColors[i],
+            sizes[i],
+            color,
+          ),
+        ),
+    ];
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(10, 0, 10, 6),
+      child: Row(
+        children: [
+          Expanded(
+            child: Row(
+              children: side(widget.leftGifters, const Color(0xFF35A7FF)),
+            ),
+          ),
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: side(widget.rightGifters, const Color(0xFFFF4F87)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGifterCircle(
+    PkGifter? g,
+    int rank,
+    Color rankColor,
+    double size,
+    Color sideColor,
+  ) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: g != null ? rankColor : Colors.white24,
+                  width: 1.4,
+                ),
+                color: Colors.black.withValues(alpha: 0.35),
+              ),
+              child:
+                  g != null
+                      ? ClipOval(
+                        child: UserAvatar(imageUrl: g.image, size: size),
+                      )
+                      : Icon(
+                        Icons.card_giftcard,
+                        color: Colors.white24,
+                        size: size * 0.45,
+                      ),
+            ),
+            Positioned(
+              top: -4,
+              left: -4,
+              child: Container(
+                width: 14,
+                height: 14,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: g != null ? rankColor : Colors.white24,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  '${rank + 1}',
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 8,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          g != null ? formatCount(g.amount) : '-',
+          style: TextStyle(
+            color: g != null ? sideColor : Colors.white24,
+            fontSize: 9,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ],
     );
   }
 
@@ -695,24 +1014,23 @@ class _AudioPkSplitRoomOverlayState extends State<AudioPkSplitRoomOverlay>
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(
-                          color: host1Winning
-                              ? const Color(0xFFFFD700)
-                              : Colors.transparent,
+                          color:
+                              host1Winning
+                                  ? const Color(0xFFFFD700)
+                                  : Colors.transparent,
                           width: 2,
                         ),
-                        boxShadow: host1Winning
-                            ? [
-                                const BoxShadow(
-                                  color: Color(0x66FFD700),
-                                  blurRadius: 8,
-                                ),
-                              ]
-                            : null,
+                        boxShadow:
+                            host1Winning
+                                ? [
+                                  const BoxShadow(
+                                    color: Color(0x66FFD700),
+                                    blurRadius: 8,
+                                  ),
+                                ]
+                                : null,
                       ),
-                      child: UserAvatar(
-                        imageUrl: state.host1Image,
-                        size: 34,
-                      ),
+                      child: UserAvatar(imageUrl: state.host1Image, size: 34),
                     ),
                     const SizedBox(width: 6),
                     Expanded(
@@ -727,14 +1045,15 @@ class _AudioPkSplitRoomOverlayState extends State<AudioPkSplitRoomOverlay>
                               color: Colors.white,
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              shadows: host1Winning
-                                  ? [
-                                      const Shadow(
-                                        color: Color(0xFFFFD700),
-                                        blurRadius: 4,
-                                      ),
-                                    ]
-                                  : null,
+                              shadows:
+                                  host1Winning
+                                      ? [
+                                        const Shadow(
+                                          color: Color(0xFFFFD700),
+                                          blurRadius: 4,
+                                        ),
+                                      ]
+                                      : null,
                             ),
                           ),
                           Row(
@@ -769,12 +1088,13 @@ class _AudioPkSplitRoomOverlayState extends State<AudioPkSplitRoomOverlay>
                 ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: state.isPunishment
-                        ? [Colors.red, Colors.orange]
-                        : [
-                            const Color(0xFF7E3FF2),
-                            const Color(0xFFE91E63),
-                          ],
+                    colors:
+                        state.isPunishment
+                            ? [Colors.red, Colors.orange]
+                            : [
+                              const Color(0xFF7E3FF2),
+                              const Color(0xFFE91E63),
+                            ],
                   ),
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
@@ -827,14 +1147,15 @@ class _AudioPkSplitRoomOverlayState extends State<AudioPkSplitRoomOverlay>
                               color: Colors.white,
                               fontSize: 11,
                               fontWeight: FontWeight.bold,
-                              shadows: host2Winning
-                                  ? [
-                                      const Shadow(
-                                        color: Color(0xFFFFD700),
-                                        blurRadius: 4,
-                                      ),
-                                    ]
-                                  : null,
+                              shadows:
+                                  host2Winning
+                                      ? [
+                                        const Shadow(
+                                          color: Color(0xFFFFD700),
+                                          blurRadius: 4,
+                                        ),
+                                      ]
+                                      : null,
                             ),
                           ),
                           Row(
@@ -864,24 +1185,23 @@ class _AudioPkSplitRoomOverlayState extends State<AudioPkSplitRoomOverlay>
                       decoration: BoxDecoration(
                         borderRadius: BorderRadius.circular(18),
                         border: Border.all(
-                          color: host2Winning
-                              ? const Color(0xFFFFD700)
-                              : Colors.transparent,
+                          color:
+                              host2Winning
+                                  ? const Color(0xFFFFD700)
+                                  : Colors.transparent,
                           width: 2,
                         ),
-                        boxShadow: host2Winning
-                            ? [
-                                const BoxShadow(
-                                  color: Color(0x66FFD700),
-                                  blurRadius: 8,
-                                ),
-                              ]
-                            : null,
+                        boxShadow:
+                            host2Winning
+                                ? [
+                                  const BoxShadow(
+                                    color: Color(0x66FFD700),
+                                    blurRadius: 8,
+                                  ),
+                                ]
+                                : null,
                       ),
-                      child: UserAvatar(
-                        imageUrl: state.host2Image,
-                        size: 34,
-                      ),
+                      child: UserAvatar(imageUrl: state.host2Image, size: 34),
                     ),
                   ],
                 ),
@@ -979,11 +1299,7 @@ class _AudioPkSplitRoomOverlayState extends State<AudioPkSplitRoomOverlay>
     );
   }
 
-  Widget _buildRoomPlaceholder(
-    String name,
-    String? image,
-    bool isLeft,
-  ) {
+  Widget _buildRoomPlaceholder(String name, String? image, bool isLeft) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
@@ -998,7 +1314,10 @@ class _AudioPkSplitRoomOverlayState extends State<AudioPkSplitRoomOverlay>
         const SizedBox(height: 4),
         Text(
           'Loading room…',
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 9),
+          style: TextStyle(
+            color: Colors.white.withValues(alpha: 0.4),
+            fontSize: 9,
+          ),
         ),
       ],
     );
@@ -1015,9 +1334,7 @@ class _AudioPkSplitRoomOverlayState extends State<AudioPkSplitRoomOverlay>
     final seats = room?.seats ?? const <PkBattleSeat>[];
     // Guest seats = non-host, occupied seats.
     final guestSeats = seats.where((s) => !s.isHost && s.isOccupied).toList();
-    final accent = isLeft
-        ? const Color(0xFF7E3FF2)
-        : const Color(0xFFE91E63);
+    final accent = isLeft ? const Color(0xFF7E3FF2) : const Color(0xFFE91E63);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
@@ -1068,23 +1385,22 @@ class _AudioPkSplitRoomOverlayState extends State<AudioPkSplitRoomOverlay>
             Wrap(
               spacing: 6,
               runSpacing: 6,
-              alignment: isLeft
-                  ? WrapAlignment.start
-                  : WrapAlignment.end,
-              children: guestSeats
-                  .take(6)
-                  .map(
-                    (s) => _buildSeatAvatar(
-                      name: s.name ?? 'User',
-                      image: s.image,
-                      isHost: false,
-                      isSpeaking: s.isSpeaking,
-                      isMuted: s.isMuted,
-                      accent: accent,
-                      size: 32,
-                    ),
-                  )
-                  .toList(),
+              alignment: isLeft ? WrapAlignment.start : WrapAlignment.end,
+              children:
+                  guestSeats
+                      .take(6)
+                      .map(
+                        (s) => _buildSeatAvatar(
+                          name: s.name ?? 'User',
+                          image: s.image,
+                          isHost: false,
+                          isSpeaking: s.isSpeaking,
+                          isMuted: s.isMuted,
+                          accent: accent,
+                          size: 32,
+                        ),
+                      )
+                      .toList(),
             ),
         ],
       ),
@@ -1110,22 +1426,25 @@ class _AudioPkSplitRoomOverlayState extends State<AudioPkSplitRoomOverlay>
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
                 border: Border.all(
-                  color: isHost
-                      ? accent
-                      : (isSpeaking
-                          ? const Color(0xFF00E5FF)
-                          : Colors.white.withValues(alpha: 0.2)),
+                  color:
+                      isHost
+                          ? accent
+                          : (isSpeaking
+                              ? const Color(0xFF00E5FF)
+                              : Colors.white.withValues(alpha: 0.2)),
                   width: isHost ? 2 : 1,
                 ),
-                boxShadow: isSpeaking
-                    ? [
-                        BoxShadow(
-                          color: const Color(0xFF00E5FF)
-                              .withValues(alpha: 0.4),
-                          blurRadius: 6,
-                        ),
-                      ]
-                    : null,
+                boxShadow:
+                    isSpeaking
+                        ? [
+                          BoxShadow(
+                            color: const Color(
+                              0xFF00E5FF,
+                            ).withValues(alpha: 0.4),
+                            blurRadius: 6,
+                          ),
+                        ]
+                        : null,
               ),
               child: UserAvatar(imageUrl: image, size: size),
             ),
@@ -1206,9 +1525,10 @@ class _AudioPkSplitRoomOverlayState extends State<AudioPkSplitRoomOverlay>
                 height: 4,
                 margin: const EdgeInsets.only(right: 3),
                 decoration: BoxDecoration(
-                  color: isCurrent
-                      ? const Color(0xFF7E3FF2)
-                      : isPast
+                  color:
+                      isCurrent
+                          ? const Color(0xFF7E3FF2)
+                          : isPast
                           ? Colors.white30
                           : Colors.white12,
                   borderRadius: BorderRadius.circular(2),
@@ -1233,8 +1553,7 @@ class _AudioPkSplitRoomOverlayState extends State<AudioPkSplitRoomOverlay>
                       borderRadius: BorderRadius.circular(10),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF7E3FF2)
-                              .withValues(alpha: 0.3),
+                          color: const Color(0xFF7E3FF2).withValues(alpha: 0.3),
                           blurRadius: 6,
                         ),
                       ],

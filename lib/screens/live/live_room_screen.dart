@@ -867,6 +867,10 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
   int _pkVoteCountHost2 = 0;
   int _pkScoreHost1 = 0;
   int _pkScoreHost2 = 0;
+  // Top-3 gifters per host for the CURRENT PK round (canonical — display
+  // mirrors by _pkIsHost1). Cleared on every new round / full reset.
+  final Map<String, PkGifter> _pkGiftersHost1 = {};
+  final Map<String, PkGifter> _pkGiftersHost2 = {};
   bool _isPkActive = false;
   int? _pkRemoteAgoraUid;
   bool _openingPkBattle = false;
@@ -3620,10 +3624,22 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         // Update the PK score only; never render the comment/animation/banner
         // or pollute this room's gift wall/stats with another room's gift.
         if (map['pkPartnerRoom'] == true) {
+          final pCoin = (map['coin'] as num?)?.toInt() ?? 0;
+          final pCount = (map['count'] as num?)?.toInt() ?? 1;
+          // Opponent's top-gifter circles — the relay carries the real sender.
+          _upsertPkGifter(
+            _pkIsHost1 ? _pkGiftersHost2 : _pkGiftersHost1,
+            giftSenderId,
+            name,
+            VideoUtil.getFullImageUrl(
+              map['senderImage']?.toString() ??
+                  map['userImage']?.toString() ??
+                  '',
+            ),
+            pCoin * pCount,
+          );
           if (widget.isHost) {
             final receiverId = _resolvePkGiftReceiver(map);
-            final pCoin = (map['coin'] as num?)?.toInt() ?? 0;
-            final pCount = (map['count'] as num?)?.toInt() ?? 1;
             if (receiverId != null && receiverId.isNotEmpty && pCoin > 0) {
               _applyOptimisticPkGiftScore(receiverId, pCoin * pCount);
             }
@@ -3717,6 +3733,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             event.senderImage,
             event.coin,
             event.count,
+          );
+          // Top-3 gifter circles — this room's host's map (viewers too).
+          _upsertPkGifter(
+            _pkIsHost1 ? _pkGiftersHost1 : _pkGiftersHost2,
+            event.senderId,
+            event.senderName,
+            event.senderImage,
+            event.coin * event.count,
           );
           // Update PK score when a gift is for either host in this battle.
           final myUserId = context.read<SessionManager>().userId;
@@ -3865,6 +3889,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
           event.coin,
           event.count,
         );
+        // Top-3 gifter circles — this room's host's map (viewers too).
+        _upsertPkGifter(
+          _pkIsHost1 ? _pkGiftersHost1 : _pkGiftersHost2,
+          event.senderId,
+          event.senderName,
+          event.senderImage,
+          event.coin * event.count,
+        );
         // Update PK score when a gift is for either host in this battle.
         if (widget.isHost && event.senderId != myUserId) {
           final receiverId = _resolvePkGiftReceiver(map);
@@ -3997,6 +4029,14 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             event.senderImage,
             event.coin,
             event.count,
+          );
+          // Top-3 gifter circles — this room's host's map (viewers too).
+          _upsertPkGifter(
+            _pkIsHost1 ? _pkGiftersHost1 : _pkGiftersHost2,
+            event.senderId,
+            event.senderName,
+            event.senderImage,
+            event.coin * event.count,
           );
           // Update PK score when a gift is for either host in this battle.
           final myUserId = context.read<SessionManager>().userId;
@@ -10126,6 +10166,11 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
         _pkSecondsLeft = remainingSeconds;
         _pkWinner = -1;
         _pkRoundCount = max(_pkRoundCount, config.pkRoundCount);
+        // Fresh round → top-gifter circles start empty again.
+        if (initialScores.host1 == 0 && initialScores.host2 == 0) {
+          _pkGiftersHost1.clear();
+          _pkGiftersHost2.clear();
+        }
       });
       // Start media relay from the existing engine — no separate route.
       if (shouldRebind) _startPkVideoRetry(opponentUid);
@@ -10780,6 +10825,32 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     _emitPkScoreUpdate();
   }
 
+  /// Upsert a PK gifter for the current round (canonical host maps — the
+  /// overlay mirrors by _pkIsHost1). No-op outside an active PK round.
+  void _upsertPkGifter(
+    Map<String, PkGifter> map,
+    String senderId,
+    String name,
+    String image,
+    int coins,
+  ) {
+    if (!_isPkActive || _isPkPunishment || coins <= 0 || senderId.isEmpty) {
+      return;
+    }
+    final existing = map[senderId];
+    if (existing != null) {
+      existing.amount += coins;
+    } else {
+      map[senderId] = PkGifter(
+        userId: senderId,
+        name: name,
+        image: image,
+        amount: coins,
+      );
+    }
+    setState(() {});
+  }
+
   /// Parses a PK timestamp that may be epoch (ms or seconds) or an ISO string.
   /// Returns 0 if the value cannot be parsed.
   int _parsePkTimestampMs(dynamic value) {
@@ -11144,6 +11215,8 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       _pkRoundCount = 0;
       _pkVideoRetryCount = 0;
       _pkRelayRetryCount = 0;
+      _pkGiftersHost1.clear();
+      _pkGiftersHost2.clear();
     });
     _pkTimer?.cancel();
     _pkTimer = null;
@@ -11911,6 +11984,13 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                   totalCoins,
                 );
               }
+              _upsertPkGifter(
+                _pkIsHost1 ? _pkGiftersHost1 : _pkGiftersHost2,
+                session.userId,
+                user?.name ?? session.userName,
+                VideoUtil.getFullImageUrl(user?.image ?? session.userImage),
+                totalCoins,
+              );
               // 1. Add chat comment bubble for the gift.
               setState(
                 () => _pushComment(
@@ -13802,7 +13882,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
       child: LayoutBuilder(
         builder: (context, constraints) {
           // PK split video panel height — responsive, matching native ~340dp.
-          final videoH = (constraints.maxHeight * 0.47).clamp(280.0, 340.0);
+          final videoH = (constraints.maxHeight * 0.44).clamp(260.0, 330.0);
           return Stack(
             children: [
               Positioned.fill(
@@ -13811,9 +13891,10 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
                   fit: BoxFit.cover,
                 ),
               ),
-              // PK split video panel at top.
+              // PK split video panel — pushed below the room header so the
+              // host info/timer/beans row never overlaps the cameras.
               Positioned(
-                top: topPad + 44,
+                top: topPad + 72,
                 left: 0,
                 right: 0,
                 height: videoH,
@@ -13826,7 +13907,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
               ),
               // Score bar + timer below the video panel.
               Positioned(
-                top: topPad + 44 + videoH + 12,
+                top: topPad + 72 + videoH + 12,
                 left: 8,
                 right: 8,
                 child: _buildPkScoreAndTimer(
@@ -13842,7 +13923,7 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
               // Punishment overlay.
               if (_isPkPunishment && _pkPunishmentTask != null)
                 Positioned(
-                  top: topPad + 44 + videoH + 60,
+                  top: topPad + 72 + videoH + 60,
                   left: 16,
                   right: 16,
                   child: _buildPkPunishmentBanner(),
@@ -13942,6 +14023,197 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
             ),
           ),
         ),
+        // Top-3 gifter circles inside the bottom of each video half, with
+        // the round timer centered — the native PK composition.
+        Positioned(left: 0, right: 0, bottom: 4, child: _buildPkGifterStrip()),
+      ],
+    );
+  }
+
+  /// Per-round top-3 gifters — three ranked circles on each side (local
+  /// host on the left, opponent on the right), empty slots until gifts
+  /// arrive. Maps are canonical and cleared on every new round.
+  Widget _buildPkGifterStrip() {
+    final myGifters = _topPkGifters(
+      _pkIsHost1 ? _pkGiftersHost1 : _pkGiftersHost2,
+    );
+    final oppGifters = _topPkGifters(
+      _pkIsHost1 ? _pkGiftersHost2 : _pkGiftersHost1,
+    );
+    final mins = (_pkSecondsLeft ~/ 60).toString().padLeft(2, '0');
+    final secs = (_pkSecondsLeft % 60).toString().padLeft(2, '0');
+    final chipColor = _isPkPunishment ? Colors.purple : const Color(0xFFFF4F87);
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 8),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Expanded(
+            child: _buildPkGifterCircles(
+              myGifters,
+              const Color(0xFF35A7FF),
+              alignEnd: false,
+            ),
+          ),
+          Container(
+            margin: const EdgeInsets.symmetric(horizontal: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: Colors.black.withValues(alpha: 0.55),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: chipColor.withValues(alpha: 0.7),
+                width: 1,
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_pkRoundCount > 0)
+                  Text(
+                    'Round $_pkRoundCount',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 9,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                Text(
+                  _isPkPunishment ? 'PUNISH' : 'PK',
+                  style: TextStyle(
+                    color: chipColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  '$mins:$secs',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _buildPkGifterCircles(
+              oppGifters,
+              const Color(0xFFFF4F87),
+              alignEnd: true,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  List<PkGifter> _topPkGifters(Map<String, PkGifter> map, {int limit = 3}) {
+    final list = map.values.toList();
+    list.sort((a, b) => b.amount.compareTo(a.amount));
+    return list.take(limit).toList();
+  }
+
+  /// Three ranked gifter circles for one side — empty slots show a dimmed
+  /// gift placeholder so the row stays stable.
+  Widget _buildPkGifterCircles(
+    List<PkGifter> gifters,
+    Color color, {
+    required bool alignEnd,
+  }) {
+    const rankColors = [
+      Color(0xFFFFD54A), // 1st — gold
+      Color(0xFFB0BEC5), // 2nd — silver
+      Color(0xFFCD8B52), // 3rd — bronze
+    ];
+    const rankSizes = [44.0, 38.0, 38.0];
+    return Row(
+      mainAxisAlignment:
+          alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+      children: [
+        for (var i = 0; i < 3; i++)
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 3),
+            child: _buildPkGifterCircle(
+              i < gifters.length ? gifters[i] : null,
+              i,
+              rankColors[i],
+              rankSizes[i],
+              color,
+            ),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildPkGifterCircle(
+    PkGifter? g,
+    int rank,
+    Color rankColor,
+    double size,
+    Color sideColor,
+  ) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: size,
+              height: size,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                border: Border.all(
+                  color: g != null ? rankColor : Colors.white24,
+                  width: rank == 0 && g != null ? 2 : 1.4,
+                ),
+                color: Colors.black.withValues(alpha: 0.35),
+              ),
+              child:
+                  g != null
+                      ? ClipOval(
+                        child: UserAvatar(imageUrl: g.image, size: size),
+                      )
+                      : Icon(
+                        Icons.card_giftcard,
+                        color: Colors.white24,
+                        size: size * 0.45,
+                      ),
+            ),
+            Positioned(
+              top: -4,
+              left: -4,
+              child: Container(
+                width: 16,
+                height: 16,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: g != null ? rankColor : Colors.white24,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(
+                  '${rank + 1}',
+                  style: const TextStyle(
+                    color: Colors.black87,
+                    fontSize: 9,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 2),
+        Text(
+          g != null ? formatCount(g.amount) : '-',
+          style: TextStyle(
+            color: g != null ? sideColor : Colors.white24,
+            fontSize: 10,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
       ],
     );
   }
@@ -14010,8 +14282,9 @@ class _LiveRoomScreenState extends State<LiveRoomScreen>
     required String? image,
     required bool isLeft,
   }) {
+    // Above the gifter-circle row overlaying the video bottom.
     return Positioned(
-      bottom: 6,
+      bottom: 72,
       left: isLeft ? 6 : null,
       right: isLeft ? null : 6,
       child: Container(

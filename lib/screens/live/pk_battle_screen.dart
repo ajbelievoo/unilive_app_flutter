@@ -715,8 +715,9 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
           (map['winner'] as num?)?.toInt() ??
           0;
       final canRematch = map['canRematch'] == true;
-      final h1Score = _resolvePkScores(map).host1;
-      final h2Score = _resolvePkScores(map).host2;
+      final h1Score = _resolvePkScores(map, local: false).host1;
+      final h2Score = _resolvePkScores(map, local: false).host2;
+      final localScores = _resolvePkScores(map);
 
       // Record round result
       _recordRoundResult(_pkRoundCount, h1Score, h2Score, winner);
@@ -727,8 +728,8 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       _isPkStarting = false;
 
       setState(() {
-        _host1Score = h1Score;
-        _host2Score = h2Score;
+        _host1Score = localScores.host1;
+        _host2Score = localScores.host2;
       });
 
       _showResultSheet(winner, canRematch);
@@ -779,8 +780,9 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
         final punishmentDuration =
             (map['pkPunishmentDuration'] as num?)?.toInt() ?? 0;
         final winner = (map['winner'] as num?)?.toInt() ?? 0;
-        final h1Score = _resolvePkScores(map).host1;
-        final h2Score = _resolvePkScores(map).host2;
+        final h1Score = _resolvePkScores(map, local: false).host1;
+        final h2Score = _resolvePkScores(map, local: false).host2;
+        final localScores = _resolvePkScores(map);
 
         // Record round result
         _recordRoundResult(_pkRoundCount, h1Score, h2Score, winner);
@@ -791,8 +793,8 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
           _punishmentTask = PkPunishmentTasks.getTaskForRound(_pkRoundCount);
           setState(() {
             _isPunishmentRound = true;
-            _host1Score = h1Score;
-            _host2Score = h2Score;
+            _host1Score = localScores.host1;
+            _host2Score = localScores.host2;
             _secondsRemaining = punishmentDuration;
           });
           _startCountdown();
@@ -897,43 +899,26 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       },
     );
 
-    // PK Vote — server counts are session-global; swap to local perspective
-    // (local host1 = the room this screen is watching).
+    // PK Vote — _pkVoteHost1/2 are CANONICAL counters (the display side
+    // mirrors by isHost1) so session-global counts map straight through.
     _cancelPkVote = SocketService.instance.on(Const.eventPkVote, (data) {
       final map = data is Map ? Map<String, dynamic>.from(data) : null;
       if (map == null) return;
-      final sameSide = _payloadMatchesLocalHost1(map);
       final count = (map['count'] as num?)?.toInt();
       final voteHost1 = (map['pkVoteHost1'] as num?)?.toInt();
       final voteHost2 = (map['pkVoteHost2'] as num?)?.toInt();
       setState(() {
         if (voteHost1 != null) {
-          if (sameSide) {
-            _pkVoteHost1 = voteHost1;
-          } else {
-            _pkVoteHost2 = voteHost1;
-          }
+          _pkVoteHost1 = voteHost1;
         } else if (count != null &&
             (map['host1Id']?.toString().isNotEmpty ?? false)) {
-          if (sameSide) {
-            _pkVoteHost1 = count;
-          } else {
-            _pkVoteHost2 = count;
-          }
+          _pkVoteHost1 = count;
         }
         if (voteHost2 != null) {
-          if (sameSide) {
-            _pkVoteHost2 = voteHost2;
-          } else {
-            _pkVoteHost1 = voteHost2;
-          }
+          _pkVoteHost2 = voteHost2;
         } else if (count != null &&
             (map['host2Id']?.toString().isNotEmpty ?? false)) {
-          if (sameSide) {
-            _pkVoteHost2 = count;
-          } else {
-            _pkVoteHost1 = count;
-          }
+          _pkVoteHost2 = count;
         }
       });
     });
@@ -975,21 +960,14 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
     });
   }
 
-  /// True when an incoming payload's `host1`/`host1Score` refers to the same
-  /// host as this screen's local host1 (the room we are watching). Server
-  /// payloads are session-global (host1 = PK requester); a viewer in host2's
-  /// room must swap scores/votes or the opponent's points render on our side.
-  bool _payloadMatchesLocalHost1(Map<String, dynamic> map) {
-    final incomingHost1Id = map['host1Id']?.toString() ?? '';
-    final incomingHost1LiveId = map['host1LiveId']?.toString() ?? '';
-    if (incomingHost1Id.isEmpty && incomingHost1LiveId.isEmpty) return true;
-    return incomingHost1Id == (_config.host1Id ?? '') ||
-        incomingHost1LiveId == (_config.host1LiveId ?? '');
-  }
-
-  /// Resolves server host1/host2 scores into local host1/host2 (local = the
-  /// room host this screen belongs to).
-  ({int host1, int host2}) _resolvePkScores(Map<String, dynamic> map) {
+  /// Resolves server host1/host2 scores. Payloads are session-canonical
+  /// (host1 = PK requester); with [local] true (default) they are swapped
+  /// into this screen's left/right perspective — local-left is host2 when
+  /// the room we're watching belongs to host2.
+  ({int host1, int host2}) _resolvePkScores(
+    Map<String, dynamic> map, {
+    bool local = true,
+  }) {
     int? read(List<String> keys) {
       for (final key in keys) {
         final value = map[key];
@@ -1005,7 +983,8 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
     if (h1 == null && h2 == null) {
       return (host1: _host1Score, host2: _host2Score);
     }
-    if (!_payloadMatchesLocalHost1(map)) {
+    // Session-canonical payload → local-left is host2 when !isHost1.
+    if (local && !widget.isHost1) {
       final tmp = h1;
       h1 = h2;
       h2 = tmp;
@@ -1027,12 +1006,8 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
     final giftId =
         map['giftId']?.toString() ?? map['gift']?['_id']?.toString() ?? '';
     final ts = map['timeStamp']?.toString() ?? '';
-    final receiverId =
-        map['receiverUserId']?.toString() ??
-        map['receiverId']?.toString() ??
-        '';
     if (senderId.isEmpty && giftId.isEmpty) return false;
-    final key = '${senderId}_${giftId}_${ts}_$receiverId';
+    final key = '${senderId}_${giftId}_$ts';
     if (_seenGiftKeys.contains(key)) return true;
     _seenGiftKeys.add(key);
     if (_seenGiftKeys.length > 500) _seenGiftKeys.clear();
@@ -1082,12 +1057,13 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
           map['senderName']?.toString() ?? map['name']?.toString() ?? 'Someone';
       final senderImage =
           map['senderImage']?.toString() ?? map['userImage']?.toString() ?? '';
-      final receiverId =
-          map['receiverId']?.toString() ?? map['liveUserId']?.toString() ?? '';
       final nested =
           map['gift'] is Map
               ? Map<String, dynamic>.from(map['gift'] as Map)
               : <String, dynamic>{};
+      // `coin` in the emit is already TOTAL (unit × count); the nested gift
+      // object carries the UNIT price, so use top-level coin as the amount
+      // and only fall back to unit×count when it is missing.
       final coin =
           (map['coin'] as num?)?.toInt() ??
           (nested['coin'] as num?)?.toInt() ??
@@ -1096,31 +1072,23 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
           (map['count'] as num?)?.toInt() ??
           (map['giftCount'] as num?)?.toInt() ??
           1;
-      final giftAmount = coin * count;
+      final giftAmount =
+          map['coin'] is num
+              ? coin
+              : (nested['coin'] as num? ?? 0).toInt() * count;
 
       if (giftAmount <= 0 || senderId.isEmpty) return;
 
-      // Determine which host received the gift
-      final h1Id = _config.host1Id ?? '';
-      final h2Id = _config.host2Id ?? '';
-      if (receiverId == h1Id) {
-        _updateGifterMap(
-          _host1Gifters,
-          senderId,
-          senderName,
-          senderImage,
-          giftAmount,
-        );
-        _host1Score += giftAmount;
-      } else if (receiverId == h2Id) {
-        _updateGifterMap(
-          _host2Gifters,
-          senderId,
-          senderName,
-          senderImage,
-          giftAmount,
-        );
-        _host2Score += giftAmount;
+      // Gifter map is CANONICAL (display mirrors by isHost1).
+      final gifters =
+          widget.isHost1
+              ? (isPartnerRoomGift ? _host2Gifters : _host1Gifters)
+              : (isPartnerRoomGift ? _host1Gifters : _host2Gifters);
+      _updateGifterMap(gifters, senderId, senderName, senderImage, giftAmount);
+      // Optimistic score — only for LOCAL gifts (pkScoreUpdate carries the
+      // partner room's authoritative total; adding the relay here doubled it).
+      if (!isPartnerRoomGift) {
+        _host1Score += giftAmount; // _host1Score = local-left side
       }
       setState(() {});
     } catch (e) {
@@ -1629,10 +1597,10 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
                 )
                 : LayoutBuilder(
                   builder: (context, constraints) {
-                    final widthBasedHeight = (constraints.maxWidth * 0.86)
-                        .clamp(220.0, 340.0);
-                    final heightBasedLimit = (constraints.maxHeight - 320)
-                        .clamp(220.0, 340.0);
+                    final widthBasedHeight = (constraints.maxWidth * 0.92)
+                        .clamp(240.0, 400.0);
+                    final heightBasedLimit = (constraints.maxHeight - 280)
+                        .clamp(240.0, 400.0);
                     final videoHeight =
                         widthBasedHeight < heightBasedLimit
                             ? widthBasedHeight
@@ -1649,12 +1617,10 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
                           child: Column(
                             children: [
                               _buildTopBar(),
-                              _buildMatchHeader(),
                               SizedBox(
                                 height: videoHeight,
                                 child: _buildSplitVideo(),
                               ),
-                              _buildTopGifters(),
                               _buildScoreBars(),
                               const Spacer(),
                               _buildBottomControls(),
@@ -1893,79 +1859,6 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
     );
   }
 
-  Widget _buildMatchHeader() {
-    return SizedBox(
-      height: 58,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-        child: Row(
-          children: [
-            Expanded(
-              child: _buildMatchHost(
-                name: _leftHostName,
-                image: _leftHostImage,
-                color: const Color(0xFF168CFF),
-                alignEnd: false,
-              ),
-            ),
-            Image.asset(
-              'assets/images/live_pk_blue.webp',
-              width: 48,
-              height: 40,
-              fit: BoxFit.contain,
-            ),
-            Expanded(
-              child: _buildMatchHost(
-                name: _rightHostName,
-                image: _rightHostImage,
-                color: const Color(0xFFFF2D75),
-                alignEnd: true,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildMatchHost({
-    required String name,
-    required String? image,
-    required Color color,
-    required bool alignEnd,
-  }) {
-    final avatar = UserAvatar(imageUrl: image, size: 36);
-    final label = Flexible(
-      child: Text(
-        name,
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        textAlign: alignEnd ? TextAlign.end : TextAlign.start,
-        style: const TextStyle(
-          color: Colors.white,
-          fontSize: 13,
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.2),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: color.withValues(alpha: 0.65)),
-      ),
-      child: Row(
-        mainAxisAlignment:
-            alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
-        children:
-            alignEnd
-                ? [label, const SizedBox(width: 7), avatar]
-                : [avatar, const SizedBox(width: 7), label],
-      ),
-    );
-  }
-
   // --- Split-screen video with punishment overlay ---
   Widget _buildSplitVideo() {
     // With media relay, the opponent's video is relayed into OUR channel,
@@ -2043,6 +1936,9 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
             color: Colors.white.withValues(alpha: 0.35),
           ),
         ),
+        // Top-3 gifter circles inside the bottom of each video half, with
+        // the round timer centered — the native PK composition.
+        Positioned(left: 0, right: 0, bottom: 4, child: _buildTopGifters()),
         // Punishment overlay
         if (_isPunishmentRound)
           Positioned.fill(
@@ -2184,8 +2080,9 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
               ),
             ),
           ),
+          // Above the gifter-circle row that overlays the video bottom.
           Positioned(
-            bottom: 10,
+            bottom: 80,
             left: isLeft ? 8 : null,
             right: isLeft ? null : 8,
             child: _buildNameLabel(name),
@@ -2762,7 +2659,12 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
 
   // --- Gift sheet ---
   void _showGiftSheet() {
-    final receiverId = widget.isHost1 ? _config.host2Id : _config.host1Id;
+    // Audience gifts go to THIS room's host — the emit also targets this
+    // room's liveStreamingId so the animation stays in this room (the
+    // opponent's room only gets the score-sync relay, not the gift).
+    final receiverId = widget.isHost1 ? _config.host1Id : _config.host2Id;
+    final localLiveId =
+        widget.isHost1 ? _config.host1LiveId : _config.host2LiveId;
     final session = context.read<SessionManager>();
     showModalBottomSheet(
       context: context,
@@ -2770,7 +2672,7 @@ class _PkBattleScreenState extends State<PkBattleScreen> {
       builder:
           (_) => GiftBottomSheet(
             receiverId: receiverId ?? '',
-            liveStreamingId: _config.host1LiveId,
+            liveStreamingId: localLiveId ?? _config.host1LiveId,
             type: 'pk',
             // PK live was missing onGiftSent — the sender never saw the
             // gift animation locally (only the screen shake fired from the

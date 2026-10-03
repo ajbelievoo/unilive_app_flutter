@@ -84,6 +84,7 @@ import '../../widgets/vip_mic_wave.dart';
 import '../../widgets/preloader.dart';
 import '../../widgets/profile_room_card_sheet.dart';
 import '../../widgets/sound_effects_sheet.dart';
+import '../../models/pk_call_models.dart';
 import '../../widgets/pk_battle_overlay.dart';
 import '../../widgets/pk_battle_sheets.dart';
 import '../../widgets/theme_picker_sheet.dart';
@@ -765,6 +766,10 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
   static const bool _audioPkEnabled = false;
   // PK battle state — null when no PK is active.
   PkBattleState? _pkBattle;
+  // Per-round top-3 gifters — local perspective (local = this room's host).
+  // Cleared on every new PK round / PK end.
+  final Map<String, PkGifter> _pkGiftersLocal = {};
+  final Map<String, PkGifter> _pkGiftersOpponent = {};
   Function? _cancelPkStartSub;
   Function? _cancelPkEndSub;
   Function? _cancelPkScoreSub;
@@ -3228,9 +3233,13 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
         // PK partner-room relay — gift was sent in the OTHER host's room.
         // Score sync comes via pkScoreUpdate; never render comment/animation
         // for a gift that wasn't sent in this room.
-        if (map['pkPartnerRoom'] == true) return;
+        if (map['pkPartnerRoom'] == true) {
+          _upsertAudioPkGifter(_pkGiftersOpponent, map);
+          return;
+        }
         final coins = _parseGiftCoin(map);
         final giftCount = _parseGiftCount(map);
+        _upsertAudioPkGifter(_pkGiftersLocal, map);
         final receiverId =
             (map['receiverUserId'] ?? map['toUserId'])?.toString() ?? '';
         final receiverName =
@@ -5456,6 +5465,8 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
           final localRoom = _buildLocalPkRoom(battle, isHost1: true);
           setState(() {
             _pkBattle = battle.copyWith(room1: battle.room1 ?? localRoom);
+            _pkGiftersLocal.clear();
+            _pkGiftersOpponent.clear();
           });
           _startPkTimer();
           Fluttertoast.showToast(msg: 'PK Battle started!');
@@ -9699,6 +9710,45 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
     });
   }
 
+  /// Upsert a PK gifter for the current round — `map['coin']` is already the
+  /// TOTAL for this send (unit × count), so do not multiply by count again.
+  void _upsertAudioPkGifter(
+    Map<String, PkGifter> gifters,
+    Map<String, dynamic> map,
+  ) {
+    if (_pkBattle == null || _isPkPunishment) return;
+    final senderId =
+        map['senderId']?.toString() ??
+        map['senderUserId']?.toString() ??
+        map['userId']?.toString() ??
+        '';
+    final amount = _parseGiftCoin(map);
+    if (senderId.isEmpty || amount <= 0) return;
+    final name =
+        map['senderName']?.toString() ?? map['name']?.toString() ?? 'Someone';
+    final image = VideoUtil.getFullImageUrl(
+      map['senderImage']?.toString() ?? map['userImage']?.toString() ?? '',
+    );
+    final existing = gifters[senderId];
+    if (existing != null) {
+      existing.amount += amount;
+    } else {
+      gifters[senderId] = PkGifter(
+        userId: senderId,
+        name: name,
+        image: image,
+        amount: amount,
+      );
+    }
+    if (mounted) setState(() {});
+  }
+
+  List<PkGifter> _topAudioPkGifters(Map<String, PkGifter> map) {
+    final list = map.values.toList();
+    list.sort((a, b) => b.amount.compareTo(a.amount));
+    return list.take(3).toList();
+  }
+
   int _parseGiftCoin(Map map) {
     int? fromValue(dynamic v) {
       if (v == null) return null;
@@ -13154,6 +13204,10 @@ class _AudioRoomScreenState extends State<AudioRoomScreen>
                             isHost1Me: _amHost,
                             onVote: _sendPkVote,
                             onCheer: _sendCheer,
+                            leftGifters: _topAudioPkGifters(_pkGiftersLocal),
+                            rightGifters: _topAudioPkGifters(
+                              _pkGiftersOpponent,
+                            ),
                           ),
                         // PK punishment round overlay
                         if (_isPkPunishment && _pkPunishmentTask != null)
